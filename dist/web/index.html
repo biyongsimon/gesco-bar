@@ -343,6 +343,13 @@ input[type=date],input[type=time]{width:100%;min-height:46px;padding:10px 12px;b
 .slip h2{color:#111}.slip hr{border:0;border-top:1px dashed #bbb;margin:8px 0}.slip .kv{display:flex;justify-content:space-between;gap:10px;padding:4px 0}
 .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:70}
 .scrim{z-index:60}
+.step{display:flex;gap:12px;align-items:flex-start;padding-top:12px;border-top:1px dashed var(--line)}
+.step>.grow{min-width:0}.step .btn.wide{width:100%;white-space:normal}.paybox{overflow-wrap:anywhere}
+.step>i{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:800 15px var(--display);font-style:normal;background:var(--brand);color:var(--brand-ink)}
+.paybox{display:flex;flex-direction:column;gap:2px;padding:14px;border-radius:16px;border:2px solid var(--line);background:var(--sunk)}
+.paybox b.num{font:800 28px/1.15 var(--display);letter-spacing:.02em}
+.paybox.orange{border-color:color-mix(in srgb,var(--amber) 60%,var(--line));background:linear-gradient(135deg,var(--amber-soft),var(--surface))}
+.paybox.mtn{border-color:color-mix(in srgb,var(--sky) 55%,var(--line));background:linear-gradient(135deg,var(--sky-soft),var(--surface))}
 /* ── v3.2 : QR lumineux animé, formules d'abonnement ── */
 .qrf{position:relative;width:min(290px,78vw);margin:4px auto;padding:12px;border-radius:26px;background:#fff;overflow:hidden;
   animation:qglow 8s infinite;animation-delay:var(--ph,0ms)}
@@ -813,13 +820,15 @@ function DemoBackend() {
       Object.assign(db.bar, { om_code: (p_om_code || "").trim() || null, mtn_code: (p_mtn_code || "").trim() || null, om_ussd: (p_om_ussd || "").trim() || db.bar.om_ussd, mtn_ussd: (p_mtn_ussd || "").trim() || db.bar.mtn_ussd });
       if (p_key != null) db.bar.push_enabled = !!p_key.trim(); log(c, "paiement_config", { orange: p_om_code, mtn: p_mtn_code });
     },
-    gb_sub_request({ p_plan, p_months, p_method, p_reference }) {
+    gb_sub_request({ p_plan, p_months, p_method, p_reference, p_proof }) {
       const c = ctx(); mgr(c); const price = { simple: 10000, premium: 15000, gold: 20000, lounge: 30000 }[p_plan]; if (!price) E("Formule inconnue.");
       if (![1, 3, 6, 12].includes(+p_months)) E("Durée invalide."); if (!["orange", "mtn"].includes(p_method)) E("Mode de paiement inconnu.");
-      if ((p_reference || "").trim().length < 4) E("Indiquez la référence de la transaction reçue par SMS.");
-      const id = uuid(), amount = price * (+p_months === 12 ? 10 : +p_months);
-      db.subs.unshift({ id, plan: p_plan, months: +p_months, amount, method: p_method, reference: p_reference.trim(), status: "en_attente", requested_by: c.id, created_at: now() });
-      log(c, "abonnement_demande", { formule: p_plan, mois: p_months, montant: amount }); return id;
+      if ((p_reference || "").trim().length < 4 && !p_proof) E("Collez la référence du SMS ou ajoutez la capture du SMS.");
+      if (db.subs.some(x => x.status === "en_attente")) E("Un paiement est déjà en cours de vérification.");
+      const id = uuid(), amount = price * (+p_months === 12 ? 10 : +p_months), trial = new Date(Date.now() + 72 * 3600e3).toISOString();
+      db.subs.unshift({ id, plan: p_plan, months: +p_months, amount, method: p_method, reference: (p_reference || "").trim() || "(capture jointe)", proof_path: p_proof || null, pay_ref: "GB-" + db.bar.code, status: "en_attente", requested_by: c.id, created_at: now() });
+      Object.assign(db.bar, { plan_trial_until: trial, trial_plan: p_plan });
+      log(c, "abonnement_demande", { formule: p_plan, mois: p_months, montant: amount }); return { id, amount, trial_until: trial };
     },
     gb_staff_stats({ p_month }) {
       const c = ctx(); mgr(c); const m = p_month || bizDate().slice(0, 7), inM = d => String(d).slice(0, 7) === m, dayOf = id => (db.days.find(d => d.id === id) || {}).business_date || bizDate();
@@ -921,7 +930,7 @@ function DemoBackend() {
         audit: cs ? db.audit.slice(0, 200) : [], moves: cs ? db.moves.slice(0, 150) : [],
         days: cs ? db.days.filter(d => d.status === "closed").sort((a, b) => a.closed_at < b.closed_at ? 1 : -1).slice(0, 30) : [],
         shifts: db.shifts, attendance: db.attendance.filter(a => mg || own(a)).sort((a, b) => a.day < b.day ? 1 : -1), leaves: db.leaves.filter(l => mg || own(l)),
-        salaries: db.salaries.filter(x => pg || own(x)), payroll: db.payroll.filter(x => pg || own(x)), subs: mg ? db.subs : [], platform: { om_code: null, mtn_code: null, phone: null } });
+        salaries: db.salaries.filter(x => pg || own(x)), payroll: db.payroll.filter(x => pg || own(x)), subs: mg ? db.subs : [], platform: { holder_name: "BIYONG BIYONG SIMON STEVE (BISMO AGENCY)", om_number: "691468175", mtn_number: "673383951", om_tpl: null, mtn_tpl: null } });
     },
     async rpc(name, args) { const f = R[name]; if (!f) throw bizErr("Action inconnue."); db = LS.get(KEY) || db; const r = f(args || {}); save(); return r; },
     async momoPush(ticket, phone, operator) { // démo : le client « valide » sur son téléphone au bout de 6 secondes
@@ -935,6 +944,7 @@ function DemoBackend() {
         if (t && ["sent", "cashed"].includes(t.status)) Object.assign(t, { status: "paid", pay_method: "momo", received: t.total, change_due: 0, change_status: "none", cashed_at: now(), paid_at: now(), updated_at: now() });
         log({ id: t ? t.waitress_id : null }, "momo_auto", { ticket: t && t.number, total: t && t.total }); save(); }
       return { status: m.status }; },
+    async uploadProof(file) { const c = ctx(); mgr(c); return db.bar.id + "/abonnement-demo-" + (file.name || "capture"); },
     async uploadDoc(file) { const c = ctx(); pdg(c); return db.bar.id + "/demo-" + (file.name || "piece"); },
     async staffCreate(name, role, pin) {
       const c = ctx(); mgr(c); name = (name || "").trim(); if (!name) throw bizErr("Indiquez un nom."); pinOk(pin);
@@ -983,7 +993,7 @@ function LiveBackend() {
       const uid = sd.session.user.id;
       const [staff, bars, products, days] = await Promise.all([
         q(sb.from("staff").select("id,name,role,active,user_id").order("name")),
-        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status,om_code,mtn_code,om_ussd,mtn_ussd,push_enabled,plan,plan_until").limit(1)),
+        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status,om_code,mtn_code,om_ussd,mtn_ussd,push_enabled,plan,plan_until,plan_trial_until,trial_plan").limit(1)),
         q(sb.from("products").select("*").order("sort")),
         q(sb.from("service_days").select("*").eq("status", "open").limit(1))]);
       const meRow = staff.find(s => s.user_id === uid && s.active); if (!meRow || !bars.length) { const e = bizErr("Compte non rattaché à un bar ou désactivé."); e.auth = true; throw e; }
@@ -995,7 +1005,7 @@ function LiveBackend() {
         q(sb.from("leave_requests").select("*").order("created_at", { ascending: false }).limit(150)),
         q(sb.from("staff_salaries").select("staff_id,salary")),
         q(sb.from("payroll").select("*").order("paid_at", { ascending: false }).limit(300)),
-        q(sb.from("subscriptions").select("*").order("created_at", { ascending: false }).limit(50)), q(sb.from("platform_config").select("om_code,mtn_code,phone,whatsapp").limit(1))]);
+        q(sb.from("subscriptions").select("*").order("created_at", { ascending: false }).limit(50)), q(sb.from("platform_config").select("om_code,mtn_code,phone,whatsapp,holder_name,om_number,mtn_number,om_tpl,mtn_tpl").limit(1))]);
       extra.catch(() => {});
       let tq = sb.from("tickets").select("*, ticket_items(product_id,qty,unit_price)").order("created_at", { ascending: false }).limit(600);
       tq = tq.or("status.in.(draft,sent,cashed),change_status.eq.pending" + (day ? ",day_id.eq." + day.id : ""));
@@ -1015,6 +1025,11 @@ function LiveBackend() {
     staffCreate: (name, role, pin) => fn("staff_create", { name, role, pin }, true),
     momoPush: (ticket, phone, operator) => fn("momo_push", { ticket, phone, operator }, true),
     momoStatus: id => fn("momo_status", { id }, true),
+    async uploadProof(file) {
+      const { data: bars } = await sb.from("bars").select("id").limit(1); if (!bars || !bars.length) throw bizErr("Bar introuvable.");
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, ""), path = `${bars[0].id}/abonnement-${Date.now()}.${ext}`;
+      const { error } = await sb.storage.from("preuves").upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw bizErr(/size|large/i.test(error.message) ? "Capture trop lourde (5 Mo maximum)." : "Envoi de la capture impossible : " + error.message); return path; },
     async uploadDoc(file) {
       const { data: bars } = await sb.from("bars").select("id").limit(1); if (!bars || !bars.length) throw bizErr("Bar introuvable.");
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -1510,6 +1525,7 @@ function badges() {
   const pend = leavesToDecide().length;
   b.direct = ROLE() === "caisse" ? alerts : 0; b.stock = S.products.filter(isLow).length; b.pres = isMgr() ? pend : 0;
   b.sup = lateOrders().length + pend; b.home = pend;
+  if (isMgr() && typeof planState === "function") { const ps = planState(); b.abo = ps.expired || (ps.days != null && ps.days <= 7) ? 1 : 0; }
   const sh = shiftOf(S.me.id, today()), a = attOf(S.me.id, today());
   b.moi = sh && sh.kind === "travail" && !(a && (a.arrived_at || ["absent", "permission", "repos"].includes(a.status))) ? 1 : 0;
   return b;
@@ -1763,6 +1779,7 @@ function pHome() {
     low.length && ["stock", `${low.length} produit(s) en stock bas`, low.slice(0, 4).map(p => p.name).join(", ") + " · à faire approvisionner par la caissière", null],
     lateOrders().length && ["alert", `${lateOrders().length} commande(s) servie(s) en retard`, "Plus de 10 minutes sans service", "sales"],
     unpaid.length && ["pay", `${unpaid.length} salaire(s) à payer`, monthName(cur), "paie"],
+    (() => { const ps = planState(); return ps.expired ? ["star", "Abonnement expiré", "Renouvelez en un geste", "abo"] : ps.days != null && ps.days <= 7 ? ["star", `Abonnement : ${ps.days} jour(s) restant(s)`, "Renouvelez en un geste", "abo"] : null; })(),
     !S.bar.niu && ["gear", "Identité légale à compléter", "Raison sociale et NIU (facultatif)", "settings"]].filter(Boolean);
   return `<div class="stack"><div class="hero-pdg"><div style="min-width:0"><span class="eyebrow">${dfr(td, { weekday: "long", day: "numeric", month: "long" })}</span><h2>${hello} ${esc(S.me.name)}</h2>
       <p>${esc(S.bar.name)} · ${here.length} employé(s) présent(s) sur ${planned.length} prévu(s)</p></div><div class="hero-num"><span>Ventes du jour</span><b class="num">${F(sum(DT.filter(sold), t => t.total))}</b></div></div>
@@ -2008,28 +2025,52 @@ const PLANS = {
   gold: ["Snack Gold", 20000, ["Jusqu’à 12 employés et un directeur", "Tout Snack Premium", "Paie, fiches de paie, compta du mois", "Paiement par numéro du client"]],
   lounge: ["Lounge", 30000, ["Employés illimités", "Tout Snack Gold", "Assistance prioritaire", "Accompagnement à l’installation"]]
 };
+const fmtTel = n => String(n || "").replace(/^(\d{3})(\d{2})(\d{2})(\d{2})$/, "$1 $2 $3 $4");
+function planState() { const b = S.bar, now = Date.now(), until = b.plan_until ? new Date(b.plan_until + "T23:59:59") : null, trial = b.plan_trial_until ? new Date(b.plan_trial_until) : null;
+  const days = until ? Math.ceil((until - now) / 864e5) : null;
+  if (PLANS[b.plan] && until && until > now) return { k: b.plan, name: PLANS[b.plan][0], days, until, ok: true, trial: trial && trial > now ? trial : null };
+  if (trial && trial > now) return { k: b.trial_plan, name: (PLANS[b.trial_plan] || ["Formule"])[0], trial, ok: true, provisional: true };
+  if (PLANS[b.plan] && until) return { k: b.plan, name: PLANS[b.plan][0], days, until, expired: true };
+  return { k: "beta", name: "Version bêta gratuite", ok: true, beta: true }; }
 function vAbo() {
-  const b = S.bar, pl = V.f.ab_p || (PLANS[b.plan] ? b.plan : "gold"), mo = +(V.f.ab_m || 1), price = PLANS[pl][1], total = price * (mo === 12 ? 10 : mo), meth = V.f.ab_o || "orange";
-  const P = S.platform || {}, code = meth === "orange" ? P.om_code : P.mtn_code, ussd = code ? (meth === "orange" ? "#150*47*{code}*{montant}#" : "*126*4*{code}*{montant}#").replace("{code}", code).replace("{montant}", total) : "";
-  const SST = { en_attente: ["warn", "En vérification"], validee: ["ok", "Validé"], refusee: ["bad", "Refusé"] };
-  const cur = PLANS[b.plan] ? `${PLANS[b.plan][0]}${b.plan_until ? ` · jusqu’au ${dfr(b.plan_until, { day: "numeric", month: "long", year: "numeric" })}` : ""}` : "Version bêta gratuite";
-  return `<div class="stack"><div class="hero-pdg"><div style="min-width:0"><span class="eyebrow">Votre formule actuelle</span><h2>${cur}</h2><p>${esc(b.name)} · GesCo Bar, un produit de BISMO Agency</p></div></div>
+  const b = S.bar, ps = planState(), pl = V.f.ab_p || (PLANS[ps.k] ? ps.k : "gold"), mo = +(V.f.ab_m || 1), price = PLANS[pl][1], total = price * (mo === 12 ? 10 : mo), meth = V.f.ab_o || "orange";
+  const P = S.platform || {}, num0 = meth === "orange" ? P.om_number : P.mtn_number, tpl = meth === "orange" ? P.om_tpl : P.mtn_tpl, ref = "GB-" + b.code;
+  const dial = tpl ? tpl.replace("{numero}", num0).replace("{montant}", total) : meth === "orange" ? "#150#" : "*126#";
+  const pend = (S.subs || []).find(x => x.status === "en_attente"), SST = { en_attente: ["warn", "En vérification"], validee: ["ok", "Validé"], refusee: ["bad", "Refusé"] };
+  const head = ps.provisional ? `Activée provisoirement jusqu’au ${ps.trial.toLocaleString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}` : ps.until ? `${ps.expired ? "Expirée depuis le" : "Valable jusqu’au"} ${ps.until.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : "Profitez de toutes les fonctions pendant la bêta";
+  const cp = (v, l) => `<button class="btn soft sm" data-a="copy" data-txt="${esc(String(v))}">Copier ${l}</button>`;
+  return `<div class="stack">
+    <div class="hero-pdg"><div style="min-width:0"><span class="eyebrow">Votre formule</span><h2>${esc(ps.name)}</h2><p>${head}</p></div>${ps.days != null && !ps.expired ? `<div class="hero-num"><span>Jours restants</span><b class="num">${ps.days}</b></div>` : ""}</div>
+    ${ps.expired ? `<div class="note bad"><b>Abonnement expiré.</b> Renouvelez-le ci-dessous pour continuer sans interruption.</div>` : ps.days != null && ps.days <= 7 ? `<div class="note warn"><b>Votre abonnement se termine dans ${ps.days} jour(s).</b> Renouvelez-le en un geste ci-dessous.</div>` : ""}
+    ${pend ? `<div class="note info"><b>Paiement en cours de vérification</b> · ${PLANS[pend.plan][0]}, ${pend.months} mois, ${F(pend.amount)}. Votre formule est déjà active : BISMO Agency confirme sous 72 h.</div>` : ""}
     <div class="plans">${Object.entries(PLANS).map(([k, [n, p, feats]], i) => `<button class="plan rise ${pl === k ? "on" : ""} ${k}" style="--i:${i}" data-a="setF" data-k2="ab_p" data-v="${k}" aria-pressed="${pl === k}">
       ${k === "gold" ? '<span class="pill brand">Le plus choisi</span>' : ""}<b>${n}</b><span class="pp num">${Fs(p)}<small> FCFA / mois</small></span><ul>${feats.map(f => `<li>${f}</li>`).join("")}</ul></button>`).join("")}</div>
-    <div class="card stack"><h3>Payer l’abonnement</h3>
+    ${pend ? "" : `<div class="card stack paysteps"><h3>Payer en 3 étapes</h3>
       <div class="segs">${[[1, "1 mois"], [3, "3 mois"], [6, "6 mois"], [12, "12 mois · 2 offerts"]].map(([m, l]) => `<button class="${mo === m ? "on ok" : ""}" data-a="setF" data-k2="ab_m" data-v="${m}">${l}</button>`).join("")}</div>
-      <div class="between"><span class="mu">${PLANS[pl][0]} · ${mo} mois</span><b class="num" style="font:800 24px var(--display)">${F(total)}</b></div>
-      <div class="segs">${[["orange", "Orange Money"], ["mtn", "MTN MoMo"]].map(([k, l]) => `<button class="${meth === k ? "on " + (k === "orange" ? "warn" : "sky") : ""}" data-a="setF" data-k2="ab_o" data-v="${k}">${l}</button>`).join("")}</div>
-      ${ussd ? `<div class="note info">Composez <code>${esc(ussd)}</code> puis validez avec votre code secret. Vous recevez un SMS avec la référence de la transaction.</div>${qrFancy("tel:" + ussd.replace(/#/g, "%23"))}`
-        : `<div class="note warn">Le code marchand de BISMO Agency sera affiché ici très bientôt. En attendant, contactez BISMO Agency pour régler votre abonnement, puis saisissez la référence reçue.</div>`}
-      <label class="f" for="ab_ref">Référence de la transaction (SMS)<input id="ab_ref" data-k="ab_ref" value="${val("ab_ref")}" placeholder="Ex. MP251119.1834.A12345"></label>
-      <button class="btn" data-a="subGo">J’ai payé : envoyer pour validation</button>
-      <p class="mu" style="margin:0">BISMO Agency vérifie le paiement et active la formule. Le paiement à l’année vous offre 2 mois.</p></div>
-    <div class="card"><h3>Historique</h3><div class="list">${(S.subs || []).map(x => `<div class="li"><div class="grow"><b>${PLANS[x.plan][0]} · ${x.months} mois</b><div class="mu">${new Date(x.created_at).toLocaleDateString("fr-FR")} · ${x.method === "orange" ? "Orange Money" : "MTN MoMo"} · réf. ${esc(x.reference)}</div></div><b class="num">${F(x.amount)}</b><span class="pill ${SST[x.status][0]}">${SST[x.status][1]}</span></div>`).join("") || '<div class="empty">Aucun paiement d’abonnement pour le moment.</div>'}</div></div></div>`;
+      <div class="between"><span class="mu">${PLANS[pl][0]} · ${mo} mois</span><b class="num" style="font:800 26px var(--display)">${F(total)}</b></div>
+      <div class="step"><i>1</i><div class="grow stack" style="gap:8px"><b>Choisissez votre opérateur</b>
+        <div class="segs">${[["orange", "Orange Money"], ["mtn", "MTN MoMo"]].map(([k, l]) => `<button class="${meth === k ? "on " + (k === "orange" ? "warn" : "sky") : ""}" data-a="setF" data-k2="ab_o" data-v="${k}">${l}</button>`).join("")}</div></div></div>
+      <div class="step"><i>2</i><div class="grow stack" style="gap:8px"><b>Envoyez ${F(total)} par transfert</b>
+        ${num0 ? `<div class="paybox ${meth}"><span class="mu">Numéro ${meth === "orange" ? "Orange Money" : "MTN MoMo"}</span><b class="num">${fmtTel(num0)}</b><span>${esc(P.holder_name || "")}</span>
+          <span class="mu">Motif du transfert : <b>${ref}</b></span></div>
+          <div class="row">${cp(num0, "le numéro")}${cp(total, "le montant")}${cp(ref, "la référence")}</div>
+          <a class="btn ${meth === "orange" ? "amber" : ""} wide" href="tel:${encodeURIComponent(dial)}">Ouvrir ${meth === "orange" ? "Orange Money" : "MTN MoMo"} sur ce téléphone</a>
+          <p class="mu" style="margin:0">${tpl ? "Le numéro et le montant sont déjà remplis : validez avec votre code secret." : `Choisissez « Transfert d’argent », collez le numéro ${fmtTel(num0)} et le montant ${Fs(total)}, puis validez avec votre code secret.`}</p>`
+          : `<div class="note warn">Numéro de paiement bientôt disponible : contactez BISMO Agency.</div>`}</div></div>
+      <div class="step"><i>3</i><div class="grow stack" style="gap:8px"><b>Envoyez la preuve</b>
+        <label class="f" for="ab_ref">Référence de la transaction (dans le SMS reçu)<input id="ab_ref" data-k="ab_ref" value="${val("ab_ref")}" placeholder="Ex. MP251119.1834.A12345"></label>
+        <label class="f" for="ab_file">ou capture d’écran du SMS<input id="ab_file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label>
+        ${window.__abFile ? `<span class="mu">Capture prête : ${esc(window.__abFile.name)}</span>` : ""}
+        <button class="btn" data-a="subGo">Activer mon abonnement</button>
+        <p class="mu" style="margin:0">La formule s’active tout de suite pendant 72 h, le temps que BISMO Agency confirme la réception. Le paiement à l’année vous offre 2 mois.</p></div></div></div>`}
+    <div class="card"><h3>Historique et reçus</h3><div class="list">${(S.subs || []).map(x => `<div class="li"><div class="grow"><b>${PLANS[x.plan][0]} · ${x.months} mois</b><div class="mu">${new Date(x.created_at).toLocaleDateString("fr-FR")} · ${x.method === "orange" ? "Orange Money" : "MTN MoMo"} · réf. ${esc(x.reference)}</div></div><b class="num">${F(x.amount)}</b><span class="pill ${SST[x.status][0]}">${SST[x.status][1]}</span>${x.status === "validee" ? `<button class="btn soft sm" data-a="subRecu" data-id="${x.id}">Reçu</button>` : ""}</div>`).join("") || '<div class="empty">Aucun paiement d’abonnement pour le moment.</div>'}</div></div></div>`;
 }
-A.subGo = () => run(async () => { const pl = V.f.ab_p || (PLANS[S.bar.plan] ? S.bar.plan : "gold");
-  await call("gb_sub_request", { p_plan: pl, p_months: +(V.f.ab_m || 1), p_method: V.f.ab_o || "orange", p_reference: V.f.ab_ref || "" });
-  V.f.ab_ref = ""; toast("Paiement envoyé pour validation. BISMO Agency active votre formule après vérification."); await refresh(); });
+A.subGo = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ? planState().k : "gold"); let proof = null; const f = window.__abFile;
+  if (!f && (V.f.ab_ref || "").trim().length < 4) throw bizErr("Collez la référence du SMS ou ajoutez la capture du SMS.");
+  if (f) { if (f.size > 5242880) throw bizErr("Capture trop lourde (5 Mo maximum)."); proof = await B.uploadProof(f); }
+  const r = await call("gb_sub_request", { p_plan: pl, p_months: +(V.f.ab_m || 1), p_method: V.f.ab_o || "orange", p_reference: V.f.ab_ref || "", p_proof: proof });
+  V.f.ab_ref = ""; window.__abFile = null; await refresh(); notify("ok", "Abonnement activé", `${PLANS[pl][0]} actif jusqu’à la confirmation de BISMO Agency (72 h).`); });
+A.subRecu = d => { V.modal = { type: "subRecu", id: d.id }; render(); };
 
 /* Réglages : paiement marchand (PDG) */
 function payCfgCard() {
@@ -2292,6 +2333,14 @@ function vModal() {
       <div class="row">${m.url ? `<button class="btn grow" data-a="planShare">${ico("share")} Partager l’image</button><button class="btn soft grow" data-a="planDl">${ico("dl")} Télécharger</button>` : ""}</div>
       <a class="btn soft wide" href="https://wa.me/?text=${encodeURIComponent(planText())}" target="_blank" rel="noopener">Envoyer le planning en texte sur WhatsApp</a>
       <p class="mu" style="margin:0">Sur téléphone, « Partager l’image » ouvre la liste des applications : choisissez WhatsApp puis le groupe de l’équipe.</p><button class="btn ghost" data-a="close">Fermer</button>`;
+  if (m.type === "subRecu") { const x = (S.subs || []).find(y => y.id === m.id) || {}, P = S.platform || {};
+    const txt = `REÇU D’ABONNEMENT GESCO BAR\n${S.bar.legal_name || S.bar.name}\nFormule : ${(PLANS[x.plan] || [""])[0]} · ${x.months} mois\nMontant : ${F(x.amount)}\nPayé le ${new Date(x.created_at).toLocaleDateString("fr-FR")} par ${x.method === "orange" ? "Orange Money" : "MTN MoMo"}\nRéférence : ${x.reference}\nBISMO Agency`;
+    c = `<div class="slip printable"><div class="between" style="align-items:flex-start"><div><b style="font-size:16px">BISMO Agency</b><div>Bastos, Yaoundé</div><div>${esc(P.holder_name || "")}</div></div><img src="${LOGO}" alt="BISMO Agency" style="width:84px"></div>
+      <h2 style="margin:14px 0 2px">Reçu d’abonnement GesCo Bar</h2><div>${esc(S.bar.legal_name || S.bar.name)}${S.bar.niu ? " · NIU " + esc(S.bar.niu) : ""}</div><hr>
+      <div class="kv"><span>Formule</span><span>${(PLANS[x.plan] || [""])[0]} · ${x.months} mois</span></div><div class="kv"><span>Mode</span><span>${x.method === "orange" ? "Orange Money" : "MTN MoMo"}</span></div>
+      <div class="kv"><span>Référence</span><span>${esc(x.reference || "")}</span></div><div class="kv"><span>Date</span><span>${new Date(x.created_at).toLocaleDateString("fr-FR")}</span></div><hr>
+      <div class="kv"><b>Montant payé</b><b>${F(x.amount)}</b></div></div>
+      <div class="row">${CFG.mode === "live" ? `<button class="btn grow" data-a="print">Imprimer</button>` : ""}<a class="btn soft grow" href="https://wa.me/?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">Envoyer par WhatsApp</a></div><button class="btn ghost" data-a="close">Fermer</button>`; }
   if (m.type === "slip") { const p = (S.payroll || []).find(x => x.id === m.id);
     if (!p) c = `<h2>Fiche introuvable</h2><button class="btn" data-a="close">Fermer</button>`;
     else { const x = S.staff.find(y => y.id === p.staff_id) || { name: "—", role: "" }, kv = (l, v, b) => `<div class="kv"><span>${b ? `<b>${l}</b>` : l}</span>${b ? `<b>${v}</b>` : `<span>${v}</span>`}</div>`;
@@ -2326,6 +2375,7 @@ document.addEventListener("input", e => { const k = e.target.dataset && e.target
   if (/^(rcv_|cnt$|q_|gq$|pb_|pd_|qr_amt$)/.test(k)) { clearTimeout(window.__r); window.__r = setTimeout(render, /^(q_|gq)/.test(k) ? 120 : 250); } });
 document.addEventListener("change", e => { const t = e.target;
   if (t.id === "id_file") { window.__idFile = t.files && t.files[0] || null; render(); return; }
+  if (t.id === "ab_file") { window.__abFile = t.files && t.files[0] || null; render(); return; }
   if (t.id === "accm") { V.accMonth = t.value; V.acc = null; render(); A.loadAcc(); return; }
   if (t.id === "mo") { V.f.mo = t.value; V.stats = null; render(); A.loadStats(); return; }
   if (t.id === "pd") { V.f.pd = t.value > today() ? today() : t.value; render(); return; }

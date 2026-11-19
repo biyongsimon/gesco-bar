@@ -1,0 +1,7 @@
+-- GesCo Bar · v3.3 : souscription par transfert sur le numéro personnel de BISMO Agency
+-- platform_config : titulaire et numéros Orange Money (691468175) et MTN MoMo (673383951), raccourcis USSD optionnels (om_tpl, mtn_tpl avec {numero} et {montant})
+-- bars.plan_trial_until / trial_plan : activation provisoire de 72 h dès l'envoi de la preuve
+-- subscriptions.proof_path (capture du SMS, compartiment privé « preuves ») et pay_ref (référence GB-<code du bar>)
+-- gb_sub_request(p_plan, p_months, p_method, p_reference, p_proof) renvoie {id, amount, trial_until}
+-- gb_admin_sub_validate(p_id, p_ok) : valide (prolonge plan_until) ou refuse (retire l'activation provisoire)
+-- Le SQL exact est celui de la migration « souscription_numero_personnel » appliquée dans Supabase.
