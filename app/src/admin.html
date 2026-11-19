@@ -218,6 +218,7 @@ function render() {
   let h;
   if (V.view === "loading") h = `<div class="auth"><span class="spin"></span></div>`;
   else if (V.view === "login") h = vLogin();
+  else if (V.view === "relock") h = vRelock();
   else { const pend = (V.data.subs || []).filter(s => s.status === "en_attente").length, nav = (cls) => SECT.map(([k, l]) => `<a href="#${k}" class="${V.tab === k ? "on" : ""}">${l}${k === "paiements" && pend ? `<i>${pend}</i>` : ""}</a>`).join("");
     const body = { apercu: vApercu, paiements: vPaiements, bars: vBars, reglages: vReglages, journal: vJournal }[V.tab] || vApercu;
     h = `<div class="shell"><nav class="side"><div class="brand"><img src="${LOGO}" alt="" style="width:46px;filter:brightness(1.2)"><div><b>GesCo Bar</b><small>Console éditeur</small></div></div>${nav()}
@@ -258,9 +259,25 @@ let armed = null; function confirmTwice(id) { if (armed === id) { armed = null; 
 document.addEventListener("click", e => { const el = e.target.closest("[data-a]"); if (!el) return; if (el.dataset.self && e.target !== el) return; if (el.tagName === "A" && el.dataset.a !== "logout") return; e.preventDefault(); const f = A[el.dataset.a]; if (f) f({ ...el.dataset }); });
 document.addEventListener("input", e => { if (e.target.id === "q") { V.q = e.target.value; clearTimeout(window.__q); window.__q = setTimeout(render, 150); } if (e.target.id === "p_plan" || e.target.id === "p_until" || e.target.id === "p_note") V.f[e.target.id] = e.target.value; });
 document.addEventListener("change", e => { if (e.target.id === "p_plan") { V.f.p_plan = e.target.value; render(); } });
-document.addEventListener("keydown", e => { if (e.key === "Enter" && V.view === "login") { e.preventDefault(); A[V.setup && V.f.mode !== "login" ? "setup" : "login"](); } if (e.key === "Escape" && V.panel) A.close(); });
+document.addEventListener("keydown", e => { if (e.key === "Enter" && V.view === "relock") { e.preventDefault(); A.unlock(); return; }
+  if (e.key === "Enter" && V.view === "login") { e.preventDefault(); A[V.setup && V.f.mode !== "login" ? "setup" : "login"](); } if (e.key === "Escape" && V.panel) A.close(); });
 addEventListener("hashchange", () => { V.tab = location.hash.slice(1) || "apercu"; V.panel = null; render(); scrollTo(0, 0); });
 try { const t = localStorage.getItem("gesco-console-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+/* Verrouillage après 1 minute d'inactivité : mot de passe à retaper */
+let lastAct = Date.now();
+["pointerdown", "keydown", "touchstart", "wheel", "scroll"].forEach(ev => addEventListener(ev, () => { if (V.view === "app") lastAct = Date.now(); }, { passive: true, capture: true }));
+const lockIfIdle = () => { if (V.view === "app" && Date.now() - lastAct > 60000) { V.view = "relock"; V.panel = null; V.err = ""; render(); } };
+setInterval(lockIfIdle, 5000); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") lockIfIdle(); });
+function vRelock() {
+  return `<div class="auth"><form class="card" onsubmit="return false"><img class="logo" src="${LOGO}" alt="BISMO Agency">
+    <div style="text-align:center"><h1 style="font-size:22px">Console verrouillée</h1><p class="mu" style="margin:4px 0 0">Après 1 minute d’inactivité, retapez votre mot de passe.</p></div>
+    ${V.err ? `<div class="err">${esc(V.err)}</div>` : ""}<div class="kv"><span class="mu">Compte</span><b>${esc(V.me || "")}</b></div>
+    <label class="f">Mot de passe<input id="pw" type="password" autocomplete="current-password" autofocus></label>
+    <button class="btn" data-a="unlock" ${V.busy ? "disabled" : ""}>${V.busy ? '<span class="spin"></span>' : "Déverrouiller"}</button>
+    <button class="btn soft sm" data-a="logout">Changer de compte</button></form></div>`;
+}
+A.unlock = () => run(async () => { V.err = ""; const { error } = await sb.auth.signInWithPassword({ email: V.me, password: val("pw") });
+  if (error) { V.err = "Mot de passe incorrect."; return; } V.view = "app"; lastAct = Date.now(); await loadAll(); });
 V.view = "loading"; render(); boot();
 </script>
 </body>
