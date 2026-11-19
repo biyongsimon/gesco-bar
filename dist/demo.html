@@ -171,12 +171,17 @@ th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05
 .spin{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-@media print{body *{visibility:hidden}.receipt,.receipt *{visibility:visible}.receipt{position:fixed;left:0;top:0;width:58mm;border:0}}
+.qr svg{display:block;margin:6px auto;max-width:100%;height:auto}
+.receipt .qr{max-width:120px;margin:0 auto}
+.poster{text-align:center}
+@media print{body *{visibility:hidden}.printable,.printable *{visibility:visible}.printable{position:fixed;left:0;top:0;border:0;background:#fff;color:#000}
+  .receipt.printable{width:58mm;padding:2mm}.poster.printable{width:100%;padding:12mm}}
 </style>
 
 <div id="app"><div class="empty"><span class="spin"></span></div></div>
 
 <script>window.GESCO_CONFIG = { mode: "demo" };</script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 
 <script>
 "use strict";
@@ -197,11 +202,25 @@ const bizErr = m => { const e = new Error(m); e.biz = true; return e; };
 const hm = iso => iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "";
 const dfr = (d, o) => new Date(String(d).length <= 10 ? d + "T12:00:00" : d).toLocaleDateString("fr-FR", o || { weekday: "short", day: "numeric", month: "short" });
 const ago = iso => { const m = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000)); return m < 1 ? "à l’instant" : m < 60 ? m + " min" : Math.floor(m / 60) + " h " + (m % 60) + " min"; };
+const APP_URL = "https://gescobar-cm.netlify.app/";
+const qrSvg = (text, cell) => { try { const q = qrcode(0, "M"); q.addData(text); q.make(); return q.createSvgTag({ cellSize: cell || 4, margin: 2, scalable: true }); } catch (e) { return ""; } };
+const joinUrl = () => APP_URL + "?bar=" + encodeURIComponent(S.bar.code);
+let seenSent = null;
+function beep() { try { const ac = window.__ac || (window.__ac = new (window.AudioContext || window.webkitAudioContext)()); [0, 0.18].forEach(d => { const o = ac.createOscillator(), g = ac.createGain();
+  o.frequency.value = 880; g.gain.setValueAtTime(0.18, ac.currentTime + d); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + d + 0.15); o.connect(g).connect(ac.destination); o.start(ac.currentTime + d); o.stop(ac.currentTime + d + 0.16); }); } catch (e) {}
+  try { navigator.vibrate && navigator.vibrate([120, 60, 120]); } catch (e) {} }
+function notifyNew() { // la caisse est prévenue de chaque nouvelle commande, demande d'annulation ou paiement MoMo
+  if (!S || !isCaisse()) { seenSent = null; return; }
+  const keys = new Set(S.tickets.filter(t => !isCounter(t) && (t.status === "sent" || t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo"))).map(t => t.id + ":" + t.status + ":" + (t.cancel_requested ? 1 : 0)));
+  if (seenSent) { const fresh = [...keys].filter(k => !seenSent.has(k)); if (fresh.length) { const t = S.tickets.find(x => x.id === fresh[0].split(":")[0]);
+    const what = t.cancel_requested ? "Annulation demandée" : t.status === "cashed" ? "Paiement Mobile Money à vérifier" : "Nouvelle commande";
+    toast(`${what} : ${staffName(t.waitress_id)} · ${t.client_label} · ${F(t.total)}`); beep(); } }
+  seenSent = keys; }
 const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
 
 /* ═══════════════ Moteur DÉMO (données locales, mêmes règles que le serveur) ═══════════════ */
 function DemoBackend() {
-  const KEY = "gesco-demo-v4";
+  const KEY = "gesco-demo-v5";
   let db = LS.get(KEY), sess = LS.get(KEY + "-sess");
   const listeners = [];
   const save = () => LS.set(KEY, db);
@@ -239,7 +258,8 @@ function DemoBackend() {
       return p_id;
     },
     gb_ticket_set_qty({ p_ticket, p_product, p_qty }) {
-      const c = ctx(), t = tk(p_ticket); own(c, t);
+      const c = ctx(), t = tk(p_ticket);
+      if (t.waitress_id !== c.id) E(c.role === "caisse" ? "La caisse ne peut pas modifier la commande d’une serveuse. Seule la serveuse corrige sa commande." : "Ce ticket appartient à une autre serveuse.");
       if (!["draft", "sent"].includes(t.status)) E("Ticket déjà encaissé : il est verrouillé.");
       const p = prod(p_product); p_qty = Math.max(0, Math.floor(+p_qty || 0)); if (p_qty > 200) E("Quantité trop élevée.");
       let it = t.items.find(i => i.product_id === p_product); const cur = it ? it.qty : 0, d = p_qty - cur; if (!d) return;
@@ -303,7 +323,8 @@ function DemoBackend() {
       log(c, "bon_emis", { bon: v.number, montant: v.amount, client: v.client_label }); return v;
     },
     gb_voucher_check({ p_code }) {
-      const c = ctx(); caisse(c); const k = (p_code || "").trim().toUpperCase(); const v = db.vouchers.find(x => x.code === k);
+      const c = ctx(); caisse(c); let k = (p_code || "").trim().toUpperCase(); if (/^B-?\d+$/.test(k)) k = "B-" + k.replace(/\D/g, "").padStart(4, "0");
+      const v = db.vouchers.find(x => x.code === k || x.number === k);
       log(c, "bon_verifie", { code: k, trouve: !!v }); return v ? { ...v, waitress_name: (db.staff.find(s => s.id === v.waitress_id) || {}).name } : null;
     },
     gb_voucher_use({ p_voucher }) {
@@ -343,6 +364,20 @@ function DemoBackend() {
       Object.assign(p, { name: p_name, category: (p_category || "").trim() || p.category, price: +p_price, active: p_active ?? p.active, unit: p_unit, parent_id: p_parent || null, doses: p_parent ? +p_doses : null });
       if (p_stock != null && p_stock !== "" && +p_stock !== p.stock) { move(c, p.id, null, +p_stock - p.stock, "ajustement"); p.stock = +p_stock; }
       log(c, "produit_modifie", { produit: p_name, prix_avant: before.price, prix: +p_price, stock_avant: before.stock, stock: p.stock }); return p.id;
+    },
+    gb_inventory({ p_counts }) {
+      const c = ctx(); caisse(c); const details = []; let loss = 0;
+      (p_counts || []).forEach(({ id, count }) => { const p = db.products.find(x => x.id === id); if (!p || count == null || count < 0 || count === p.stock) return;
+        details.push({ produit: p.name, attendu: p.stock, compte: count, ecart: count - p.stock }); if (count < p.stock) loss += (p.stock - count) * p.price;
+        move(c, p.id, null, count - p.stock, "inventaire"); p.stock = count; });
+      log(c, "inventaire", { ecarts: details.length, manquant_valeur: loss }); return { ecarts: details.length, details, manquant_valeur: loss };
+    },
+    gb_bar_identity({ p_legal_name, p_niu, p_doc_path }) {
+      const c = ctx(); caisse(c); const n = (p_niu || "").replace(/\s/g, "").toUpperCase();
+      if (n && !/^[PM]\d{12}[A-Z]$/.test(n)) E("NIU invalide : 14 caractères, P ou M, 12 chiffres, puis une lettre (ex. M012345678901A).");
+      const ln = (p_legal_name || "").trim() || null;
+      Object.assign(db.bar, { legal_name: ln, niu: n || null, id_doc_path: p_doc_path || db.bar.id_doc_path || null, kyc_status: ln && n ? "a_verifier" : (db.bar.kyc_status || "non_renseigne") });
+      log(c, "identite_bar", { raison_sociale: ln, niu: n, piece: !!p_doc_path });
     },
     gb_product_set_alert({ p_product, p_low }) { const c = ctx(); caisse(c); if (p_low != null && p_low < 0) E("Le seuil doit être positif."); prod(p_product).low_at = p_low; },
     gb_open_bottle({ p_glass, p_count }) {
@@ -408,7 +443,7 @@ function DemoBackend() {
     }
   };
   function seed() {
-    db = { seq: 1, bar: { id: "bar-demo", name: "Le Manguier", code: "DEMO", city: "Yaoundé", cash_cap: 20000, low_stock: 12, next_ticket: 1, next_voucher: 1 },
+    db = { seq: 1, bar: { id: "bar-demo", name: "Le Manguier", code: "DEMO", city: "Yaoundé", cash_cap: 20000, low_stock: 12, next_ticket: 1, next_voucher: 1, legal_name: null, niu: null, id_doc_path: null, kyc_status: "non_renseigne" },
       staff: [["Mireille", "caisse", "0000"], ["Aline", "serveuse", "1111"], ["Brigitte", "serveuse", "2222"], ["Carine", "serveuse", "3333"]]
         .map(([name, role, pin]) => ({ id: uuid(), name, role, pin, active: true, fails: 0, lock: 0 })),
       products: [["Castel Beer 65cl", "Bières", 650, 48], ["33 Export 65cl", "Bières", 650, 36], ["Mützig 65cl", "Bières", 650, 24], ["Beaufort 65cl", "Bières", 650, 24],
@@ -466,6 +501,7 @@ function DemoBackend() {
         days: cs ? db.days.filter(d => d.status === "closed").sort((a, b) => a.closed_at < b.closed_at ? 1 : -1).slice(0, 30) : [] });
     },
     async rpc(name, args) { const f = R[name]; if (!f) throw bizErr("Action inconnue."); db = LS.get(KEY) || db; const r = f(args || {}); save(); return r; },
+    async uploadDoc(file) { const c = ctx(); caisse(c); return db.bar.id + "/demo-" + (file.name || "piece"); },
     async staffCreate(name, role, pin) {
       const c = ctx(); caisse(c); name = (name || "").trim(); if (!name) throw bizErr("Indiquez un nom."); pinOk(pin);
       if (db.staff.some(s => s.name.toLowerCase() === name.toLowerCase())) throw bizErr("Ce nom est déjà utilisé dans l’équipe.");
@@ -512,7 +548,7 @@ function LiveBackend() {
       const uid = sd.session.user.id;
       const [staff, bars, products, days] = await Promise.all([
         q(sb.from("staff").select("id,name,role,active,user_id").order("name")),
-        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock").limit(1)),
+        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status").limit(1)),
         q(sb.from("products").select("*").order("sort")),
         q(sb.from("service_days").select("*").eq("status", "open").limit(1))]);
       const meRow = staff.find(s => s.user_id === uid && s.active); if (!meRow || !bars.length) { const e = bizErr("Compte non rattaché à un bar ou désactivé."); e.auth = true; throw e; }
@@ -531,6 +567,13 @@ function LiveBackend() {
     },
     async rpc(name, args) { const { data, error } = await sb.rpc(name, args || {}); if (error) { const e = toErr(error); if (/non soldé/.test(error.message)) e.pending = true; throw e; } return data; },
     staffCreate: (name, role, pin) => fn("staff_create", { name, role, pin }, true),
+    async uploadDoc(file) {
+      const { data: bars } = await sb.from("bars").select("id").limit(1); if (!bars || !bars.length) throw bizErr("Bar introuvable.");
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const path = `${bars[0].id}/piece-identite-${Date.now()}.${ext}`;
+      const { error } = await sb.storage.from("kyc").upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw bizErr(/size|large/i.test(error.message) ? "Fichier trop lourd (5 Mo maximum)." : "Envoi impossible : " + error.message); return path;
+    },
     onChange(f) { listeners.push(f); }
   };
 }
@@ -601,7 +644,7 @@ let refreshTimer = null, loading = false;
 function refreshSoon(ms) { clearTimeout(refreshTimer); refreshTimer = setTimeout(refresh, ms ?? 350); }
 async function refresh() {
   if (V.screen !== "app" || loading) return; loading = true;
-  try { S = await B.load(); LS.set(SNAP, S); V.outbox.forEach(applyLocal); V.online = true; }
+  try { S = await B.load(); LS.set(SNAP, S); V.outbox.forEach(applyLocal); V.online = true; notifyNew(); }
   catch (e) { if (e.auth) { await logout(true); toast("Session expirée. Reconnectez-vous.", "err"); } else if (e.net) V.online = false; else toast(e.message, "err"); }
   finally { loading = false; }
   render();
@@ -620,7 +663,7 @@ async function enterApp() {
     if (e.net && snap) { S = snap; V.online = false; V.outbox.forEach(applyLocal); toast("Hors ligne : dernières données affichées. Vos tickets seront envoyés au retour du réseau."); }
     else { await logout(true); toast(e.message, "err"); return; }
   }
-  if (!isCaisse()) V.tab = "direct";
+  if (!isCaisse()) V.tab = "direct"; notifyNew();
   render(); flush();
 }
 async function logout(silent) {
@@ -654,7 +697,10 @@ A.ownerGo = () => run(async () => { await B.ownerLogin(V.f.email || "", V.f.pw |
 A.register = () => run(async () => {
   const f = { bar_name: V.f.r_bar, city: V.f.r_city, owner_name: V.f.r_name, email: V.f.r_email, password: V.f.r_pw, pin: V.f.r_pin };
   if (!f.bar_name || !f.owner_name || !f.email || !f.password || !f.pin) throw bizErr("Remplissez tous les champs.");
+  const niu = (V.f.r_niu || "").replace(/\s/g, "").toUpperCase();
+  if (niu && !/^[PM]\d{12}[A-Z]$/.test(niu)) throw bizErr("NIU invalide : 14 caractères, P ou M, 12 chiffres, puis une lettre (ex. M012345678901A). Laissez vide si vous ne l’avez pas.");
   const r = await B.register(f); V.code = r.code; LS.set("gesco-code", r.code); V.regDone = r.code; V.f.r_pw = ""; await enterApp();
+  if ((V.f.r_legal || "").trim() || niu) { try { await B.rpc("gb_bar_identity", { p_legal_name: V.f.r_legal || "", p_niu: niu, p_doc_path: null }); await refresh(); } catch (e) { toast(e.message, "err"); } }
   V.modal = { type: "welcome", code: r.code };
 });
 A.logout = () => ask("Se déconnecter ?", V.outbox.length ? `${V.outbox.length} action(s) ne sont pas encore synchronisées et seront perdues.` : "Vous devrez saisir à nouveau votre PIN.", "Se déconnecter", "logoutGo", {}, !!V.outbox.length);
@@ -717,6 +763,16 @@ A.addP = () => run(async () => { const unit = V.f.np_u || "bouteille", parent = 
   ["np_n", "np_pr", "np_st", "np_par", "np_dz"].forEach(k => delete V.f[k]); toast("Produit ajouté à la carte."); await refresh(); });
 A.openB = d => run(async () => { const n = await call("gb_open_bottle", { p_glass: d.p, p_count: num("ob_" + d.p) || 1 }); delete V.f["ob_" + d.p];
   toast(`${n} verre(s) de ${prodName(d.p)} ajoutés au stock.`); await refresh(); });
+A.invToggle = () => { V.inv = !V.inv; render(); };
+A.invGo = () => run(async () => { const counts = S.products.map(p => ({ id: p.id, count: num("inv_" + p.id) })).filter(x => x.count != null);
+  if (!counts.length) throw bizErr("Saisissez au moins une quantité comptée.");
+  const r = await call("gb_inventory", { p_counts: counts }); S.products.forEach(p => delete V.f["inv_" + p.id]); V.inv = false;
+  V.modal = { type: "inventory", r }; await refresh(); });
+A.saveId = () => run(async () => { let path = null; const f = window.__idFile;
+  if (f) { if (f.size > 5242880) throw bizErr("Fichier trop lourd (5 Mo maximum)."); path = await B.uploadDoc(f); window.__idFile = null; }
+  await call("gb_bar_identity", { p_legal_name: V.f.id_legal ?? (S.bar.legal_name || ""), p_niu: V.f.id_niu ?? (S.bar.niu || ""), p_doc_path: path });
+  ["id_legal", "id_niu"].forEach(k => delete V.f[k]); toast(path ? "Identité et pièce enregistrées." : "Identité enregistrée."); await refresh(); });
+A.poster = () => { V.modal = { type: "poster" }; render(); };
 A.togPe = d => { V.open["p_" + d.p] = !V.open["p_" + d.p]; render(); };
 A.cat = d => { V.f["cat_" + d.t] = d.v; render(); };
 A.newC = () => { const c = (V.f.cclient || "").trim() || "Comptoir"; const id = uuid(); V.f.cclient = ""; V.open[id] = true; call("gb_ticket_create", { p_id: id, p_client: c }); };
@@ -734,7 +790,7 @@ A.saveBar = () => run(async () => { await call("gb_bar_update", { p_name: V.f.b_
 A.copy = d => { const t = d.txt; try { navigator.clipboard.writeText(t).then(() => toast("Copié."), () => toast("Copie impossible : sélectionnez le texte.", "err")); } catch (e) { toast("Copie impossible : sélectionnez le texte.", "err"); } };
 A.copyV = d => { const v = (V.modal && V.modal.v) || {}; A.copy({ txt: voucherText(v) }); };
 A.print = () => { try { window.print(); } catch (e) {} };
-A.check = () => run(async () => { const c = (V.f.vcode || "").trim(); if (!c) throw bizErr("Saisissez le code inscrit sur le bon.");
+A.check = () => run(async () => { const c = (V.f.vcode || "").trim().replace(/^GESCOBAR:[A-Z0-9]+:/i, ""); if (!c) throw bizErr("Saisissez le code ou le numéro du bon.");
   const v = await call("gb_voucher_check", { p_code: c }); V.vres = { code: c.toUpperCase(), v }; });
 A.useV = d => run(async () => { await call("gb_voucher_use", { p_voucher: d.v }); toast("Bon honoré et marqué utilisé."); V.vres = null; V.f.vcode = ""; await refresh(); });
 A.loadRev = () => run(async () => { V.rev = await call("gb_revenue", {}); });
@@ -778,12 +834,21 @@ function vLogin() {
       <label class="f" for="r_email">E-mail<input id="r_email" type="email" data-k="r_email" value="${val("r_email")}" autocomplete="email"></label>
       <label class="f" for="r_pw">Mot de passe (8 caractères minimum)<input id="r_pw" type="password" data-k="r_pw" value="${val("r_pw")}" autocomplete="new-password"></label>
       <label class="f" for="r_pin">Votre PIN caisse (4 à 6 chiffres)<input id="r_pin" type="tel" inputmode="numeric" maxlength="6" data-k="r_pin" value="${val("r_pin")}"></label>
+      <div class="sub stack"><b>Entreprise (facultatif)</b><span class="mu">Utile pour vos factures d’abonnement. Vous pourrez le compléter plus tard.</span>
+      <label class="f" for="r_legal">Raison sociale<input id="r_legal" data-k="r_legal" value="${val("r_legal")}" placeholder="Ex. SNACK LE MANGUIER SARL"></label>
+      <label class="f" for="r_niu">NIU (numéro d’identifiant unique DGI)<input id="r_niu" data-k="r_niu" value="${val("r_niu")}" placeholder="Ex. M012345678901A" autocapitalize="characters" maxlength="16"></label></div>
       <button class="btn amber wide" data-a="register" ${V.busy ? "disabled" : ""}>${V.busy ? '<span class="spin"></span>' : "Créer mon bar"}</button>
       <p class="mu" style="margin:0">La carte est préremplie avec des boissons courantes. Ajustez les prix ensuite dans l’onglet Stock.</p></div>`;
   }
   return `<div class="login"><div class="hero"><div class="brandmark">GesCo<span> Bar</span></div><p>Chaque boisson a son ticket. Chaque ticket a sa serveuse.</p></div>
     ${demo ? `<div class="demo"><b>Mode démo</b> : données d’exemple enregistrées dans ce navigateur. Code du bar <b>DEMO</b>. PIN : Aline <b>1111</b>, Brigitte <b>2222</b>, Carine <b>3333</b>, Mireille (caisse) <b>0000</b>.</div>` : ""}
-    ${tabs}${body}</div>`;
+    ${tabs}${body}${installBox()}</div>`;
+}
+function installBox() {
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  if (CFG.mode !== "live" || standalone) return "";
+  if (window.__install) return `<button class="btn soft wide" data-a="install">Installer l’application sur ce téléphone</button>`;
+  return `<p class="mu" style="margin:0;text-align:center">${ios ? "Pour l’installer : touchez Partager, puis « Sur l’écran d’accueil »." : "Pour l’installer : menu ⋮ de Chrome, puis « Ajouter à l’écran d’accueil »."}</p>`;
 }
 
 /* ═══════════════ Rendu : composants ═══════════════ */
@@ -840,7 +905,7 @@ function payBox(t) {
     <div class="row"><button class="btn amber grow" data-a="cash" data-t="${t.id}">Encaisser en espèces</button><button class="btn soft grow" data-a="momo" data-t="${t.id}">Mobile Money</button></div></div>`;
 }
 function ticket(t, opts = {}) {
-  const open = !!V.open[t.id], editable = ["draft", "sent"].includes(t.status) && (isCaisse() || t.waitress_id === S.me.id);
+  const open = !!V.open[t.id], editable = ["draft", "sent"].includes(t.status) && t.waitress_id === S.me.id;
   const meta = `${t.number ? "N°" + t.number : "Nouveau"} · ${opts.who ? esc(staffName(t.waitress_id)) + " · " : ""}${t.items.reduce((a, i) => a + i.qty, 0)} article(s)${t._local && V.outbox.length ? " · en cours d’envoi" : ""}`;
   let body = "";
   if (open) {
@@ -852,6 +917,7 @@ function ticket(t, opts = {}) {
       else { if (!t.cancel_requested) body += payBox(t); body += `<div class="row"><span class="mu grow">Le client change d’avis ? Corrigez les quantités : chaque correction est tracée.</span>${t.cancel_requested && !isCaisse() ? "" : `<button class="btn bad sm" data-a="del" data-t="${t.id}">${isCaisse() ? "Supprimer" : "Annuler la commande"}</button>`}</div>`; }
     } else {
       body = lines(t) + `<div class="total"><span class="mu">Total${t.pay_method ? " · " + (t.pay_method === "momo" ? "Mobile Money" : "espèces") : ""}</span><b>${F(t.total)}</b></div>` + changeBlock(t);
+      if (isCaisse() && t.status === "sent" && !isCounter(t)) body += `<div class="note info">Commande de ${esc(staffName(t.waitress_id))}. Seule la serveuse peut la modifier ; la caisse suit son évolution ici.</div>`;
       if (isCaisse() && t.status !== "cancelled") body += `<div class="row">${sold(t) ? `<button class="btn soft sm" data-a="reopen" data-t="${t.id}">Rouvrir pour modifier</button>` : ""}<button class="btn bad sm" data-a="del" data-t="${t.id}">Supprimer</button></div>`;
     }
   }
@@ -979,7 +1045,7 @@ function cVouch(vAct) {
     : `<div class="note ok stack"><b>✓ Bon authentique</b><div>${esc(r.v.number)} · <b class="num">${F(r.v.amount)}</b> · client : ${esc(r.v.client_label)} · serveuse : ${esc(r.v.waitress_name || staffName(r.v.waitress_id))}</div>
       <div class="mu">Émis le ${new Date(r.v.issued_at).toLocaleString("fr-FR")}</div><button class="btn" data-a="useV" data-v="${r.v.id}">Rendre ${F(r.v.amount)} et marquer utilisé</button></div>`;
   const used = S.vouchers.filter(v => v.status !== "active").slice(0, 20);
-  return `<div class="stack"><div class="card stack"><h3>Vérifier un bon</h3><div class="row"><input class="grow" id="vcode" data-k="vcode" value="${val("vcode")}" placeholder="Code inscrit sur le bon (ex. K7Q2-9M4X)" autocapitalize="characters" data-enter="check" autocomplete="off"><button class="btn" data-a="check">Vérifier</button></div>${res}</div>
+  return `<div class="stack"><div class="card stack"><h3>Vérifier ou retrouver un bon</h3><p class="mu" style="margin:0">Saisissez le code imprimé sur le bon ou son numéro. Un bon déjà utilisé ou annulé est refusé.</p><div class="row"><input class="grow" id="vcode" data-k="vcode" value="${val("vcode")}" placeholder="Code (ex. K7Q2-9M4X) ou numéro (ex. B-0001)" autocapitalize="characters" data-enter="check" autocomplete="off"><button class="btn" data-a="check">Vérifier</button></div>${res}</div>
     <div class="card"><h3>Bons en circulation · ${vAct.length} · ${F(sum(vAct, v => v.amount))}</h3><div class="list">${vAct.map(v => `<div class="li"><div class="grow"><b>${esc(v.number)}</b> · <b class="num">${F(v.amount)}</b><div class="mu">${esc(v.client_label)} · ${esc(staffName(v.waitress_id))} · ${new Date(v.issued_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div></div><button class="btn soft sm" data-a="showV" data-v="${v.id}">Reçu</button></div>`).join("") || '<div class="empty">Aucun bon en circulation.</div>'}</div></div>
     ${used.length ? `<div class="card"><h3>Bons utilisés ou annulés</h3><div class="list">${used.map(v => `<div class="li"><span>${esc(v.number)} · ${esc(v.client_label)}</span><span class="row"><b class="num">${F(v.amount)}</b>${v.status === "used" ? '<span class="pill ok">Utilisé</span>' : '<span class="pill">Annulé</span>'}</span></div>`).join("")}</div></div>` : ""}</div>`;
 }
@@ -1009,7 +1075,12 @@ function cStock(low) {
   const npUnit = V.f.np_u || "bouteille";
   return `<div class="stack"><datalist id="gb-cats">${[...new Set([...CATS, ...cats])].map(c => `<option value="${esc(c)}"></option>`).join("")}</datalist>
     ${low.length ? `<div class="note warn"><b>Stock bas</b> : ${low.map(p => `${esc(p.name)} (${p.stock})`).join(", ")}</div>` : ""}
-    <div class="card stack"><h3>Approvisionnement (livraison reçue)</h3><div class="row"><select class="grow" id="ap" data-k="ap" aria-label="Produit">${S.products.filter(p => !p.parent_id).map(p => `<option value="${p.id}" ${V.f.ap === p.id ? "selected" : ""}>${esc(p.name)} (stock ${p.stock})</option>`).join("")}</select>
+    <div class="card stack"><div class="between"><h3>Inventaire (frigo et réserve)</h3><button class="btn ${V.inv ? "ghost" : "soft"} sm" data-a="invToggle">${V.inv ? "Fermer" : "Faire l’inventaire"}</button></div>
+      <p class="mu" style="margin:0">Comptez ce qu’il reste réellement (hors bouteilles chez les serveuses) et saisissez-le. Les écarts sont corrigés et tracés dans le journal.</p>
+      ${V.inv ? `<div class="list">${S.products.filter(p => p.active).map(p => `<div class="between" style="padding:6px 0"><span>${esc(p.name)} <span class="mu">· prévu ${p.stock}</span></span>
+        <input style="width:110px" id="inv_${p.id}" type="number" inputmode="numeric" min="0" data-k="inv_${p.id}" value="${val("inv_" + p.id)}" placeholder="${p.stock}" aria-label="Quantité comptée ${esc(p.name)}"></div>`).join("")}</div>
+        <button class="btn amber" data-a="invGo">Valider l’inventaire</button>` : ""}</div>
+    <div class="card stack"><h3>Approvisionnement (livraison reçue)</h3><p class="mu" style="margin:0">Quand le fournisseur livre, ajoutez les bouteilles au stock général. Pour remplir le frigo d’une serveuse, utilisez « Dotation » dans En direct.</p><div class="row"><select class="grow" id="ap" data-k="ap" aria-label="Produit">${S.products.filter(p => !p.parent_id).map(p => `<option value="${p.id}" ${V.f.ap === p.id ? "selected" : ""}>${esc(p.name)} (stock ${p.stock})</option>`).join("")}</select>
       <input class="grow" id="aq" type="number" inputmode="numeric" data-k="aq" value="${val("aq")}" placeholder="Quantité reçue"><button class="btn" data-a="appro">Ajouter au stock</button></div></div>
     <div class="card stack"><h3>Ajouter un produit à la carte</h3><p class="mu" style="margin:0">Bières, vins, whisky, sucreries, cuisine : chaque bar crée sa propre carte. Pour vendre au verre, créez d’abord la bouteille, puis le verre rattaché.</p>
       <div class="row"><label class="f grow" for="np_n">Nom<input id="np_n" data-k="np_n" value="${val("np_n")}" placeholder="Ex. Vin rouge Bordeaux, Whisky Chivas 12 ans"></label>
@@ -1023,9 +1094,15 @@ function cStock(low) {
 }
 function cTeam() {
   const b = S.bar;
-  return `<div class="stack"><div class="card stack"><h3>Code de connexion du bar</h3><div class="code-big num">${esc(b.code)}</div>
-      <p class="mu" style="margin:0;text-align:center">Les serveuses ouvrent l’application, saisissent ce code, touchent leur nom et tapent leur PIN.</p>
-      <button class="btn soft" data-a="copy" data-txt="${esc(b.code)}">Copier le code</button></div>
+  const url = joinUrl(), msg = `Bonjour, voici l’application de caisse de ${b.name}. Ouvrez ce lien sur votre téléphone, touchez votre nom et tapez votre PIN : ${url}`;
+  const kyc = { non_renseigne: ["", "Non renseignée"], a_verifier: ["warn", "En attente de vérification"], verifie: ["ok", "Vérifiée"], refuse: ["bad", "Refusée"] }[b.kyc_status || "non_renseigne"];
+  return `<div class="stack"><div class="card stack"><h3>Installer l’application sur les téléphones des serveuses</h3>
+      <div class="qr" style="max-width:220px;margin:0 auto">${qrSvg(url, 5)}</div>
+      <div class="code-big num">${esc(b.code)}</div>
+      <p class="mu" style="margin:0;text-align:center">La serveuse scanne ce QR code avec l’appareil photo de son téléphone : l’application s’ouvre avec le bar déjà choisi. Elle touche son nom, tape son PIN, puis « Ajouter à l’écran d’accueil ».</p>
+      <div class="row"><button class="btn soft grow" data-a="copy" data-txt="${esc(url)}">Copier le lien</button>
+      <a class="btn soft grow" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Envoyer par WhatsApp</a>
+      ${CFG.mode === "live" ? `<button class="btn grow" data-a="poster">Imprimer l’affiche</button>` : ""}</div></div>
     <div class="card"><h3>Équipe</h3><div class="list">${S.staff.map(s => `<div class="stack" style="padding:12px 0;${s.active ? "" : "opacity:.6"}">
       <div class="row"><input class="grow" id="s_n_${s.id}" data-k="s_n_${s.id}" value="${esc(V.f["s_n_" + s.id] ?? s.name)}" aria-label="Nom">
       <select style="flex:1 1 130px" id="s_r_${s.id}" data-k="s_r_${s.id}" aria-label="Rôle">${["serveuse", "caisse"].map(r => `<option value="${r}" ${(V.f["s_r_" + s.id] ?? s.role) === r ? "selected" : ""}>${r === "caisse" ? "Caisse" : "Serveuse"}</option>`).join("")}</select>
@@ -1034,6 +1111,13 @@ function cTeam() {
     <div class="card stack"><h3>Ajouter un membre</h3><div class="row"><input class="grow" id="ns_n" data-k="ns_n" value="${val("ns_n")}" placeholder="Prénom">
       <select style="flex:1 1 130px" id="ns_r" data-k="ns_r" aria-label="Rôle"><option value="serveuse" ${V.f.ns_r !== "caisse" ? "selected" : ""}>Serveuse</option><option value="caisse" ${V.f.ns_r === "caisse" ? "selected" : ""}>Caisse</option></select>
       <input style="flex:1 1 130px" id="ns_pin" type="tel" inputmode="numeric" maxlength="6" data-k="ns_pin" value="${val("ns_pin")}" placeholder="PIN (4 à 6 chiffres)"></div><button class="btn" data-a="addS">Ajouter à l’équipe</button></div>
+    <div class="card stack"><div class="between"><h3>Identité légale du bar</h3><span class="pill ${kyc[0]}">${kyc[1]}</span></div>
+      <p class="mu" style="margin:0">Facultatif. Sert à établir vos factures d’abonnement et à vérifier que le compte appartient bien à l’entreprise. La pièce d’identité est stockée dans un espace privé, visible uniquement par la caisse de ce bar et l’éditeur du logiciel.</p>
+      <div class="row"><label class="f grow" for="id_legal">Raison sociale<input id="id_legal" data-k="id_legal" value="${esc(V.f.id_legal ?? (b.legal_name || ""))}" placeholder="Ex. SNACK LE MANGUIER SARL"></label>
+      <label class="f grow" for="id_niu">NIU (DGI)<input id="id_niu" data-k="id_niu" value="${esc(V.f.id_niu ?? (b.niu || ""))}" placeholder="Ex. M012345678901A" autocapitalize="characters" maxlength="16"></label></div>
+      <label class="f" for="id_file">Pièce d’identité du responsable (photo ou PDF, 5 Mo max.)<input id="id_file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label>
+      ${window.__idFile ? `<span class="mu">Fichier prêt : ${esc(window.__idFile.name)}</span>` : b.id_doc_path ? `<span class="mu">Une pièce a déjà été transmise.</span>` : ""}
+      <button class="btn" data-a="saveId">Enregistrer l’identité</button></div>
     <div class="card stack"><h3>Réglages du bar</h3><div class="row"><label class="f grow" for="b_n">Nom<input id="b_n" data-k="b_n" value="${esc(V.f.b_n ?? b.name)}"></label><label class="f grow" for="b_c">Ville et quartier<input id="b_c" data-k="b_c" value="${esc(V.f.b_c ?? (b.city || ""))}"></label></div>
       <div class="row"><label class="f grow" for="b_cap">Plafond d’espèces par serveuse (FCFA)<input id="b_cap" type="number" inputmode="numeric" data-k="b_cap" value="${esc(V.f.b_cap ?? b.cash_cap)}"></label>
       <label class="f grow" for="b_low">Seuil de stock bas par défaut<input id="b_low" type="number" inputmode="numeric" data-k="b_low" value="${esc(V.f.b_low ?? b.low_stock)}"></label></div><button class="btn" data-a="saveBar">Enregistrer les réglages</button></div></div>`;
@@ -1055,14 +1139,14 @@ function cDay(DT) {
 const ACT = { ticket_supprime: "Ticket supprimé", ticket_modifie: "Ticket modifié après envoi", annulation_demandee: "Annulation demandée", annulation_refusee: "Annulation refusée", ticket_rouvert: "Ticket rouvert",
   versement: "Versement reçu", momo_confirme: "Mobile Money confirmé", monnaie_remise: "Monnaie remise", bon_emis: "Bon émis", bon_verifie: "Bon vérifié", bon_utilise: "Bon utilisé",
   approvisionnement: "Approvisionnement", produit_ajoute: "Boisson ajoutée", produit_modifie: "Boisson modifiée", equipe_modifiee: "Équipe modifiée", pin_change: "PIN modifié",
-  reglages_modifies: "Réglages modifiés", journee_cloturee: "Journée clôturée", bar_cree: "Bar créé", membre_ajoute: "Membre ajouté", pin_bloque: "PIN bloqué après 5 essais", bouteille_ouverte: "Bouteille ouverte au verre" };
+  reglages_modifies: "Réglages modifiés", journee_cloturee: "Journée clôturée", bar_cree: "Bar créé", membre_ajoute: "Membre ajouté", pin_bloque: "PIN bloqué après 5 essais", bouteille_ouverte: "Bouteille ouverte au verre", inventaire: "Inventaire du stock", identite_bar: "Identité légale mise à jour" };
 const KEYS = { ticket: "N°", client: "client", total: "total", produit: "boisson", variation: "variation", serveuse: "serveuse", attendu: "attendu", recu: "reçu", ecart: "écart", tickets: "tickets",
-  montant: "montant", bon: "bon", code: "code", trouve: "trouvé", quantite: "quantité", prix: "prix", prix_avant: "prix avant", stock: "stock", stock_avant: "stock avant", membre: "membre", verres: "verres", unite: "unité",
+  montant: "montant", bon: "bon", code: "code", trouve: "trouvé", quantite: "quantité", prix: "prix", prix_avant: "prix avant", stock: "stock", stock_avant: "stock avant", membre: "membre", verres: "verres", unite: "unité", ecarts: "écarts", manquant_valeur: "manquant", raison_sociale: "raison sociale", niu: "NIU", piece: "pièce transmise",
   nom: "nom", role: "rôle", actif: "actif", date: "date", ventes: "ventes", compte: "compté", statut_avant: "statut avant", plafond_especes: "plafond", seuil_stock: "seuil" };
-const MONEY = new Set(["total", "attendu", "recu", "ecart", "montant", "prix", "prix_avant", "ventes", "compte", "plafond_especes"]);
+const MONEY = new Set(["manquant_valeur", "total", "attendu", "recu", "ecart", "montant", "prix", "prix_avant", "ventes", "compte", "plafond_especes"]);
 function cLog() {
   const fmt = (k, v) => `${KEYS[k] || k} : ${MONEY.has(k) ? F(v) : typeof v === "boolean" ? (v ? "oui" : "non") : esc(v)}`;
-  const KIND = { appro: "Approvisionnement", dotation: "Dotation", reprise: "Reprise", ajustement: "Ajustement", ouverture: "Bouteille ouverte au verre", vente_comptoir: "Vente comptoir" };
+  const KIND = { appro: "Approvisionnement", dotation: "Dotation", reprise: "Reprise", ajustement: "Ajustement", ouverture: "Bouteille ouverte au verre", vente_comptoir: "Vente comptoir", inventaire: "Inventaire" };
   return `<div class="grid"><div class="card"><h3>Journal d’audit</h3><div class="list">${S.audit.map(a => `<div style="padding:9px 0"><div class="between"><b>${ACT[a.action] || esc(a.action)}</b><span class="mu">${new Date(a.created_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span></div>
       <div class="mu">${esc(staffName(a.staff_id))} · ${Object.entries(a.details || {}).filter(([, v]) => v != null && v !== "").map(([k, v]) => fmt(k, v)).join(" · ")}</div></div>`).join("") || '<div class="empty">Aucune action enregistrée.</div>'}</div></div>
     <div class="card"><h3>Mouvements de stock</h3><div class="list">${S.moves.map(m => `<div class="between" style="padding:9px 0"><span><b>${KIND[m.kind]}</b> · ${esc(prodName(m.product_id))}${m.waitress_id ? " · " + esc(staffName(m.waitress_id)) : ""}<br><span class="mu">${new Date(m.created_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span></span><b class="num ${m.qty < 0 ? "bad-t" : "ok-t"}">${m.qty > 0 ? "+" : ""}${m.qty}</b></div>`).join("") || '<div class="empty">Aucun mouvement.</div>'}</div></div></div>`;
@@ -1075,11 +1159,13 @@ function vModal() {
   let c = "";
   if (m.type === "confirm") c = `<h2>${esc(m.title)}</h2><p style="margin:0">${esc(m.text)}</p><div class="row"><button class="btn ghost grow" data-a="close">Annuler</button><button class="btn grow ${m.danger ? "bad" : ""}" data-a="okModal">${esc(m.ok)}</button></div>`;
   if (m.type === "voucher") { const v = m.v;
-    c = `<h2>Bon de reliquat</h2><div class="receipt"><div class="c"><b>${esc(S.bar.name)}</b>${S.bar.city ? `<br>${esc(S.bar.city)}` : ""}</div><hr><div class="c"><b>BON DE RELIQUAT</b><br>N° ${esc(v.number)}</div><hr>
+    c = `<h2>Bon de reliquat</h2><div class="receipt printable"><div class="c"><b>${esc(S.bar.name)}</b>${S.bar.city ? `<br>${esc(S.bar.city)}` : ""}</div><hr><div class="c"><b>BON DE RELIQUAT</b><br>N° ${esc(v.number)}</div><hr>
       <div>Client : ${esc(v.client_label)}</div><div>Montant dû : <b>${F(v.amount)}</b></div><div>Serveuse : ${esc(staffName(v.waitress_id))}</div><div>Émis le : ${new Date(v.issued_at).toLocaleString("fr-FR")}</div><hr>
-      <div class="c">Code de vérification</div><div class="k">${esc(v.code)}</div><div class="c" style="font-size:12px">À présenter en caisse. Valable une seule fois.</div></div>
+      <div class="c">Code de vérification</div><div class="k">${esc(v.code)}</div><div class="qr">${qrSvg("GESCOBAR:" + S.bar.code + ":" + v.code, 3)}</div>
+      <div class="c" style="font-size:12px">À présenter en caisse avec ce code. Valable une seule fois.</div></div>
       ${v.status !== "active" ? `<div class="note bad">Ce bon est ${v.status === "used" ? "déjà utilisé" : "annulé"}.</div>` : ""}
-      <div class="row">${CFG.mode === "live" ? `<button class="btn grow" data-a="print">Imprimer</button>` : ""}<button class="btn soft grow" data-a="copyV">Copier le texte</button>
+      ${CFG.mode === "live" ? "" : `<p class="mu" style="margin:0">L’impression est disponible sur l’application en ligne (gescobar-cm.netlify.app), pas dans cette démo.</p>`}
+      <div class="row">${CFG.mode === "live" ? `<button class="btn grow" data-a="print">Imprimer le bon</button>` : ""}<button class="btn soft grow" data-a="copyV">Copier le texte</button>
       <a class="btn soft grow" href="https://wa.me/?text=${encodeURIComponent(voucherText(v))}" target="_blank" rel="noopener">Envoyer par WhatsApp</a></div><button class="btn ghost" data-a="close">Fermer</button>`; }
   if (m.type === "summary") { const s = m.s || {};
     c = `<h2>Rapport du ${s.date ? dfr(s.date, { weekday: "long", day: "numeric", month: "long" }) : "jour"}</h2>
@@ -1089,6 +1175,14 @@ function vModal() {
       <h3>Par serveuse</h3><div class="scroll"><table><tr><th>Serveuse</th><th>Ventes</th><th>Tickets</th><th>Corr.</th><th>Écart</th><th>Btl.</th></tr>
         ${(s.serveuses || []).map(w => `<tr><td>${esc(w.nom)}</td><td>${F(w.ventes)}</td><td>${w.tickets}</td><td>${w.corrections}</td><td class="${w.ecart_versements < 0 ? "bad-t" : ""}">${F(w.ecart_versements)}</td><td>${w.bouteilles_en_main}</td></tr>`).join("")}</table></div>
       <p class="mu" style="margin:0">Btl. : bouteilles encore en main au moment de la clôture.</p><button class="btn" data-a="close">Fermer</button>`; }
+  if (m.type === "inventory") { const r = m.r || {};
+    c = `<h2>Inventaire enregistré</h2><p style="margin:0">${r.ecarts ? `${r.ecarts} produit(s) corrigé(s).` : "Aucun écart : le stock compté correspond."}</p>
+      ${(r.details || []).length ? `<div class="scroll"><table><tr><th>Produit</th><th>Prévu</th><th>Compté</th><th>Écart</th></tr>${r.details.map(d => `<tr><td>${esc(d.produit)}</td><td>${d.attendu}</td><td>${d.compte}</td><td class="${d.ecart < 0 ? "bad-t" : "ok-t"}">${d.ecart > 0 ? "+" : ""}${d.ecart}</td></tr>`).join("")}</table></div>` : ""}
+      ${r.manquant_valeur ? `<div class="note bad between"><span>Valeur des bouteilles manquantes</span><b class="num">${F(r.manquant_valeur)}</b></div>` : ""}<button class="btn" data-a="close">Fermer</button>`; }
+  if (m.type === "poster") c = `<div class="poster printable"><div class="brandmark" style="font-size:30px">GesCo<span> Bar</span></div><h2 style="margin:8px 0">${esc(S.bar.name)}</h2>
+      <p>Serveuses : scannez ce code avec l’appareil photo de votre téléphone pour ouvrir l’application de caisse.</p>
+      <div class="qr" style="max-width:300px;margin:0 auto">${qrSvg(joinUrl(), 8)}</div><div class="code-big num">${esc(S.bar.code)}</div><p class="mu">${esc(APP_URL)}</p></div>
+      <div class="row"><button class="btn grow" data-a="print">Imprimer</button><button class="btn ghost grow" data-a="close">Fermer</button></div>`;
   if (m.type === "welcome") c = `<h2>Votre bar est créé</h2><p style="margin:0">Donnez ce code à vos serveuses pour qu’elles se connectent :</p><div class="code-big num">${esc(m.code)}</div>
     <p class="mu" style="margin:0">Étapes suivantes : ajustez les prix dans l’onglet Stock, ajoutez vos serveuses dans l’onglet Équipe, puis remettez-leur leurs bouteilles.</p><button class="btn" data-a="close">Commencer</button>`;
   return `<div class="scrim" data-a="${m.type === "confirm" ? "close" : ""}" data-self="1"><div class="sheet" role="dialog" aria-modal="true">${c}</div></div>`;
@@ -1114,13 +1208,20 @@ document.addEventListener("click", e => {
 document.addEventListener("input", e => { const k = e.target.dataset && e.target.dataset.k; if (!k) return; V.f[k] = e.target.value;
   if (/^(rcv_|cnt$|q_)/.test(k)) { clearTimeout(window.__r); window.__r = setTimeout(render, k.startsWith("q_") ? 120 : 250); } });
 document.addEventListener("change", e => { const t = e.target;
+  if (t.id === "id_file") { window.__idFile = t.files && t.files[0] || null; render(); return; }
   if (t.dataset && t.dataset.k && t.tagName === "SELECT") { V.f[t.dataset.k] = t.value; render(); }
   if (t.dataset && t.dataset.qty) call("gb_ticket_set_qty", { p_ticket: t.dataset.t, p_product: t.dataset.p, p_qty: Math.max(0, Math.trunc(+t.value || 0)) }); });
 document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.dataset && e.target.dataset.enter) { e.preventDefault(); const a = e.target.dataset.enter; A[a] && A[a]({}); }
   if (e.key === "Escape" && V.modal) A.close(); });
 
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); window.__install = e; render(); });
+addEventListener("appinstalled", () => { window.__install = null; toast("Application installée sur l’écran d’accueil."); });
+A.install = async () => { const e = window.__install; if (!e) return; e.prompt(); try { await e.userChoice; } catch (x) {} window.__install = null; render(); };
 (async function boot() {
+  let barParam = null; try { barParam = new URLSearchParams(location.search).get("bar"); } catch (e) {}
+  if (barParam) { V.code = barParam.trim().toUpperCase(); LS.set("gesco-code", V.code); V.ltab = "staff";
+    try { history.replaceState(null, "", location.pathname); } catch (e) {} }
   try { V.screen = (await B.init()) ? "app" : "login"; } catch (e) { V.screen = "login"; }
-  if (V.screen === "app") await enterApp(); else render();
+  if (V.screen === "app") await enterApp(); else { render(); if (barParam) A.loadStaff(); }
 })();
 </script>
