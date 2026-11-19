@@ -339,6 +339,18 @@ input[type=date],input[type=time]{width:100%;min-height:46px;padding:10px 12px;b
 .slip h2{color:#111}.slip hr{border:0;border-top:1px dashed #bbb;margin:8px 0}.slip .kv{display:flex;justify-content:space-between;gap:10px;padding:4px 0}
 .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:70}
 .scrim{z-index:60}
+.hb .bnav{padding-bottom:calc(58px + env(safe-area-inset-bottom,0px))}
+.hb #app{padding-bottom:calc(170px + env(safe-area-inset-bottom,0px))}
+.hb .drawer{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+.hb .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))}
+.hb .scrim{padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+.ntf{position:fixed;z-index:65;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));width:min(94vw,460px);display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 14px 40px rgba(0,0,0,.25);cursor:pointer;animation:ntfIn .45s cubic-bezier(.2,.9,.3,1.2) both}
+.ntf b{display:block}.ntf small{display:block;color:var(--muted);font-size:13px}
+.ntf-i{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--sunk);color:var(--brand);animation:ring .9s .2s ease-in-out 2}
+.ntf.order .ntf-i{background:var(--amber-soft);color:var(--warn)}.ntf.ok .ntf-i{background:var(--ok-soft);color:var(--ok)}.ntf.staff .ntf-i{background:var(--sky-soft);color:var(--sky)}
+@keyframes ntfIn{from{opacity:0;transform:translate(-50%,-30px) scale(.95)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes ring{0%,100%{transform:rotate(0)}20%{transform:rotate(-14deg)}40%{transform:rotate(12deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(5deg)}}
 @media print{.slip.printable{width:100%;padding:12mm;border:0}}
 @media (prefers-reduced-motion:reduce){.dcard.today::after,.live-dot{animation:none}}
 </style>
@@ -390,13 +402,37 @@ let seenSent = null;
 function beep() { try { const ac = window.__ac || (window.__ac = new (window.AudioContext || window.webkitAudioContext)()); [0, 0.18].forEach(d => { const o = ac.createOscillator(), g = ac.createGain();
   o.frequency.value = 880; g.gain.setValueAtTime(0.18, ac.currentTime + d); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + d + 0.15); o.connect(g).connect(ac.destination); o.start(ac.currentTime + d); o.stop(ac.currentTime + d + 0.16); }); } catch (e) {}
   try { navigator.vibrate && navigator.vibrate([120, 60, 120]); } catch (e) {} }
-function notifyNew() { // la caisse est prévenue de chaque nouvelle commande, demande d'annulation ou paiement MoMo
-  if (!S || ROLE() !== "caisse") { seenSent = null; return; }
-  const keys = new Set(S.tickets.filter(t => !isCounter(t) && (t.status === "sent" || t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo"))).map(t => t.id + ":" + t.status + ":" + (t.cancel_requested ? 1 : 0)));
-  if (seenSent) { const fresh = [...keys].filter(k => !seenSent.has(k)); if (fresh.length) { const t = S.tickets.find(x => x.id === fresh[0].split(":")[0]);
-    const what = t.cancel_requested ? "Annulation demandée" : t.status === "cashed" ? "Paiement Mobile Money à vérifier" : "Nouvelle commande";
-    toast(`${what} : ${staffName(t.waitress_id)} · ${t.client_label} · ${F(t.total)}`); beep(); } }
-  seenSent = keys; }
+let AC = null;
+function audio() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch (e) {} return AC; }
+addEventListener("pointerdown", () => audio(), { passive: true }); // le son doit être débloqué par un premier toucher
+const TUNES = { order: [[659, 0], [880, .13], [1175, .26]], ok: [[784, 0], [988, .12], [1319, .24], [1568, .36]], staff: [[523, 0], [659, .14], [784, .28], [1047, .42]], info: [[880, 0], [660, .16]] };
+function chime(kind) { const ac = audio(); if (ac) (TUNES[kind] || TUNES.info).forEach(([f, d]) => { const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + d;
+    o.type = "sine"; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + 0.5); });
+  try { navigator.vibrate && navigator.vibrate([90, 50, 90, 50, 160]); } catch (e) {} }
+function sysNotify(title, body) { try { if (!("Notification" in window) || Notification.permission !== "granted" || document.visibilityState === "visible") return;
+  const o = { body, icon: "icon-192.png", badge: "icon-192.png", tag: "gesco-" + Date.now(), vibrate: [90, 50, 160] };
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.ready.then(r => r.showNotification(title, o)); else new Notification(title, o); } catch (e) {} }
+function notify(kind, title, body) { V.ntf = { kind, title, body, t: Date.now() }; clearTimeout(window.__ntf); window.__ntf = setTimeout(() => { V.ntf = null; render(); }, 6500);
+  chime(kind); sysNotify(title, body); render(); }
+let SEEN = null;
+function notifyNew() { // chacun est prévenu de ce qui le concerne, avec un générique sonore
+  if (!S) { SEEN = null; return; }
+  const r = ROLE(), me = S.me.id, td = today(), K = new Map();
+  if (r === "caisse") S.tickets.filter(t => !isCounter(t) && (t.status === "sent" || t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo")))
+    .forEach(t => K.set(`t:${t.id}:${t.status}:${t.cancel_requested ? 1 : 0}`, ["order", t.cancel_requested ? "Annulation demandée" : t.status === "cashed" ? "Mobile Money à vérifier" : "Nouvelle commande", `${staffName(t.waitress_id)} · ${t.client_label} · ${F(t.total)}`]));
+  if (r === "serveuse") S.tickets.filter(t => t.waitress_id === me).forEach(t => {
+    if (t.status === "paid") K.set("p:" + t.id, ["ok", "Commande validée par la caisse", `${t.client_label} · ${F(t.total)}`]);
+    if (t.change_status === "given") K.set("g:" + t.id, ["ok", "Monnaie prête à la caisse", `${t.client_label} · ${F(t.change_due)} à rendre au client`]);
+    if (t.change_status === "voucher") K.set("v:" + t.id, ["ok", "Bon de reliquat émis", `${t.client_label} · ${F(t.change_due)}`]);
+    if (t.status === "cancelled") K.set("c:" + t.id, ["info", "Ticket annulé par la caisse", t.client_label]); });
+  if (r === "directeur" || r === "pdg") (S.leaves || []).filter(l => l.status === "en_attente" && l.staff_id !== me).forEach(l => K.set("l:" + l.id, ["staff", "Demande de permission", `${staffName(l.staff_id)} · ${dfr(l.day_from)}${l.day_to !== l.day_from ? " → " + dfr(l.day_to) : ""}`]));
+  if (r === "directeur") (S.attendance || []).filter(a => a.day === td && a.staff_id !== me && a.recorded_by !== me).forEach(a => {
+    if (a.arrived_at) K.set("a:" + a.staff_id, ["staff", "Pointage d’arrivée", `${staffName(a.staff_id)} est arrivé(e) à ${hm(a.arrived_at)}${a.status === "retard" ? ` · retard de ${a.late_minutes} min` : ""}`]);
+    if (a.left_at) K.set("d:" + a.staff_id, ["staff", "Pointage de départ", `${staffName(a.staff_id)} est parti(e) à ${hm(a.left_at)}`]); });
+  if (r === "pdg") (S.days || []).slice(0, 5).forEach(d => K.set("j:" + d.id, ["ok", "Journée clôturée par la caisse", `${dfr(d.business_date)} · ventes ${F(d.summary && d.summary.ventes)} · écart ${F((d.counted_cash || 0) - (d.expected_cash || 0))}`]));
+  if (SEEN) { const fresh = [...K.keys()].filter(k => !SEEN.has(k)); if (fresh.length) { const [kind, title, body] = K.get(fresh[fresh.length - 1]); notify(kind, fresh.length > 1 ? `${title} (+${fresh.length - 1})` : title, body); } }
+  SEEN = new Set(K.keys()); }
 const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
 
 /* ═══════════════ Moteur DÉMO (données locales, mêmes règles que le serveur) ═══════════════ */
@@ -893,7 +929,7 @@ function LiveBackend() {
       const t0 = new Date(Date.now() - 6 * 3600e3), dd = n => { const x = new Date(t0); x.setDate(x.getDate() + n); return x.toLocaleDateString("sv-SE"); };
       const extra = Promise.all([
         q(sb.from("shifts").select("id,staff_id,day,kind,start_time,end_time,note").gte("day", dd(-49)).lte("day", dd(49)).order("day")),
-        q(sb.from("attendance").select("id,staff_id,day,status,arrived_at,left_at,late_minutes,note").gte("day", dd(-70)).order("day", { ascending: false })),
+        q(sb.from("attendance").select("id,staff_id,day,status,arrived_at,left_at,late_minutes,note,recorded_by").gte("day", dd(-70)).order("day", { ascending: false })),
         q(sb.from("leave_requests").select("*").order("created_at", { ascending: false }).limit(150)),
         q(sb.from("staff_salaries").select("staff_id,salary")),
         q(sb.from("payroll").select("*").order("paid_at", { ascending: false }).limit(300))]);
@@ -939,7 +975,7 @@ const ROLES = { pdg: "PDG", directeur: "Directeur", caisse: "Caisse", serveuse: 
 const RO = { pdg: 0, directeur: 1, caisse: 2, serveuse: 3 };
 const roleSort = (a, b) => (RO[a.role] - RO[b.role]) || a.name.localeCompare(b.name);
 const ROLE = () => S ? S.me.role : "";
-const isCaisse = () => ["caisse", "pdg"].includes(ROLE()); // gestes de caisse : caissière, et le PDG en secours
+const isCaisse = () => ROLE() === "caisse"; // gestes de caisse : la caissière seulement
 const isMgr = () => ["directeur", "pdg"].includes(ROLE());
 const isPdg = () => ROLE() === "pdg";
 const isCounter = t => (S.staff.find(s => s.id === t.waitress_id) || {}).role === "caisse"; // vente au comptoir par la caisse
@@ -1023,7 +1059,7 @@ async function enterApp() {
 async function logout(silent) {
   try { await B.logout(); } catch (e) {}
   V.screen = "login"; S = null; LS.del(SNAP); ANIM.login = 0; ANIM.app = 0; V.open = {}; V.f = {}; V.modal = null; V.rev = null; V.vres = null; V.outbox = []; saveOutbox();
-  V.pin = ""; V.pick = null; V.list = null; V.ltab = "staff"; V.menu = false; V.stats = null; V.acc = null; V.wk = 0; if (!silent) toast("Vous êtes déconnecté.");
+  V.pin = ""; V.pick = null; V.list = null; V.ltab = "staff"; V.menu = false; V.stats = null; V.acc = null; V.wk = 0; V.ntf = null; SEEN = null; if (!silent) toast("Vous êtes déconnecté.");
   render();
   if (V.code && V.ltab === "staff") A.loadStaff(); // liste du personnel toujours à jour
 }
@@ -1367,7 +1403,7 @@ const NAV = {
   serveuse: ["service", "planning", "moi"],
   caisse: ["direct", "stock", "vouch", "sales", "day", "planning", "moi"],
   directeur: ["sup", "pres", "planning", "team", "sales", "log", "moi"],
-  pdg: ["home", "paie", "acc", "team", "direct", "sales", "rev", "pres", "planning", "stock", "vouch", "day", "log", "settings"]
+  pdg: ["home", "paie", "acc", "team", "sales", "rev", "pres", "planning", "day", "log", "settings"]
 };
 const navFor = () => NAV[ROLE()] || NAV.serveuse;
 const norm = x => String(x ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -1402,8 +1438,8 @@ function badges() {
   const act = S.tickets.filter(t => t.status !== "cancelled"), b = {};
   const alerts = act.filter(t => t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo") || t.change_status === "pending").length;
   const pend = (S.leaves || []).filter(l => l.status === "en_attente").length;
-  b.direct = ROLE() === "caisse" || isPdg() ? alerts : 0; b.stock = S.products.filter(isLow).length; b.pres = isMgr() ? pend : 0;
-  b.sup = lateOrders().length + pend; b.home = pend + alerts;
+  b.direct = ROLE() === "caisse" ? alerts : 0; b.stock = S.products.filter(isLow).length; b.pres = isMgr() ? pend : 0;
+  b.sup = lateOrders().length + pend; b.home = pend;
   const sh = shiftOf(S.me.id, today()), a = attOf(S.me.id, today());
   b.moi = sh && sh.kind === "travail" && !(a && (a.arrived_at || ["absent", "permission", "repos"].includes(a.status))) ? 1 : 0;
   return b;
@@ -1428,12 +1464,14 @@ function drawer(nav, b) {
   return `<div class="dscrim" data-a="menuClose" data-self="1" style="--el:${elapsed(V.menuT)}ms"></div>
   <aside class="drawer" role="dialog" aria-modal="true" aria-label="Menu" style="--el:${elapsed(V.menuT)}ms">
     <div class="between"><div class="who"><div class="avatar">${esc(S.me.name[0])}</div><div style="min-width:0"><b>${esc(S.me.name)}</b><span class="mu">${ROLES[ROLE()]} · ${esc(S.bar.name)}</span></div></div>
-      <button class="ib" data-a="menuClose" aria-label="Fermer le menu">${ico("x")}</button></div>
+      <div class="row" style="flex-wrap:nowrap;gap:6px"><button class="ib" data-a="logout" aria-label="Se déconnecter" title="Se déconnecter">${ico("out")}</button><button class="ib" data-a="menuClose" aria-label="Fermer le menu">${ico("x")}</button></div></div>
     <label class="srch">${ico("search")}<input id="gq" data-k="gq" value="${esc(q)}" placeholder="Client, ticket, boisson, employé, bon…" autocomplete="off" aria-label="Rechercher dans l’application"></label>
     ${q.trim() ? searchRes(q) : `<nav class="nav-l" aria-label="Rubriques">${nav.map((k, i) => `<button class="${V.tab === k ? "on" : ""}" data-a="go" data-v="${k}" style="--i:${i}">${ico(SEC[k][1])}<span class="grow"><b>${SEC[k][0]}</b><small>${SEC[k][2]}</small></span>${b[k] ? `<i class="bd">${b[k]}</i>` : ""}</button>`).join("")}</nav>`}
     <div class="sub stack" style="gap:6px"><div class="between"><span class="mu">Code du bar</span><b class="num" style="letter-spacing:.12em">${esc(S.bar.code)}</b></div>
       <div class="between"><span class="mu">Connexion</span><span class="net ${V.online ? "" : "off"}"><i></i>${V.online ? "En ligne" : "Hors ligne"}${V.outbox.length ? ` · ${V.outbox.length} en attente` : ""}</span></div></div>
-    <div class="row">${themeBtn()}${CFG.mode === "demo" ? `<button class="btn ghost sm" data-a="resetDemo">Réinitialiser la démo</button>` : ""}<button class="btn ghost sm" data-a="logout">${ico("out")} Déconnexion</button></div></aside>`;
+    <div class="row">${themeBtn()}<button class="btn ghost sm" data-a="notifTest">${ico("alert")} Tester le son</button>${"Notification" in window && Notification.permission !== "granted" ? `<button class="btn ghost sm" data-a="notifOn">Activer les notifications</button>` : ""}
+      ${CFG.mode === "demo" ? `<button class="btn ghost sm" data-a="resetDemo">Réinitialiser la démo</button>` : ""}</div>
+    <button class="btn bad wide" data-a="logout">${ico("out")} Se déconnecter</button></aside>`;
 }
 function searchRes(q0) {
   const q = norm(q0.trim()), nav = navFor(), out = [];
@@ -1457,7 +1495,8 @@ function vApp() {
     service: () => wService(), direct: () => (ROLE() === "caisse" ? shiftBanner() : "") + cOps(), sup: dSup, home: pHome,
     stock: () => cStock(S.products.filter(isLow)), vouch: () => cVouch(S.vouchers.filter(v => v.status === "active")), sales: () => cSales(dayT()),
     rev: cRev, acc: cAcc, paie: pPaie, pres: mPres, planning: vPlanning, team: cTeam, day: () => cDay(dayT()), log: cLog, settings: cSettings, moi: vMoi };
-  return header(b) + `<main class="sec" style="--el:${elapsed(V.secT)}ms"><div class="ptitle"><h1>${l}</h1><p class="mu">${d}</p></div>${VIEW[V.tab]()}</main>`
+  const ask = "Notification" in window && Notification.permission === "default" && !LS.get("gesco-ntf-ask", 0) ? `<div class="note info between" style="flex-wrap:wrap;margin-bottom:12px"><span>${ico("alert")} Activez les notifications pour être prévenu(e) même quand le téléphone est en veille.</span><span class="row"><button class="btn sm" data-a="notifOn">Activer</button><button class="btn ghost sm" data-a="notifLater">Plus tard</button></span></div>` : "";
+  return header(b) + `<main class="sec" style="--el:${elapsed(V.secT)}ms"><div class="ptitle"><h1>${l}</h1><p class="mu">${d}</p></div>${ask}${VIEW[V.tab]()}</main>`
     + bnav(nav, b) + (V.menu ? drawer(nav, b) : "");
 }
 
@@ -1649,8 +1688,8 @@ function pHome() {
   const pend = (S.leaves || []).filter(l => l.status === "en_attente"), low = S.products.filter(isLow), alerts = act.filter(t => t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo") || t.change_status === "pending");
   const h = new Date().getHours(), hello = h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir";
   const todo = [pend.length && ["check", `${pend.length} demande(s) de permission`, "À valider par vous ou par le directeur", "pres"],
-    alerts.length && ["orders", `${alerts.length} opération(s) de caisse en attente`, "Annulations, Mobile Money, reliquats", "direct"],
-    low.length && ["stock", `${low.length} produit(s) en stock bas`, low.slice(0, 4).map(p => p.name).join(", "), "stock"],
+    alerts.length && ["orders", `${alerts.length} opération(s) de caisse en cours`, "Annulations, Mobile Money, reliquats : la caissière s’en occupe", null],
+    low.length && ["stock", `${low.length} produit(s) en stock bas`, low.slice(0, 4).map(p => p.name).join(", ") + " · à faire approvisionner par la caissière", null],
     lateOrders().length && ["alert", `${lateOrders().length} commande(s) servie(s) en retard`, "Plus de 10 minutes sans service", "sales"],
     unpaid.length && ["pay", `${unpaid.length} salaire(s) à payer`, monthName(cur), "paie"],
     !S.bar.niu && ["gear", "Identité légale à compléter", "Raison sociale et NIU (facultatif)", "settings"]].filter(Boolean);
@@ -1660,11 +1699,15 @@ function pHome() {
       ${kpi("En service", F(sum(act.filter(t => t.status === "sent"), t => t.total)), "", `${act.filter(t => t.status === "sent").length} commande(s)`)}
       ${kpi("Chez les serveuses", F(sum(toRecv, cashOf)), toRecv.length ? "hl" : "", "Argent encaissé, pas encore versé")}
       ${kpi("Salaires payés ce mois", F(sum(paidM, p => p.net)), "", `${paidM.length} / ${crew.length} employé(s)`)}</div>
-    <div class="card"><h3>À votre attention</h3><div class="list">${todo.map(([ic, t, s2, k], i) => `<button class="todo rise" style="--i:${i}" data-a="go" data-v="${k}">${ico(ic)}<span class="grow"><b>${t}</b><small>${esc(s2)}</small></span>${ico("right")}</button>`).join("") || '<div class="empty">Tout est en ordre.</div>'}</div></div>
+    <div class="card"><h3>À votre attention</h3><div class="list">${todo.map(([ic, t, s2, k], i) => k ? `<button class="todo rise" style="--i:${i}" data-a="go" data-v="${k}">${ico(ic)}<span class="grow"><b>${t}</b><small>${esc(s2)}</small></span>${ico("right")}</button>` : `<div class="todo rise" style="--i:${i}">${ico(ic)}<span class="grow"><b>${t}</b><small>${esc(s2)}</small></span></div>`).join("") || '<div class="empty">Tout est en ordre.</div>'}</div></div>
     <div class="grid"><div class="card"><div class="between"><h3>Équipe aujourd’hui</h3><button class="btn ghost sm" data-a="go" data-v="pres">Détails</button></div>
       <div class="list">${crew.map(x => `<div class="between" style="padding:8px 0"><span><b>${esc(x.name)}</b> <span class="mu">· ${ROLES[x.role]} · ${shTxt(shiftOf(x.id, td))}</span></span>${attPill(attOf(x.id, td))}</div>`).join("") || '<div class="empty">Ajoutez votre équipe dans Équipe.</div>'}</div></div>
       <div class="card"><h3>Ventes par serveuse aujourd’hui</h3>${salesBars(DT)}</div></div>
-    <div class="card"><h3>Accès rapide</h3><div class="quick">${["paie", "acc", "rev", "planning", "team", "stock", "day", "settings"].map((k, i) => `<button data-a="go" data-v="${k}" style="--i:${i}">${ico(SEC[k][1])}<span>${SEC[k][0]}</span></button>`).join("")}</div></div></div>`;
+    ${(() => { const d0 = S.days[0]; if (!d0) return ""; const e = (d0.counted_cash || 0) - (d0.expected_cash || 0);
+      return `<div class="card stack"><div class="between"><h3>Dernière journée clôturée</h3><span class="pill ${e < 0 ? "bad" : "ok"}">Écart ${F(e)}</span></div>
+        <div class="between"><span><b>${dfr(d0.business_date, { weekday: "long", day: "numeric", month: "long" })}</b><br><span class="mu">Clôturée par ${esc(staffName(d0.closed_by))} à ${hm(d0.closed_at)}</span></span><b class="num" style="font:800 20px var(--display)">${F(d0.summary && d0.summary.ventes)}</b></div>
+        <button class="btn soft" data-a="showDay" data-id="${d0.id}">Voir le rapport de la caisse</button></div>`; })()}
+    <div class="card"><h3>Accès rapide</h3><div class="quick">${["paie", "acc", "rev", "sales", "planning", "team", "day", "settings"].map((k, i) => `<button data-a="go" data-v="${k}" style="--i:${i}">${ico(SEC[k][1])}<span>${SEC[k][0]}</span></button>`).join("")}</div></div></div>`;
 }
 function pPaie() {
   const mo = V.f.mo || curMonth(), st = statRows(), paid = id => (S.payroll || []).find(p => p.staff_id === id && p.month === mo), salOf = id => ((S.salaries || []).find(x => x.staff_id === id) || {}).salary || 0;
@@ -1854,6 +1897,11 @@ function cSettings() {
 
 /* ═══════════════ Actions : menu, recherche, planning, présences, paie ═══════════════ */
 A.menu = () => { V.menu = !V.menu; if (V.menu) V.menuT = Date.now(); render(); };
+A.ntfClose = () => { V.ntf = null; render(); };
+A.notifOn = async () => { LS.set("gesco-ntf-ask", 1); try { const p = await Notification.requestPermission(); chime("ok");
+  toast(p === "granted" ? "Notifications activées sur ce téléphone." : "Notifications refusées : vous les entendrez seulement application ouverte.", p === "granted" ? "" : "err"); } catch (e) { toast("Notifications système indisponibles ici : le son et l’alerte restent actifs dans l’application.", "err"); } render(); };
+A.notifLater = () => { LS.set("gesco-ntf-ask", 1); render(); };
+A.notifTest = () => notify("ok", "Test du générique", "Voici le son de vos notifications GesCo Bar.");
 A.menuClose = () => { V.menu = false; V.f.gq = ""; render(); };
 A.search = () => { V.menu = true; V.menuT = Date.now(); render(); setTimeout(() => { const i = document.getElementById("gq"); if (i) i.focus(); }, 40); };
 A.openTk = d => { V.menu = false; V.open[d.t] = true; V.modal = { type: "tk", t: d.t }; render(); };
@@ -1910,12 +1958,12 @@ function cDay(DT) {
     ${d ? `<div><b style="font-size:18px">${dfr(d.business_date, { weekday: "long", day: "numeric", month: "long" })}</b><div class="mu">Ouverte à ${hm(d.opened_at)}. Une vente après minuit compte sur cette journée jusqu’à 6 h.</div></div>
       <div class="list">${[["Espèces versées par les serveuses", F(cashIn)], ["Monnaie rendue aux clients", "− " + F(out)], ["Espèces attendues en caisse", `<b>${F(exp)}</b>`],
         ["Mobile Money confirmé", F(sum(DT.filter(t => t.status === "paid" && t.pay_method === "momo"), t => t.total))], ["Tickets non soldés", pending ? `<span class="warn-t">${pending}</span>` : "0"]].map(([l, v]) => `<div class="between" style="padding:7px 0"><span class="mu">${l}</span><span class="num">${v}</span></div>`).join("")}</div>
-      <label class="f" for="cnt">Espèces comptées dans la caisse (FCFA)<input id="cnt" type="number" inputmode="numeric" data-k="cnt" value="${val("cnt")}" placeholder="${Fs(exp)}"></label>
+      ${ROLE() !== "caisse" ? `<div class="note info">La caissière clôture la journée à la fin du service. Le rapport arrive ici automatiquement, avec une notification.</div>` : `<label class="f" for="cnt">Espèces comptées dans la caisse (FCFA)<input id="cnt" type="number" inputmode="numeric" data-k="cnt" value="${val("cnt")}" placeholder="${Fs(exp)}"></label>
       ${cnt != null ? `<div class="note ${cnt - exp === 0 ? "ok" : "bad"} between"><span>Écart de caisse</span><b class="num">${F(cnt - exp)}</b></div>` : ""}
-      <button class="btn amber" data-a="close1">Clôturer la journée</button>`
+      <button class="btn amber" data-a="close1">Clôturer la journée</button>`}`
       : `<p class="mu" style="margin:0">La journée s’ouvre automatiquement au premier ticket.</p>`}</div>
     <div class="card"><h3>Journées clôturées</h3><div class="list">${S.days.map(x => { const e = (x.counted_cash || 0) - (x.expected_cash || 0);
-      return `<div class="li"><div class="grow"><b>${dfr(x.business_date, { weekday: "long", day: "numeric", month: "long" })}</b><div class="mu">Ventes ${F(x.summary && x.summary.ventes)} · écart <span class="${e < 0 ? "bad-t" : e > 0 ? "ok-t" : ""}">${F(e)}</span></div></div><button class="btn soft sm" data-a="showDay" data-id="${x.id}">Rapport</button></div>`; }).join("") || '<div class="empty">Aucune journée clôturée pour le moment.</div>'}</div></div></div>`;
+      return `<div class="li"><div class="grow"><b>${dfr(x.business_date, { weekday: "long", day: "numeric", month: "long" })}</b><div class="mu">Clôturée par ${esc(staffName(x.closed_by))} · ventes ${F(x.summary && x.summary.ventes)} · écart <span class="${e < 0 ? "bad-t" : e > 0 ? "ok-t" : ""}">${F(e)}</span></div></div><button class="btn soft sm" data-a="showDay" data-id="${x.id}">Rapport</button></div>`; }).join("") || '<div class="empty">Aucune journée clôturée pour le moment.</div>'}</div></div></div>`;
 }
 const ACT = { ticket_supprime: "Ticket supprimé", ticket_modifie: "Ticket modifié après envoi", annulation_demandee: "Annulation demandée", annulation_refusee: "Annulation refusée", ticket_rouvert: "Ticket rouvert",
   versement: "Versement reçu", momo_confirme: "Mobile Money confirmé", monnaie_remise: "Monnaie remise", bon_emis: "Bon émis", bon_verifie: "Bon vérifié", bon_utilise: "Bon utilisé",
@@ -2090,7 +2138,8 @@ function render() {
   else if (V.screen === "login") html = vLogin();
   else if (!S) html = `<div class="empty"><span class="spin"></span> Chargement…</div>`;
   else html = vApp() + bismo(true);
-  $app.innerHTML = html + vModal() + (V.toast ? `<div class="toast ${V.toast.kind || ""}" role="status">${esc(V.toast.msg)}</div>` : "");
+  const nt = V.screen === "app" && V.ntf ? `<div class="ntf ${V.ntf.kind}" role="alert" data-a="ntfClose"><span class="ntf-i">${ico({ order: "orders", ok: "check", staff: "clock" }[V.ntf.kind] || "alert")}</span><span class="grow"><b>${esc(V.ntf.title)}</b><small>${esc(V.ntf.body)}</small></span></div>` : "";
+  $app.innerHTML = html + nt + vModal() + (V.toast ? `<div class="toast ${V.toast.kind || ""}" role="status">${esc(V.toast.msg)}</div>` : "");
   if (fid) { const el = document.getElementById(fid); if (el && el !== document.activeElement) { el.focus({ preventScroll: true }); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) {} } }
 }
 document.addEventListener("click", e => {
@@ -2114,6 +2163,7 @@ document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.da
 addEventListener("beforeinstallprompt", e => { e.preventDefault(); window.__install = e; render(); });
 addEventListener("appinstalled", () => { window.__install = null; toast("Application installée sur l’écran d’accueil."); });
 A.install = async () => { const e = window.__install; if (!e) return; e.prompt(); try { await e.userChoice; } catch (x) {} window.__install = null; render(); };
+if (/\.netlify\.app$/.test(location.hostname)) document.body.classList.add("hb"); // place réservée au badge de l’hébergeur
 (async function boot() {
   let barParam = null; try { barParam = new URLSearchParams(location.search).get("bar"); } catch (e) {}
   if (barParam) { V.code = barParam.trim().toUpperCase(); LS.set("gesco-code", V.code); V.ltab = "staff";
