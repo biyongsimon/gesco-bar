@@ -1,0 +1,7 @@
+-- GesCo Bar · v2.3 (appliquée dans Supabase sous le nom « comptabilite_mensuelle »)
+-- products.cost (prix d'achat), stock_moves.unit_cost (coût réel de chaque livraison),
+-- table expenses (dépenses du bar, lisibles par la caisse uniquement),
+-- gb_product_set_cost, gb_appro(p_product, p_qty, p_unit_cost default null),
+-- gb_expense_add, gb_expense_delete, gb_accounting(p_month 'YYYY-MM') : rapport mensuel complet en JSON
+-- (CA par jour, espèces / MoMo, coût des ventes, marge, achats, charges, pertes d'inventaire, CA de l'année).
+-- Définition exacte : select pg_get_functiondef('public.gb_accounting'::regproc);

@@ -13,18 +13,19 @@
   --shadow:0 1px 2px rgba(15,40,28,.06),0 4px 14px rgba(15,40,28,.06);
   --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
   --body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --r:12px;
+  --r:12px; --logo-shadow:drop-shadow(0 1px 1.5px rgba(4,40,48,.35));
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0c1411; --surface:#141f1a; --sunk:#0f1915; --ink:#e7efe9; --muted:#93a59b; --line:#25332c;
   --brand:#38b87a; --brand-ink:#06150e; --amber:#f0b43c; --amber-soft:#3a2c10;
   --ok:#4fd08b; --ok-soft:#123222; --warn:#f2b155; --warn-soft:#3a2a10; --bad:#ff7b72; --bad-soft:#3d1715;
-  --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}}
+  --shadow:0 1px 2px rgba(0,0,0,.4); --logo-shadow:none; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0c1411; --surface:#141f1a; --sunk:#0f1915; --ink:#e7efe9; --muted:#93a59b; --line:#25332c;
   --brand:#38b87a; --brand-ink:#06150e; --amber:#f0b43c; --amber-soft:#3a2c10;
   --ok:#4fd08b; --ok-soft:#123222; --warn:#f2b155; --warn-soft:#3a2a10; --bad:#ff7b72; --bad-soft:#3d1715;
-  --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
+  --shadow:0 1px 2px rgba(0,0,0,.4); --logo-shadow:none; color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
 *{box-sizing:border-box}
 html,body{background:var(--bg)}
 body{margin:0;color:var(--ink);font:15px/1.45 var(--body);-webkit-text-size-adjust:100%}
@@ -172,9 +173,31 @@ th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05
 @keyframes sp{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .qr svg{display:block;margin:6px auto;max-width:100%;height:auto}
+/* Signature BISMO Agency : logo détouré, lisible sur les deux thèmes, apparition animée */
+.bismo{display:flex;flex-direction:column;align-items:center;gap:6px;margin:4px 0}
+.bismo small{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.bismo .lg{position:relative;width:min(220px,62vw);aspect-ratio:520/208}
+.bismo.anim small{animation:fadeUp .6s calc(.55s - var(--el,0ms)) both}.bismo.anim .lg{animation:logoIn .9s cubic-bezier(.2,.8,.2,1) calc(0s - var(--el,0ms)) both}
+.bismo .lg img{width:100%;height:100%;display:block;filter:var(--logo-shadow)}
+.bismo .lg::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.75) 50%,transparent 65%);background-size:250% 100%;
+  -webkit-mask:var(--logo-mask) center/contain no-repeat;mask:var(--logo-mask) center/contain no-repeat;opacity:0}
+.bismo.anim .lg::after{opacity:1;animation:shine 1.6s calc(.9s - var(--el,0ms)) ease-out both}
+.bismo.mini{flex-direction:row;justify-content:center;gap:10px;margin:28px 0 4px}
+.bismo.mini .lg{width:96px}.bismo.mini.anim .lg{animation:fadeUp .6s calc(.3s - var(--el,0ms)) both}.bismo.mini.anim .lg::after{animation:shine 2.2s calc(1s - var(--el,0ms)) ease-out both}
+.bismo.mini small{letter-spacing:.08em}.bismo.mini.anim small{animation:fadeUp .6s calc(.2s - var(--el,0ms)) both}
+@keyframes logoIn{from{opacity:0;transform:translateY(10px) scale(.92);filter:blur(6px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes shine{from{background-position:120% 0}to{background-position:-30% 0}}
+.theme-btn{display:inline-flex;align-items:center;gap:6px}
+.theme-btn svg{width:18px;height:18px}
+.report{background:#fff;color:#111;border-radius:10px;padding:16px;font-size:13px}
+.report h2{color:#111}.report table{font-size:12px}.report th,.report td{border-color:#ddd;color:#111}
+.report .mu{color:#555}.report .kv{display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:5px 0}
+@media print{body.print-report #app>*:not(.scrim){display:none!important}body.print-report .scrim{position:static;background:none;padding:0;display:block}
+  body.print-report .sheet{max-height:none;overflow:visible;max-width:none;padding:0}body.print-report .noprint{display:none!important}}
 .receipt .qr{max-width:120px;margin:0 auto}
 .poster{text-align:center}
-@media print{body *{visibility:hidden}.printable,.printable *{visibility:visible}.printable{position:fixed;left:0;top:0;border:0;background:#fff;color:#000}
+@media print{body:not(.print-report) *{visibility:hidden}.printable,.printable *{visibility:visible}.printable{position:fixed;left:0;top:0;border:0;background:#fff;color:#000}
   .receipt.printable{width:58mm;padding:2mm}.poster.printable{width:100%;padding:12mm}}
 </style>
 
@@ -203,6 +226,21 @@ const hm = iso => iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-dig
 const dfr = (d, o) => new Date(String(d).length <= 10 ? d + "T12:00:00" : d).toLocaleDateString("fr-FR", o || { weekday: "short", day: "numeric", month: "short" });
 const ago = iso => { const m = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000)); return m < 1 ? "à l’instant" : m < 60 ? m + " min" : Math.floor(m / 60) + " h " + (m % 60) + " min"; };
 const APP_URL = "https://gescobar-cm.netlify.app/";
+const LOGO = "data:image/png;base64,__LOGO_B64__";
+document.documentElement.style.setProperty("--logo-mask", `url("${LOGO}")`);
+const THEMES = { system: "Thème automatique", light: "Thème clair", dark: "Thème sombre" };
+function applyTheme(t) { const r = document.documentElement; if (t === "system") r.removeAttribute("data-theme"); else r.setAttribute("data-theme", t);
+  const dark = t === "dark" || (t === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", dark ? "#0c1411" : "#0f5c3c"); }
+let THEME = LS.get("gesco-theme", "system"); applyTheme(THEME);
+const ICON = { system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>',
+  light: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  dark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>' };
+const themeBtn = () => `<button class="btn ghost sm theme-btn" data-a="theme" aria-label="${THEMES[THEME]}, toucher pour changer" title="${THEMES[THEME]}">${ICON[THEME]}<span>${{ system: "Auto", light: "Clair", dark: "Sombre" }[THEME]}</span></button>`;
+const ANIM = { login: 0, app: 0 };
+const bismo = mini => { const k = mini ? "app" : "login", now = Date.now(); if (!ANIM[k]) ANIM[k] = now; const anim = now - ANIM[k] < 2500;
+  if (!anim) ANIM[k] = -1; return bismoHtml(mini, anim && ANIM[k] > 0 ? now - ANIM[k] : null); };
+const bismoHtml = (mini, el) => `<div class="bismo ${mini ? "mini" : ""} ${el != null ? "anim" : ""}" ${el != null ? `style="--el:${el}ms"` : ""}>${mini ? "<small>Un produit de</small>" : ""}<div class="lg"><img src="${LOGO}" alt="BISMO Agency"></div>${mini ? "" : "<small>Un produit de BISMO Agency</small>"}</div>`;
 const qrSvg = (text, cell) => { try { const q = qrcode(0, "M"); q.addData(text); q.make(); return q.createSvgTag({ cellSize: cell || 4, margin: 2, scalable: true }); } catch (e) { return ""; } };
 const joinUrl = () => APP_URL + "?bar=" + encodeURIComponent(S.bar.code);
 let seenSent = null;
@@ -220,7 +258,7 @@ const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentC
 
 /* ═══════════════ Moteur DÉMO (données locales, mêmes règles que le serveur) ═══════════════ */
 function DemoBackend() {
-  const KEY = "gesco-demo-v5";
+  const KEY = "gesco-demo-v6";
   let db = LS.get(KEY), sess = LS.get(KEY + "-sess");
   const listeners = [];
   const save = () => LS.set(KEY, db);
@@ -343,9 +381,10 @@ function DemoBackend() {
       db.holdings.filter(h => h.waitress_id === p_waitress && h.qty < 0).forEach(h => { const q = Math.min(-h.qty, prod(h.product_id).stock); if (q > 0) { R.gb_dotation({ p_waitress, p_product: h.product_id, p_qty: q }); n += q; } });
       return n;
     },
-    gb_appro({ p_product, p_qty }) {
+    gb_appro({ p_product, p_qty, p_unit_cost }) {
       const c = ctx(); caisse(c); p_qty = Math.trunc(+p_qty || 0); if (p_qty <= 0) E("La quantité doit être positive.");
-      const p = prod(p_product); p.stock += p_qty; move(c, p.id, null, p_qty, "appro"); log(c, "approvisionnement", { produit: p.name, quantite: p_qty });
+      const p = prod(p_product); if (p_unit_cost != null) p.cost = +p_unit_cost; p.stock += p_qty; move(c, p.id, null, p_qty, "appro"); db.moves[0].unit_cost = p.cost || 0;
+      log(c, "approvisionnement", { produit: p.name, quantite: p_qty, montant: p_qty * (p.cost || 0) });
     },
     gb_product_save({ p_id, p_name, p_category, p_price, p_stock, p_active, p_unit, p_parent, p_doses }) {
       const c = ctx(); caisse(c); p_name = (p_name || "").trim(); if (!p_name) E("Donnez un nom au produit.");
@@ -364,6 +403,37 @@ function DemoBackend() {
       Object.assign(p, { name: p_name, category: (p_category || "").trim() || p.category, price: +p_price, active: p_active ?? p.active, unit: p_unit, parent_id: p_parent || null, doses: p_parent ? +p_doses : null });
       if (p_stock != null && p_stock !== "" && +p_stock !== p.stock) { move(c, p.id, null, +p_stock - p.stock, "ajustement"); p.stock = +p_stock; }
       log(c, "produit_modifie", { produit: p_name, prix_avant: before.price, prix: +p_price, stock_avant: before.stock, stock: p.stock }); return p.id;
+    },
+    gb_product_set_cost({ p_product, p_cost }) { const c = ctx(); caisse(c); if (p_cost == null || p_cost < 0) E("Indiquez un prix d’achat valide."); prod(p_product).cost = +p_cost; },
+    gb_expense_add({ p_day, p_category, p_label, p_amount, p_method }) {
+      const c = ctx(); caisse(c); if (!(+p_amount > 0)) E("Indiquez un montant."); if (!(p_category || "").trim()) E("Choisissez une catégorie de dépense.");
+      const e = { id: uuid(), day: p_day || bizDate(), category: p_category.trim(), label: (p_label || "").trim() || null, amount: +p_amount, method: p_method || "cash" };
+      (db.expenses = db.expenses || []).push(e); log(c, "depense_ajoutee", { categorie: e.category, montant: e.amount }); return e.id;
+    },
+    gb_expense_delete({ p_id }) { const c = ctx(); caisse(c); const e = (db.expenses || []).find(x => x.id === p_id); if (!e) return;
+      db.expenses = db.expenses.filter(x => x !== e); log(c, "depense_supprimee", { categorie: e.category, montant: e.amount }); },
+    gb_accounting({ p_month }) {
+      const c = ctx(); caisse(c); const m = p_month || bizDate().slice(0, 7), y = m.slice(0, 4), dayOf = id => (db.days.find(d => d.id === id) || {}).business_date || bizDate();
+      const sold = db.tickets.filter(t => ["cashed", "paid"].includes(t.status) && dayOf(t.day_id).startsWith(m)), P = id => db.products.find(p => p.id === id) || {};
+      const hist = db.history.filter(h => h.date.startsWith(m)), sum = (a, f) => a.reduce((x, v) => x + (f(v) || 0), 0);
+      const D = {}; const addD = (day, tot, cash, momo, n) => { const x = D[day] = D[day] || { day, total: 0, tickets: 0, cash: 0, momo: 0 }; x.total += tot; x.cash += cash; x.momo += momo; x.tickets += n; };
+      hist.forEach(h => addD(h.date, h.total, Math.round(h.total * .8), h.total - Math.round(h.total * .8), h.tickets));
+      sold.forEach(t => addD(dayOf(t.day_id), t.total, t.pay_method === "cash" ? t.total : 0, t.pay_method === "momo" ? t.total : 0, 1));
+      const items = sold.flatMap(t => t.items.map(i => ({ ...i, p: P(i.product_id) })));
+      const cat = {}, pr = {}; items.forEach(i => { const a = cat[i.p.category] = cat[i.p.category] || { category: i.p.category, qty: 0, total: 0, cost: 0 }; a.qty += i.qty; a.total += i.qty * i.unit_price; a.cost += i.qty * (i.p.cost || 0);
+        const b = pr[i.p.name] = pr[i.p.name] || { name: i.p.name, qty: 0, total: 0, cost: 0 }; b.qty += i.qty; b.total += i.qty * i.unit_price; b.cost += i.qty * (i.p.cost || 0); });
+      const histTotal = sum(hist, h => h.total); if (histTotal) cat["Historique (exemple)"] = { category: "Historique (exemple)", qty: sum(hist, h => h.tickets), total: histTotal, cost: Math.round(histTotal * .62) };
+      const inM = iso => new Date(iso).toLocaleDateString("sv-SE").startsWith(m);
+      const appro = db.moves.filter(x => x.kind === "appro" && inM(x.created_at)).map(x => ({ day: new Date(x.created_at).toLocaleDateString("sv-SE"), produit: P(x.product_id).name, qty: x.qty, unit_cost: x.unit_cost ?? (P(x.product_id).cost || 0), total: x.qty * (x.unit_cost ?? (P(x.product_id).cost || 0)) }));
+      const exs = (db.expenses || []).filter(e => e.day.startsWith(m)), ec = {}; exs.forEach(e => { ec[e.category] = (ec[e.category] || 0) + e.amount; });
+      const caYear = sum(db.history.filter(h => h.date.startsWith(y) && h.date.slice(0, 7) <= m), h => h.total) + sum(db.tickets.filter(t => ["cashed", "paid"].includes(t.status) && dayOf(t.day_id).startsWith(y) && dayOf(t.day_id).slice(0, 7) <= m), t => t.total);
+      return { month: m, bar: { name: db.bar.name, city: db.bar.city, legal_name: db.bar.legal_name, niu: db.bar.niu }, demo_history: !!hist.length,
+        ca: sum(Object.values(D), d => d.total), ca_cash: sum(Object.values(D), d => d.cash), ca_momo: sum(Object.values(D), d => d.momo), tickets: sum(Object.values(D), d => d.tickets), jours: Object.keys(D).length,
+        cogs: sum(items, i => i.qty * (i.p.cost || 0)) + Math.round(histTotal * .62), sans_prix_achat: [...new Set(items.filter(i => !i.p.cost).map(i => i.p.name))],
+        by_day: Object.values(D).sort((a, b) => a.day < b.day ? -1 : 1), by_category: Object.values(cat).sort((a, b) => b.total - a.total), by_product: Object.values(pr).sort((a, b) => b.total - a.total),
+        achats: sum(appro, a => a.total), achats_detail: appro, pertes: sum(db.moves.filter(x => x.kind === "inventaire" && x.qty < 0 && inM(x.created_at)), x => -x.qty * (P(x.product_id).cost || 0)),
+        charges: sum(exs, e => e.amount), charges_by_category: Object.entries(ec).map(([category, total]) => ({ category, total })).sort((a, b) => b.total - a.total),
+        depenses: exs.sort((a, b) => a.day < b.day ? -1 : 1), bons_emis: sum(db.vouchers.filter(v => inM(v.issued_at)), v => v.amount), bons_en_cours: sum(db.vouchers.filter(v => v.status === "active"), v => v.amount), ca_annee: caYear };
     },
     gb_inventory({ p_counts }) {
       const c = ctx(); caisse(c); const details = []; let loss = 0;
@@ -455,6 +525,11 @@ function DemoBackend() {
     const link = (g, b, n) => { const G = db.products.find(p => p.name === g); G.parent_id = db.products.find(p => p.name === b).id; G.doses = n; };
     link("Vin rouge (verre)", "Vin rouge Bordeaux", 6); link("Whisky J&B (verre)", "Whisky J&B 75cl", 15);
     db.products.forEach(p => { p.low_at = p.parent_id ? 3 : /Vins|Spiritueux/.test(p.category) ? 2 : null; });
+    const COST = { "Castel": 450, "33 Export": 450, "Mützig": 450, "Beaufort": 450, "Guinness": 750, "Orijin": 450, "Coca": 300, "Top": 300, "Eau": 400, "Vin rouge Bordeaux": 3500, "Vin rouge (verre)": 600, "Vin blanc": 3500, "Whisky J&B 75cl": 9000, "Whisky J&B (verre)": 600, "Jack": 16000 };
+    db.products.forEach(p => { const k = Object.keys(COST).find(x => p.name.startsWith(x)); p.cost = k ? COST[k] : 0; });
+    db.expenses = [];
+    const ex = (dAgo, category, label, amount, method) => db.expenses.push({ id: uuid(), day: new Date(Date.now() - 6 * 3600e3 - dAgo * 86400e3).toLocaleDateString("sv-SE"), category, label, amount, method });
+    ex(14, "Loyer", "Loyer du local", 80000, "cash"); ex(10, "Électricité et eau", "Facture ENEO", 32000, "momo"); ex(5, "Salaires", "Avance serveuses", 45000, "cash"); ex(2, "Transport", "Livraison casiers", 6000, "cash");
     // Historique d'exemple : 75 jours de ventes passées pour l'onglet Revenus
     let s = 7; const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
     for (let i = 1; i <= 75; i++) { const d = new Date(Date.now() - 6 * 3600e3 - i * 86400e3).toLocaleDateString("sv-SE");
@@ -668,7 +743,7 @@ async function enterApp() {
 }
 async function logout(silent) {
   try { await B.logout(); } catch (e) {}
-  V.screen = "login"; S = null; LS.del(SNAP); V.open = {}; V.f = {}; V.modal = null; V.rev = null; V.vres = null; V.outbox = []; saveOutbox();
+  V.screen = "login"; S = null; LS.del(SNAP); ANIM.login = 0; ANIM.app = 0; V.open = {}; V.f = {}; V.modal = null; V.rev = null; V.vres = null; V.outbox = []; saveOutbox();
   V.pin = ""; V.pick = null; V.list = null; V.ltab = "staff"; if (!silent) toast("Vous êtes déconnecté.");
   render();
   if (V.code && V.ltab === "staff") A.loadStaff(); // liste du personnel toujours à jour
@@ -684,6 +759,7 @@ async function run(fn) {
 const ask = (title, text, ok, a, d, danger) => { V.modal = { type: "confirm", title, text, ok, a, d, danger }; render(); };
 const num = k => { const v = String(V.f[k] ?? "").replace(/\s/g, ""); return v === "" ? null : Math.trunc(+v); };
 
+A.theme = () => { THEME = { system: "light", light: "dark", dark: "system" }[THEME]; LS.set("gesco-theme", THEME); applyTheme(THEME); toast(THEMES[THEME]); };
 A.ltab = d => { V.ltab = d.v; render(); };
 A.loadStaff = () => run(async () => { const code = (V.f.code ?? V.code ?? "").trim().toUpperCase(); if (!code) throw bizErr("Saisissez le code du bar.");
   V.list = await B.staffList(code); V.code = code; LS.set("gesco-code", code); V.pick = null; V.pin = ""; });
@@ -707,7 +783,7 @@ A.logout = () => ask("Se déconnecter ?", V.outbox.length ? `${V.outbox.length} 
 A.logoutGo = () => logout();
 A.close = () => { V.modal = null; render(); };
 A.okModal = () => { const m = V.modal; V.modal = null; render(); if (m && A[m.a]) A[m.a](m.d || {}); };
-A.tab = d => { V.tab = d.v; LS.set("gesco-tab", d.v); if (d.v === "rev") A.loadRev(); render(); };
+A.tab = d => { V.tab = d.v; LS.set("gesco-tab", d.v); if (d.v === "rev") A.loadRev(); if (d.v === "acc") A.loadAcc(); render(); };
 A.wf = d => { V.wf = d.v; render(); };
 A.tog = d => { V.open[d.id] = !V.open[d.id]; render(); };
 A.togSales = d => { V.salesOpen[d.id] = !V.salesOpen[d.id]; render(); };
@@ -746,14 +822,16 @@ A.dot = d => run(async () => { const w = V.f.dw || (S.staff.find(s => s.role ===
   await call("gb_dotation", { p_waitress: w, p_product: p, p_qty: q }); V.f.dq = ""; toast(q > 0 ? `${q} × ${prodName(p)} remis à ${staffName(w)}.` : `${-q} × ${prodName(p)} repris à ${staffName(w)}.`); await refresh(); });
 A.fill = d => run(async () => { const n = await call("gb_fill_missing", { p_waitress: d.w }); toast(n ? `${n} bouteille(s) remise(s) à ${staffName(d.w)}.` : "Stock insuffisant pour compléter.", n ? "" : "err"); await refresh(); });
 A.appro = () => run(async () => { const q = num("aq"), p = V.f.ap || (S.products[0] || {}).id; if (!q || q <= 0) throw bizErr("Indiquez une quantité positive.");
-  await call("gb_appro", { p_product: p, p_qty: q }); V.f.aq = ""; toast(`+${q} × ${prodName(p)} ajoutés au stock.`); await refresh(); });
+  const uc = num("auc"); await call("gb_appro", { p_product: p, p_qty: q, p_unit_cost: uc });
+  V.f.aq = ""; V.f.auc = ""; toast(`+${q} × ${prodName(p)} ajoutés au stock${uc ? ` (achat ${F(q * uc)})` : ""}.`); await refresh(); });
 const PFIELDS = p => ({ p_unit: p.unit || "bouteille", p_parent: p.parent_id || null, p_doses: p.doses || null });
 A.saveP = d => run(async () => { const p = S.products.find(x => x.id === d.p), k = s => "p_" + s + "_" + d.p;
   const unit = V.f[k("u")] ?? (p.unit || "bouteille"), parent = unit === "verre" ? (V.f[k("par")] ?? p.parent_id ?? "") : "";
   await call("gb_product_save", { p_id: p.id, p_name: V.f[k("n")] ?? p.name, p_category: V.f[k("c")] ?? p.category, p_price: num(k("pr")) ?? p.price, p_stock: num(k("st")) ?? p.stock, p_active: p.active,
     p_unit: unit, p_parent: parent || null, p_doses: parent ? (num(k("dz")) ?? p.doses) : null });
+  if (k("co") in V.f) { const co = num(k("co")); if (co != null && co !== (p.cost || 0)) await call("gb_product_set_cost", { p_product: p.id, p_cost: co }); }
   if (k("lo") in V.f) { const lo = num(k("lo")); if (lo !== (p.low_at ?? null)) await call("gb_product_set_alert", { p_product: p.id, p_low: lo }); }
-  ["n", "c", "pr", "st", "u", "par", "dz", "lo"].forEach(s => delete V.f[k(s)]); V.open["p_" + d.p] = false; toast("Produit enregistré."); await refresh(); });
+  ["n", "c", "pr", "st", "u", "par", "dz", "lo", "co"].forEach(s => delete V.f[k(s)]); V.open["p_" + d.p] = false; toast("Produit enregistré."); await refresh(); });
 A.togP = d => run(async () => { const p = S.products.find(x => x.id === d.p);
   await call("gb_product_save", { p_id: p.id, p_name: p.name, p_category: p.category, p_price: p.price, p_stock: null, p_active: !p.active, ...PFIELDS(p) }); toast(p.active ? "Produit masqué de la carte." : "Produit remis sur la carte."); await refresh(); });
 A.addP = () => run(async () => { const unit = V.f.np_u || "bouteille", parent = unit === "verre" ? (V.f.np_par || "") : "";
@@ -773,6 +851,18 @@ A.saveId = () => run(async () => { let path = null; const f = window.__idFile;
   await call("gb_bar_identity", { p_legal_name: V.f.id_legal ?? (S.bar.legal_name || ""), p_niu: V.f.id_niu ?? (S.bar.niu || ""), p_doc_path: path });
   ["id_legal", "id_niu"].forEach(k => delete V.f[k]); toast(path ? "Identité et pièce enregistrées." : "Identité enregistrée."); await refresh(); });
 A.poster = () => { V.modal = { type: "poster" }; render(); };
+A.loadAcc = () => run(async () => { const m = V.accMonth || curMonth(); V.acc = await call("gb_accounting", { p_month: m }); });
+A.addExp = () => run(async () => { const amt = num("ex_amt"); if (!amt || amt <= 0) throw bizErr("Indiquez le montant de la dépense.");
+  await call("gb_expense_add", { p_day: V.f.ex_day || null, p_category: V.f.ex_cat || EXP_CATS[0], p_label: V.f.ex_lbl || "", p_amount: amt, p_method: V.f.ex_m || "cash" });
+  ["ex_amt", "ex_lbl"].forEach(k => delete V.f[k]); toast("Dépense enregistrée."); V.acc = await call("gb_accounting", { p_month: V.accMonth || curMonth() }); });
+A.delExp = d => ask("Supprimer cette dépense ?", "Elle sera retirée de la comptabilité du mois. L’action reste visible dans le journal.", "Supprimer", "delExpGo", d, true);
+A.delExpGo = d => run(async () => { await call("gb_expense_delete", { p_id: d.id }); V.acc = await call("gb_accounting", { p_month: V.accMonth || curMonth() }); toast("Dépense supprimée."); });
+A.accPdf = () => { if (!V.acc) return; V.modal = { type: "report", r: V.acc }; render(); };
+A.printReport = () => { document.body.classList.add("print-report"); const done = () => { document.body.classList.remove("print-report"); removeEventListener("afterprint", done); };
+  addEventListener("afterprint", done); try { window.print(); } catch (e) {} setTimeout(done, 60000); };
+A.accCsv = () => { if (!V.acc) return; if (CFG.mode !== "live") return toast("Le téléchargement est disponible sur l’application en ligne.", "err");
+  const blob = new Blob([accCsv(V.acc)], { type: "text/csv;charset=utf-8" }), a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `gescobar-compta-${V.acc.month}.csv`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); toast("Fichier téléchargé : ouvrez-le avec Excel ou Google Sheets."); };
 A.togPe = d => { V.open["p_" + d.p] = !V.open["p_" + d.p]; render(); };
 A.cat = d => { V.f["cat_" + d.t] = d.v; render(); };
 A.newC = () => { const c = (V.f.cclient || "").trim() || "Comptoir"; const id = uuid(); V.f.cclient = ""; V.open[id] = true; call("gb_ticket_create", { p_id: id, p_client: c }); };
@@ -840,7 +930,7 @@ function vLogin() {
       <button class="btn amber wide" data-a="register" ${V.busy ? "disabled" : ""}>${V.busy ? '<span class="spin"></span>' : "Créer mon bar"}</button>
       <p class="mu" style="margin:0">La carte est préremplie avec des boissons courantes. Ajustez les prix ensuite dans l’onglet Stock.</p></div>`;
   }
-  return `<div class="login"><div class="hero"><div class="brandmark">GesCo<span> Bar</span></div><p>Chaque boisson a son ticket. Chaque ticket a sa serveuse.</p></div>
+  return `<div class="login"><div class="row" style="justify-content:flex-end">${themeBtn()}</div>${bismo(false)}<div class="hero"><div class="brandmark">GesCo<span> Bar</span></div><p>Chaque boisson a son ticket. Chaque ticket a sa serveuse.</p></div>
     ${demo ? `<div class="demo"><b>Mode démo</b> : données d’exemple enregistrées dans ce navigateur. Code du bar <b>DEMO</b>. PIN : Aline <b>1111</b>, Brigitte <b>2222</b>, Carine <b>3333</b>, Mireille (caisse) <b>0000</b>.</div>` : ""}
     ${tabs}${body}${installBox()}</div>`;
 }
@@ -857,7 +947,7 @@ function header(sub) {
   return `<div class="top"><div class="who"><div class="avatar">${esc(S.me.name[0])}</div><div><b>${esc(S.me.name)}</b><span class="mu">${sub}</span></div></div>
     <div class="row"><span class="net ${V.online ? "" : "off"}"><i></i>${V.online ? (pend ? `Envoi de ${pend} action(s)…` : "En ligne") : `Hors ligne${pend ? ` · ${pend} en attente` : ""}`}</span>
     ${CFG.mode === "demo" && isCaisse() ? `<button class="btn ghost sm" data-a="resetDemo">Réinitialiser la démo</button>` : ""}
-    <button class="btn ghost sm" data-a="logout">Déconnexion</button></div></div>`;
+    ${themeBtn()}<button class="btn ghost sm" data-a="logout">Déconnexion</button></div></div>`;
 }
 function kpi(l, v, cls, extra) { return `<div class="kpi ${cls || ""}"><div class="l">${l}</div><div class="v">${v}</div>${extra ? `<div class="mu">${extra}</div>` : ""}</div>`; }
 function statusPill(t) {
@@ -953,7 +1043,7 @@ function vCaisse() {
   const cancels = act.filter(t => t.cancel_requested), momo = toRecv.filter(t => t.pay_method === "momo");
   const vAct = S.vouchers.filter(v => v.status === "active"), low = S.products.filter(isLow);
   const alerts = cancels.length + momo.length + pend.length;
-  const tabs = [["direct", "En direct", alerts], ["sales", "Ventes"], ["rev", "Revenus"], ["vouch", "Bons"], ["stock", "Stock", low.length], ["team", "Équipe"], ["day", "Journée"], ["log", "Journal"]];
+  const tabs = [["direct", "En direct", alerts], ["sales", "Ventes"], ["rev", "Revenus"], ["vouch", "Bons"], ["stock", "Stock", low.length], ["acc", "Compta"], ["team", "Équipe"], ["day", "Journée"], ["log", "Journal"]];
   let body = "";
   if (V.tab === "direct") body = cDirect(act, toRecv, pend, cancels, momo);
   else if (V.tab === "sales") body = cSales(DT);
@@ -962,6 +1052,7 @@ function vCaisse() {
   else if (V.tab === "stock") body = cStock(low);
   else if (V.tab === "team") body = cTeam();
   else if (V.tab === "day") body = cDay(DT);
+  else if (V.tab === "acc") body = cAcc();
   else body = cLog();
   return header(`Caisse · ${esc(S.bar.name)} · code <b class="num">${esc(S.bar.code)}</b>`) +
     `<div class="kpis">${kpi("Ventes du jour", F(sum(DT.filter(sold), t => t.total)), "", `${DT.filter(sold).length} ticket(s)`)}
@@ -1060,13 +1151,14 @@ function cStock(low) {
   const row = p => { const inh = sum(S.holdings.filter(h => h.product_id === p.id), h => Math.max(0, h.qty)), ed = !!V.open["p_" + p.id], par = p.parent_id && S.products.find(x => x.id === p.parent_id), u = unitOf(p);
     const unit = V.f[k("u", p.id)] ?? (p.unit || "bouteille");
     return `<div class="stack" style="padding:12px 0;${p.active ? "" : "opacity:.6"}">
-      <div class="between"><div style="min-width:0"><b>${esc(p.name)}</b><div class="mu num">${F(p.price)}${u ? " / " + esc(u) : ""} · stock <b class="${isLow(p) ? "warn-t" : ""}">${p.stock}</b>${inh ? ` · ${inh} chez les serveuses` : ""}${p.active ? "" : " · masqué"}</div>
+      <div class="between"><div style="min-width:0"><b>${esc(p.name)}</b><div class="mu num">${F(p.price)}${u ? " / " + esc(u) : ""}${p.cost ? ` · achat ${F(p.cost)}` : ` · <span class="warn-t">prix d’achat à saisir</span>`} · stock <b class="${isLow(p) ? "warn-t" : ""}">${p.stock}</b>${inh ? ` · ${inh} chez les serveuses` : ""}${p.active ? "" : " · masqué"}</div>
       ${par ? `<div class="mu">1 bouteille de ${esc(par.name)} = ${p.doses} verres (reste ${par.stock} bouteille(s))</div>` : ""}</div>
       <button class="btn ghost sm" data-a="togPe" data-p="${p.id}">${ed ? "Fermer" : "Modifier"}</button></div>
       ${par ? `<div class="row"><input style="flex:0 1 110px" id="ob_${p.id}" type="number" inputmode="numeric" data-k="ob_${p.id}" value="${val("ob_" + p.id)}" placeholder="1" aria-label="Nombre de bouteilles à ouvrir"><button class="btn soft sm grow" data-a="openB" data-p="${p.id}">Ouvrir une bouteille (+${p.doses} verres)</button></div>` : ""}
       ${ed ? `<div class="sub stack"><div class="row"><label class="f grow" for="${k("n", p.id)}">Nom<input id="${k("n", p.id)}" data-k="${k("n", p.id)}" value="${fv("n", p, p.name)}"></label>
         <label class="f" style="flex:1 1 140px" for="${k("c", p.id)}">Catégorie<input id="${k("c", p.id)}" data-k="${k("c", p.id)}" value="${fv("c", p, p.category)}" list="gb-cats"></label></div>
-        <div class="row"><label class="f grow" for="${k("pr", p.id)}">Prix (FCFA)<input id="${k("pr", p.id)}" type="number" inputmode="numeric" data-k="${k("pr", p.id)}" value="${fv("pr", p, p.price)}"></label>
+        <div class="row"><label class="f grow" for="${k("co", p.id)}">Prix d’achat<input id="${k("co", p.id)}" type="number" inputmode="numeric" data-k="${k("co", p.id)}" value="${fv("co", p, p.cost || 0)}"></label>
+        <label class="f grow" for="${k("pr", p.id)}">Prix de vente (FCFA)<input id="${k("pr", p.id)}" type="number" inputmode="numeric" data-k="${k("pr", p.id)}" value="${fv("pr", p, p.price)}"></label>
         <label class="f grow" for="${k("u", p.id)}">Vendu à la${sel(k("u", p.id), UNITS.map(x => [x, x]), unit, "Unité de vente")}</label>
         <label class="f grow" for="${k("st", p.id)}">Stock général<input id="${k("st", p.id)}" type="number" inputmode="numeric" data-k="${k("st", p.id)}" value="${fv("st", p, p.stock)}"></label>
         <label class="f grow" for="${k("lo", p.id)}">Alerte stock bas à<input id="${k("lo", p.id)}" type="number" inputmode="numeric" data-k="${k("lo", p.id)}" value="${fv("lo", p, p.low_at ?? "")}" placeholder="${S.bar.low_stock} (réglage du bar)"></label></div>
@@ -1081,7 +1173,9 @@ function cStock(low) {
         <input style="width:110px" id="inv_${p.id}" type="number" inputmode="numeric" min="0" data-k="inv_${p.id}" value="${val("inv_" + p.id)}" placeholder="${p.stock}" aria-label="Quantité comptée ${esc(p.name)}"></div>`).join("")}</div>
         <button class="btn amber" data-a="invGo">Valider l’inventaire</button>` : ""}</div>
     <div class="card stack"><h3>Approvisionnement (livraison reçue)</h3><p class="mu" style="margin:0">Quand le fournisseur livre, ajoutez les bouteilles au stock général. Pour remplir le frigo d’une serveuse, utilisez « Dotation » dans En direct.</p><div class="row"><select class="grow" id="ap" data-k="ap" aria-label="Produit">${S.products.filter(p => !p.parent_id).map(p => `<option value="${p.id}" ${V.f.ap === p.id ? "selected" : ""}>${esc(p.name)} (stock ${p.stock})</option>`).join("")}</select>
-      <input class="grow" id="aq" type="number" inputmode="numeric" data-k="aq" value="${val("aq")}" placeholder="Quantité reçue"><button class="btn" data-a="appro">Ajouter au stock</button></div></div>
+      <input class="grow" id="aq" type="number" inputmode="numeric" data-k="aq" value="${val("aq")}" placeholder="Quantité reçue">
+      <input class="grow" id="auc" type="number" inputmode="numeric" data-k="auc" value="${val("auc")}" placeholder="Prix d’achat unitaire (${Fs((S.products.find(p => p.id === (V.f.ap || (S.products.find(x => !x.parent_id) || {}).id)) || {}).cost || 0)} FCFA)" aria-label="Prix d’achat unitaire">
+      <button class="btn" data-a="appro">Ajouter au stock</button></div><p class="mu" style="margin:0">Le prix d’achat sert à calculer automatiquement votre comptabilité (onglet Compta).</p></div>
     <div class="card stack"><h3>Ajouter un produit à la carte</h3><p class="mu" style="margin:0">Bières, vins, whisky, sucreries, cuisine : chaque bar crée sa propre carte. Pour vendre au verre, créez d’abord la bouteille, puis le verre rattaché.</p>
       <div class="row"><label class="f grow" for="np_n">Nom<input id="np_n" data-k="np_n" value="${val("np_n")}" placeholder="Ex. Vin rouge Bordeaux, Whisky Chivas 12 ans"></label>
       <label class="f" style="flex:1 1 150px" for="np_c">Catégorie<input id="np_c" data-k="np_c" value="${val("np_c")}" list="gb-cats" placeholder="Bières"></label></div>
@@ -1139,9 +1233,9 @@ function cDay(DT) {
 const ACT = { ticket_supprime: "Ticket supprimé", ticket_modifie: "Ticket modifié après envoi", annulation_demandee: "Annulation demandée", annulation_refusee: "Annulation refusée", ticket_rouvert: "Ticket rouvert",
   versement: "Versement reçu", momo_confirme: "Mobile Money confirmé", monnaie_remise: "Monnaie remise", bon_emis: "Bon émis", bon_verifie: "Bon vérifié", bon_utilise: "Bon utilisé",
   approvisionnement: "Approvisionnement", produit_ajoute: "Boisson ajoutée", produit_modifie: "Boisson modifiée", equipe_modifiee: "Équipe modifiée", pin_change: "PIN modifié",
-  reglages_modifies: "Réglages modifiés", journee_cloturee: "Journée clôturée", bar_cree: "Bar créé", membre_ajoute: "Membre ajouté", pin_bloque: "PIN bloqué après 5 essais", bouteille_ouverte: "Bouteille ouverte au verre", inventaire: "Inventaire du stock", identite_bar: "Identité légale mise à jour" };
+  reglages_modifies: "Réglages modifiés", journee_cloturee: "Journée clôturée", bar_cree: "Bar créé", membre_ajoute: "Membre ajouté", pin_bloque: "PIN bloqué après 5 essais", bouteille_ouverte: "Bouteille ouverte au verre", depense_ajoutee: "Dépense ajoutée", depense_supprimee: "Dépense supprimée", inventaire: "Inventaire du stock", identite_bar: "Identité légale mise à jour" };
 const KEYS = { ticket: "N°", client: "client", total: "total", produit: "boisson", variation: "variation", serveuse: "serveuse", attendu: "attendu", recu: "reçu", ecart: "écart", tickets: "tickets",
-  montant: "montant", bon: "bon", code: "code", trouve: "trouvé", quantite: "quantité", prix: "prix", prix_avant: "prix avant", stock: "stock", stock_avant: "stock avant", membre: "membre", verres: "verres", unite: "unité", ecarts: "écarts", manquant_valeur: "manquant", raison_sociale: "raison sociale", niu: "NIU", piece: "pièce transmise",
+  montant: "montant", bon: "bon", code: "code", trouve: "trouvé", quantite: "quantité", prix: "prix", prix_avant: "prix avant", stock: "stock", stock_avant: "stock avant", membre: "membre", categorie: "catégorie", verres: "verres", unite: "unité", ecarts: "écarts", manquant_valeur: "manquant", raison_sociale: "raison sociale", niu: "NIU", piece: "pièce transmise",
   nom: "nom", role: "rôle", actif: "actif", date: "date", ventes: "ventes", compte: "compté", statut_avant: "statut avant", plafond_especes: "plafond", seuil_stock: "seuil" };
 const MONEY = new Set(["manquant_valeur", "total", "attendu", "recu", "ecart", "montant", "prix", "prix_avant", "ventes", "compte", "plafond_especes"]);
 function cLog() {
@@ -1150,6 +1244,82 @@ function cLog() {
   return `<div class="grid"><div class="card"><h3>Journal d’audit</h3><div class="list">${S.audit.map(a => `<div style="padding:9px 0"><div class="between"><b>${ACT[a.action] || esc(a.action)}</b><span class="mu">${new Date(a.created_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span></div>
       <div class="mu">${esc(staffName(a.staff_id))} · ${Object.entries(a.details || {}).filter(([, v]) => v != null && v !== "").map(([k, v]) => fmt(k, v)).join(" · ")}</div></div>`).join("") || '<div class="empty">Aucune action enregistrée.</div>'}</div></div>
     <div class="card"><h3>Mouvements de stock</h3><div class="list">${S.moves.map(m => `<div class="between" style="padding:9px 0"><span><b>${KIND[m.kind]}</b> · ${esc(prodName(m.product_id))}${m.waitress_id ? " · " + esc(staffName(m.waitress_id)) : ""}<br><span class="mu">${new Date(m.created_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span></span><b class="num ${m.qty < 0 ? "bad-t" : "ok-t"}">${m.qty > 0 ? "+" : ""}${m.qty}</b></div>`).join("") || '<div class="empty">Aucun mouvement.</div>'}</div></div></div>`;
+}
+
+
+/* ═══════════════ Comptabilité automatique du propriétaire ═══════════════ */
+const EXP_CATS = ["Achats de boissons (hors livraisons saisies)", "Loyer", "Électricité et eau", "Salaires", "Transport", "Impôts et taxes", "Entretien et réparations", "Téléphone et internet", "Autres"];
+const monthName = m => new Date(m + "-15T12:00:00").toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+const curMonth = () => new Date(Date.now() - 6 * 3600e3).toLocaleDateString("sv-SE").slice(0, 7);
+function accFigures(r) {
+  const marge = r.ca - r.cogs, resultat = marge - r.charges - r.pertes, treso = r.ca - r.achats - r.charges;
+  const mi = +r.month.slice(5, 7), proj = mi ? Math.round(r.ca_annee / mi * 12) : 0;
+  return { marge, taux: r.ca ? Math.round(marge * 100 / r.ca) : 0, resultat, treso, proj };
+}
+function cAcc() {
+  const months = Array.from({ length: 12 }, (_, i) => { const d = new Date(Date.now() - 6 * 3600e3); d.setDate(1); d.setMonth(d.getMonth() - i); return d.toLocaleDateString("sv-SE").slice(0, 7); });
+  const sel = V.accMonth || curMonth(), r = V.acc;
+  const head = `<div class="card stack"><div class="row" style="justify-content:space-between"><h3>Comptabilité du mois</h3><select id="accm" data-k="accm" aria-label="Mois" style="width:auto;max-width:100%">${months.map(m => `<option value="${m}" ${m === sel ? "selected" : ""}>${monthName(m)}</option>`).join("")}</select></div>
+    <p class="mu" style="margin:0">Tout est calculé automatiquement à partir des ventes, des livraisons et des dépenses saisies. Vous n’avez rien à additionner.</p>
+    <div class="row"><button class="btn grow" style="white-space:normal" data-a="accPdf" ${r ? "" : "disabled"}>Télécharger le rapport (PDF)</button><button class="btn soft grow" style="white-space:normal" data-a="accCsv" ${r ? "" : "disabled"}>Fichier pour le comptable (Excel)</button></div></div>`;
+  if (!r || r.month !== sel) return `<div class="stack">${head}<div class="card empty"><span class="spin"></span> Calcul en cours…</div></div>`;
+  const x = accFigures(r), line = (l, v, cls, sub) => `<div class="between" style="padding:7px 0"><span>${l}${sub ? `<br><span class="mu">${sub}</span>` : ""}</span><b class="num ${cls || ""}">${v}</b></div>`;
+  const igs = r.ca_annee < 50000000 && x.proj < 50000000;
+  return `<div class="stack">${head}
+    ${r.demo_history ? `<div class="demo">Démo : ce mois inclut l’historique d’exemple (coût des boissons estimé à 62 % des ventes).</div>` : ""}
+    ${r.sans_prix_achat.length ? `<div class="note warn">Prix d’achat manquant pour : ${r.sans_prix_achat.map(esc).join(", ")}. Le coût des ventes est sous-estimé : saisissez-le dans l’onglet Stock (bouton Modifier).</div>` : ""}
+    <div class="kpis" style="margin:0">${kpi("Chiffre d’affaires", F(r.ca), "hl", `${r.tickets} ticket(s) · ${r.jours} jour(s)`)}${kpi("Marge sur les boissons", F(x.marge), "", `${x.taux} % des ventes`)}
+      ${kpi("Charges du mois", F(r.charges))}${kpi("Résultat estimé", F(x.resultat), x.resultat < 0 ? "alert" : "", x.resultat < 0 ? "Perte sur le mois" : "Bénéfice sur le mois")}</div>
+    <div class="grid"><div class="card"><h3>Compte de résultat simplifié</h3><div class="list">
+      ${line("Ventes encaissées", F(r.ca))}${line("− Coût des boissons vendues", F(r.cogs), "", "Prix d’achat × quantités vendues")}
+      ${line("= Marge brute", F(x.marge), "ok-t")}${line("− Charges (loyer, électricité, salaires…)", F(r.charges))}
+      ${line("− Pertes constatées à l’inventaire", F(r.pertes), r.pertes ? "bad-t" : "")}${line("= Résultat du mois", F(x.resultat), x.resultat < 0 ? "bad-t" : "ok-t")}</div></div>
+    <div class="card"><h3>Trésorerie du mois</h3><div class="list">
+      ${line("Encaissé en espèces", F(r.ca_cash))}${line("Encaissé en Mobile Money", F(r.ca_momo))}
+      ${line("− Livraisons payées (achats de boissons)", F(r.achats))}${line("− Dépenses payées", F(r.charges))}
+      ${line("= Argent gagné ou perdu sur le mois", F(x.treso), x.treso < 0 ? "bad-t" : "ok-t")}${line("Bons de reliquat encore dus aux clients", F(r.bons_en_cours), r.bons_en_cours ? "warn-t" : "")}</div></div></div>
+    <div class="card stack"><h3>Pour vos impôts</h3>
+      <div class="list">${line("Chiffre d’affaires depuis janvier", F(r.ca_annee))}${line("Projection sur l’année", F(x.proj), "", "Au rythme actuel")}</div>
+      <div class="note ${igs ? "info" : "warn"}">${igs ? "Avec un chiffre d’affaires annuel sous 50 millions FCFA, un bar relève en principe de l’<b>Impôt Général Synthétique (IGS)</b> : un montant forfaitaire selon la tranche de chiffre d’affaires, payable en une fois ou par trimestre (dans les 15 jours après chaque trimestre). Présentez ce rapport à votre centre des impôts."
+        : "Votre chiffre d’affaires annuel risque de dépasser 50 millions FCFA : l’entreprise passe alors au <b>régime du réel simplifié</b> l’année suivante. Faites-vous accompagner par un comptable ou un centre de gestion agréé."}</div>
+      <p class="mu" style="margin:0">Repères indicatifs (barème IGS 2025-2026). Vérifiez toujours auprès de votre centre des impôts (CDI/CIME) ou d’un comptable.</p></div>
+    <div class="card stack"><h3>Ajouter une dépense</h3>
+      <div class="row"><label class="f grow" for="ex_cat">Catégorie<select id="ex_cat" data-k="ex_cat">${EXP_CATS.map(c => `<option ${V.f.ex_cat === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
+      <label class="f grow" for="ex_amt">Montant (FCFA)<input id="ex_amt" type="number" inputmode="numeric" data-k="ex_amt" value="${val("ex_amt")}"></label></div>
+      <div class="row"><label class="f grow" for="ex_lbl">Détail (facultatif)<input id="ex_lbl" data-k="ex_lbl" value="${val("ex_lbl")}" placeholder="Ex. Facture ENEO d’octobre"></label>
+      <label class="f" style="flex:1 1 130px" for="ex_day">Date<input id="ex_day" type="date" data-k="ex_day" value="${esc(V.f.ex_day || new Date(Date.now() - 6 * 3600e3).toLocaleDateString("sv-SE"))}"></label>
+      <label class="f" style="flex:1 1 130px" for="ex_m">Payé par<select id="ex_m" data-k="ex_m">${[["cash", "Espèces"], ["momo", "Mobile Money"], ["banque", "Banque"]].map(([v, l]) => `<option value="${v}" ${(V.f.ex_m || "cash") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label></div>
+      <button class="btn" data-a="addExp">Enregistrer la dépense</button>
+      <div class="list">${r.depenses.map(e => `<div class="li"><div class="grow"><b>${esc(e.category)}</b> · <b class="num">${F(e.amount)}</b><div class="mu">${dfr(e.day)}${e.label ? " · " + esc(e.label) : ""} · ${{ cash: "espèces", momo: "Mobile Money", banque: "banque" }[e.method] || ""}</div></div><button class="btn bad sm" data-a="delExp" data-id="${e.id}">Supprimer</button></div>`).join("") || '<div class="empty">Aucune dépense ce mois-ci.</div>'}</div></div>
+    <div class="grid"><div class="card"><h3>Ventes par catégorie</h3><div class="scroll"><table><tr><th>Catégorie</th><th>Qté</th><th>Ventes</th><th>Marge</th></tr>${r.by_category.map(c => `<tr><td>${esc(c.category)}</td><td>${c.qty}</td><td>${F(c.total)}</td><td>${F(c.total - c.cost)}</td></tr>`).join("") || '<tr><td colspan="4">—</td></tr>'}</table></div></div>
+    <div class="card"><h3>Livraisons du mois</h3><div class="scroll"><table><tr><th>Date</th><th>Produit</th><th>Qté</th><th>Montant</th></tr>${r.achats_detail.map(a => `<tr><td>${dfr(a.day)}</td><td>${esc(a.produit)}</td><td>${a.qty}</td><td>${F(a.total)}</td></tr>`).join("") || '<tr><td colspan="4">Aucune livraison saisie</td></tr>'}</table></div></div></div>
+    <div class="card"><h3>Recettes jour par jour</h3><div class="scroll"><table><tr><th>Jour</th><th>Tickets</th><th>Espèces</th><th>MoMo</th><th>Total</th></tr>${r.by_day.map(d => `<tr><td>${dfr(d.day)}</td><td>${d.tickets}</td><td>${F(d.cash)}</td><td>${F(d.momo)}</td><td>${F(d.total)}</td></tr>`).join("") || '<tr><td colspan="5">Aucune vente ce mois-ci</td></tr>'}</table></div></div></div>`;
+}
+function reportHtml(r) {
+  const x = accFigures(r), kv = (l, v) => `<div class="kv"><span>${l}</span><b class="num">${v}</b></div>`;
+  return `<div class="report"><div class="between" style="align-items:flex-start"><div><h2>Rapport comptable · ${monthName(r.month)}</h2>
+      <div><b>${esc(r.bar.legal_name || r.bar.name)}</b>${r.bar.legal_name ? ` (${esc(r.bar.name)})` : ""}${r.bar.city ? " · " + esc(r.bar.city) : ""}</div>
+      <div class="mu">${r.bar.niu ? "NIU : " + esc(r.bar.niu) : "NIU : non renseigné"} · édité le ${new Date().toLocaleDateString("fr-FR")}</div></div>
+      <img src="${LOGO}" alt="BISMO Agency" style="width:110px"></div>
+    <h3 style="color:#333;margin-top:14px">Résultat</h3>${kv("Chiffre d’affaires (ventes encaissées)", F(r.ca))}${kv("Coût des boissons vendues", F(r.cogs))}${kv("Marge brute", F(x.marge) + ` (${x.taux} %)`)}
+      ${kv("Charges", F(r.charges))}${kv("Pertes d’inventaire", F(r.pertes))}${kv("Résultat du mois", F(x.resultat))}
+    <h3 style="color:#333;margin-top:14px">Trésorerie</h3>${kv("Espèces encaissées", F(r.ca_cash))}${kv("Mobile Money encaissé", F(r.ca_momo))}${kv("Livraisons payées", F(r.achats))}${kv("Dépenses payées", F(r.charges))}${kv("Solde du mois", F(x.treso))}${kv("Bons de reliquat encore dus", F(r.bons_en_cours))}
+    <h3 style="color:#333;margin-top:14px">Repères fiscaux</h3>${kv("Chiffre d’affaires depuis janvier", F(r.ca_annee))}${kv("Projection annuelle", F(x.proj))}
+      <p class="mu">Indicatif : sous 50 millions FCFA de chiffre d’affaires annuel, régime de l’Impôt Général Synthétique (IGS) ; au-delà, réel simplifié. À confirmer auprès du centre des impôts.</p>
+    <h3 style="color:#333;margin-top:14px">Charges par catégorie</h3><table><tr><th>Catégorie</th><th>Montant</th></tr>${r.charges_by_category.map(c => `<tr><td>${esc(c.category)}</td><td>${F(c.total)}</td></tr>`).join("") || '<tr><td colspan="2">Aucune</td></tr>'}</table>
+    <h3 style="color:#333;margin-top:14px">Recettes jour par jour</h3><table><tr><th>Jour</th><th>Tickets</th><th>Espèces</th><th>MoMo</th><th>Total</th></tr>${r.by_day.map(d => `<tr><td>${new Date(d.day + "T12:00:00").toLocaleDateString("fr-FR")}</td><td>${d.tickets}</td><td>${F(d.cash)}</td><td>${F(d.momo)}</td><td>${F(d.total)}</td></tr>`).join("") || '<tr><td colspan="5">Aucune vente</td></tr>'}
+      <tr><th>Total</th><th>${r.tickets}</th><th>${F(r.ca_cash)}</th><th>${F(r.ca_momo)}</th><th>${F(r.ca)}</th></tr></table>
+    <h3 style="color:#333;margin-top:14px">Dépenses</h3><table><tr><th>Date</th><th>Catégorie</th><th>Détail</th><th>Montant</th></tr>${r.depenses.map(e => `<tr><td>${new Date(e.day + "T12:00:00").toLocaleDateString("fr-FR")}</td><td>${esc(e.category)}</td><td>${esc(e.label || "")}</td><td>${F(e.amount)}</td></tr>`).join("") || '<tr><td colspan="4">Aucune</td></tr>'}</table>
+    <p class="mu" style="margin-top:14px">Rapport généré automatiquement par GesCo Bar, un produit de BISMO Agency. Document d’aide à la gestion : il ne remplace pas les états financiers certifiés.</p></div>`;
+}
+function accCsv(r) {
+  const rows = [["Date", "Type", "Catégorie", "Détail", "Mode de paiement", "Recette (FCFA)", "Dépense (FCFA)"]];
+  r.by_day.forEach(d => { if (d.cash) rows.push([d.day, "Recette", "Ventes", `${d.tickets} ticket(s)`, "Espèces", d.cash, ""]); if (d.momo) rows.push([d.day, "Recette", "Ventes", "", "Mobile Money", d.momo, ""]); });
+  r.achats_detail.forEach(a => rows.push([a.day, "Dépense", "Achats de boissons", `${a.qty} × ${a.produit}`, "", "", a.total]));
+  r.depenses.forEach(e => rows.push([e.day, "Dépense", e.category, e.label || "", { cash: "Espèces", momo: "Mobile Money", banque: "Banque" }[e.method] || "", "", e.amount]));
+  rows.sort((a, b) => a[0] === "Date" ? -1 : b[0] === "Date" ? 1 : a[0] < b[0] ? -1 : 1);
+  rows.push([], ["Total recettes", "", "", "", "", r.ca, ""], ["Total dépenses", "", "", "", "", "", r.achats + r.charges]);
+  return "﻿" + rows.map(l => l.map(v => { const t = String(v ?? ""); return /[;"\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; }).join(";")).join("\r\n");
 }
 
 /* ═══════════════ Fenêtres ═══════════════ */
@@ -1175,6 +1345,7 @@ function vModal() {
       <h3>Par serveuse</h3><div class="scroll"><table><tr><th>Serveuse</th><th>Ventes</th><th>Tickets</th><th>Corr.</th><th>Écart</th><th>Btl.</th></tr>
         ${(s.serveuses || []).map(w => `<tr><td>${esc(w.nom)}</td><td>${F(w.ventes)}</td><td>${w.tickets}</td><td>${w.corrections}</td><td class="${w.ecart_versements < 0 ? "bad-t" : ""}">${F(w.ecart_versements)}</td><td>${w.bouteilles_en_main}</td></tr>`).join("")}</table></div>
       <p class="mu" style="margin:0">Btl. : bouteilles encore en main au moment de la clôture.</p><button class="btn" data-a="close">Fermer</button>`; }
+  if (m.type === "report") c = `${reportHtml(m.r)}<div class="row noprint">${CFG.mode === "live" ? `<button class="btn grow" data-a="printReport">Enregistrer en PDF ou imprimer</button>` : `<p class="mu" style="margin:0">Le PDF s’enregistre depuis l’application en ligne : bouton « Enregistrer en PDF », puis choisissez « Enregistrer au format PDF » comme imprimante.</p>`}<button class="btn ghost grow" data-a="close">Fermer</button></div>`;
   if (m.type === "inventory") { const r = m.r || {};
     c = `<h2>Inventaire enregistré</h2><p style="margin:0">${r.ecarts ? `${r.ecarts} produit(s) corrigé(s).` : "Aucun écart : le stock compté correspond."}</p>
       ${(r.details || []).length ? `<div class="scroll"><table><tr><th>Produit</th><th>Prévu</th><th>Compté</th><th>Écart</th></tr>${r.details.map(d => `<tr><td>${esc(d.produit)}</td><td>${d.attendu}</td><td>${d.compte}</td><td class="${d.ecart < 0 ? "bad-t" : "ok-t"}">${d.ecart > 0 ? "+" : ""}${d.ecart}</td></tr>`).join("")}</table></div>` : ""}
@@ -1195,7 +1366,7 @@ function render() {
   if (V.screen === "boot") html = `<div class="empty"><span class="spin"></span></div>`;
   else if (V.screen === "login") html = vLogin();
   else if (!S) html = `<div class="empty"><span class="spin"></span> Chargement…</div>`;
-  else html = isCaisse() ? vCaisse() : vWaitress();
+  else html = (isCaisse() ? vCaisse() : vWaitress()) + bismo(true);
   $app.innerHTML = html + vModal() + (V.toast ? `<div class="toast ${V.toast.kind || ""}" role="status">${esc(V.toast.msg)}</div>` : "");
   if (fid) { const el = document.getElementById(fid); if (el && el !== document.activeElement) { el.focus({ preventScroll: true }); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) {} } }
 }
@@ -1209,6 +1380,7 @@ document.addEventListener("input", e => { const k = e.target.dataset && e.target
   if (/^(rcv_|cnt$|q_)/.test(k)) { clearTimeout(window.__r); window.__r = setTimeout(render, k.startsWith("q_") ? 120 : 250); } });
 document.addEventListener("change", e => { const t = e.target;
   if (t.id === "id_file") { window.__idFile = t.files && t.files[0] || null; render(); return; }
+  if (t.id === "accm") { V.accMonth = t.value; V.acc = null; render(); A.loadAcc(); return; }
   if (t.dataset && t.dataset.k && t.tagName === "SELECT") { V.f[t.dataset.k] = t.value; render(); }
   if (t.dataset && t.dataset.qty) call("gb_ticket_set_qty", { p_ticket: t.dataset.t, p_product: t.dataset.p, p_qty: Math.max(0, Math.trunc(+t.value || 0)) }); });
 document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.dataset && e.target.dataset.enter) { e.preventDefault(); const a = e.target.dataset.enter; A[a] && A[a]({}); }

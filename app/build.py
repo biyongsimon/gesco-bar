@@ -4,7 +4,7 @@
 """
 import json, pathlib, shutil
 ROOT = pathlib.Path(__file__).parent
-SRC = (ROOT / "src/app.html").read_text(encoding="utf-8")
+SRC = (ROOT / "src/app.html").read_text(encoding="utf-8").replace("__LOGO_B64__", (ROOT / "src/logo.b64").read_text().strip())
 SUPABASE_URL = "https://tkiuepleshsvptranoik.supabase.co"
 SUPABASE_KEY = "sb_publishable_GF4euX-Zbx3Bve-WSkgBWA_u4JoBY6w"  # clé publique (publishable), faite pour le navigateur
 SB_JS = '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>'
