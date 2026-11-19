@@ -100,3 +100,10 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Vue d'ensemble (revenu mensuel récurrent, encaissements, bars actifs, inscriptions), validation des paiements avec la capture du SMS, fiche de chaque bar (formule, date de fin, mois offerts, suspension, identité légale), réglages des numéros de réception, journal.
 - Blocage automatique 3 jours après la fin de l'abonnement (sauf activation provisoire de 72 h) ; le PDG et le directeur gardent l'accès à « Abonnement » pour renouveler. Suspension manuelle possible.
 - Limites des formules appliquées par le serveur : Simple (1 caisse, 3 serveuses, pas de directeur), Premium (2 caisses, 6 serveuses, pas de directeur), Gold (12 employés), Lounge et bêta illimités.
+
+## v4.2 · Assistant IA d'assistance
+- Bouton « Aide » (en-tête, menu, écran de connexion, écran bloqué) : fenêtre de discussion avec suggestions selon le rôle.
+- Réponses par Claude (modèle `claude-haiku-5-5`) via l'action `assist` de la fonction `gesco-admin`, avec la base de connaissances `kb.ts` et le contexte du bar (formule, blocage, paiement en vérification…).
+- L'assistant ne fait aucune action et ne demande jamais de PIN ni de code secret. S'il ne peut pas régler le problème, il transmet à BISMO Agency (outil `transmettre_a_bismo`) : la discussion apparaît dans la console, rubrique **Assistance**, avec un résumé et l'urgence. La réponse de BISMO s'affiche dans la fenêtre d'aide du client.
+- Quotas journaliers par utilisateur et par visiteur ; migration `010_assistance_ia.sql`.
+- Activation : ajouter le secret `ANTHROPIC_API_KEY` dans Supabase → Edge Functions → Secrets. Sans clé, la fenêtre indique que l'assistant n'est pas encore activé.

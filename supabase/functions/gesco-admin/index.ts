@@ -1,7 +1,8 @@
-// GesCo Bar · fonction serveur : inscription, connexion par PIN, ajout du personnel, paiement Mobile Money par numéro (Notch Pay).
+// GesCo Bar · fonction serveur : inscription, connexion par PIN, ajout du personnel, paiement Mobile Money par numéro (Notch Pay), installation du compte éditeur, assistant IA.
 // verify_jwt = false : les actions publiques (inscription, liste, PIN) n'ont pas de session ;
-// l'action staff_create vérifie elle-même le jeton de l'appelant.
+// les autres actions vérifient elles-mêmes le jeton de l'appelant.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
+import { KB } from "./kb.ts";
 
 const URL = Deno.env.get("SUPABASE_URL")!;
 function pickKey(legacy: string, modern: string): string | undefined {
@@ -167,6 +168,69 @@ Deno.serve(async (req) => {
         const { error: e2 } = await admin.rpc("gb_admin_claim_setup", { p_code: code, p_user: u.user.id, p_email: email });
         if (e2) { await admin.auth.admin.deleteUser(u.user.id); return fail(e2.message, 403); }
         return json({ ok: true });
+      }
+
+      case "assist": case "assist_history": {
+        // Assistant IA : réponse par Claude (clé ANTHROPIC_API_KEY enregistrée dans les secrets Supabase), passage de relais à BISMO Agency.
+        const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+        let ctx: Record<string, unknown> | null = null, uid: string | null = null;
+        if (jwt && jwt !== publicKey) { const { data: me } = await admin.auth.getUser(jwt); if (me?.user) { uid = me.user.id; const { data } = await admin.rpc("gb_admin_assist_context", { p_user: uid }); ctx = data; } }
+        const anonToken = String(body.token ?? ""), hash = async (t: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode("gesco-assist|" + t)))).map(x => x.toString(16).padStart(2, "0")).join("");
+        let threadId = String(body.thread ?? "") || null, thread: Record<string, unknown> | null = null;
+        if (threadId) {
+          const { data: t } = await admin.from("support_threads").select("*").eq("id", threadId).maybeSingle();
+          const mine = t && ((ctx && t.staff_id === ctx.staff_id) || (!t.staff_id && anonToken.length >= 16 && t.anon_hash === await hash(anonToken)));
+          thread = mine ? t : null; if (!mine) threadId = null;
+        }
+        const history = async () => threadId ? ((await admin.from("support_messages").select("sender,body,created_at").eq("thread_id", threadId).order("id")).data ?? []) : [];
+        if (body.action === "assist_history") return json({ thread: threadId, status: thread?.status ?? null, messages: await history() });
+        const msg = String(body.message ?? "").trim().slice(0, 1500);
+        if (!msg) return fail("Écrivez votre question.");
+        const KEY = Deno.env.get("ANTHROPIC_API_KEY");
+        if (!KEY) return fail("L'assistant n'est pas encore activé. Contactez BISMO Agency.", 503);
+        const okQuota = (await admin.rpc("gb_admin_assist_quota", { p_key: ctx ? "s:" + ctx.staff_id : "ip:" + (req.headers.get("x-forwarded-for") ?? "?").split(",")[0], p_max: ctx ? 80 : 25 })).data;
+        if (!okQuota) return fail("Limite de messages atteinte pour aujourd'hui. Réessayez demain ou contactez BISMO Agency.", 429);
+        if (!threadId) {
+          if (!ctx && anonToken.length < 16) return fail("Session d'assistance invalide.");
+          const { data: t, error } = await admin.from("support_threads").insert({ bar_id: ctx?.bar_id ?? null, staff_id: ctx?.staff_id ?? null, anon_hash: ctx ? null : await hash(anonToken) }).select("*").single();
+          if (error) return fail("Assistance indisponible : " + error.message, 500); thread = t; threadId = t.id;
+        }
+        await admin.from("support_messages").insert({ thread_id: threadId, sender: "client", body: msg });
+        await admin.from("support_threads").update({ last_msg_at: new Date().toISOString() }).eq("id", threadId);
+        if (thread?.status === "transmis") return json({ thread: threadId, status: "transmis", reply: null, messages: await history() });
+        const past = (await history()).slice(-16);
+        const messages: { role: string; content: any }[] = [];
+        for (const m of past) { const role = m.sender === "client" ? "user" : "assistant"; const text = m.sender === "bismo" ? "[Réponse de BISMO Agency] " + m.body : m.body;
+          if (messages.length && messages[messages.length - 1].role === role) messages[messages.length - 1].content += "\n\n" + text; else messages.push({ role, content: text }); }
+        if (messages[0]?.role !== "user") messages.shift();
+        const sys = [{ type: "text", text: `Tu es l'assistant d'aide de GesCo Bar, application de gestion de bars au Cameroun éditée par BISMO Agency.
+Règles :
+- Réponds en français simple et chaleureux (ou en anglais si la personne écrit en anglais), en phrases courtes et étapes numérotées si utile. Pas de jargon technique. 120 mots maximum sauf si une procédure l'exige.
+- Appuie-toi uniquement sur le guide ci-dessous et sur la situation du bar. N'invente jamais une fonction, un prix, un délai ou une procédure. Si tu ne sais pas, dis-le et propose de transmettre à BISMO Agency.
+- Tu ne fais aucune action dans l'application : tu expliques comment faire. Tu ne valides aucun paiement, ne changes aucun PIN, ne supprimes rien, ne promets aucun remboursement ni geste commercial.
+- Ne demande jamais un PIN, un mot de passe, un code secret Mobile Money ou une clé. Si quelqu'un en donne un, dis-lui de le changer.
+- Ne donne aucune information sur un autre bar.
+- Utilise l'outil transmettre_a_bismo quand : la personne demande un humain ; un paiement d'abonnement est contesté ou en retard de validation de plus de 72 h ; un bug ou une perte de données est probable ; un mot de passe PDG est perdu ; un bar est suspendu ; ou tu n'arrives pas à résoudre après deux essais. Après transmission, dis que BISMO Agency répond dans cette même discussion, en général sous 24 h.
+- Tu ne donnes pas de conseil juridique, fiscal ou financier personnalisé.` }, { type: "text", text: KB, cache_control: { type: "ephemeral" } },
+          { type: "text", text: "Situation actuelle de la personne (données de l'application) :\n" + (ctx ? JSON.stringify(ctx) : "Personne non connectée (écran de connexion) : on ne connaît pas son bar. Pour un problème de compte, demander le nom du bar et un numéro WhatsApp, puis transmettre.") }];
+        const tools = [{ name: "transmettre_a_bismo", description: "Transmet la demande à l'équipe humaine de BISMO Agency avec un résumé.",
+          input_schema: { type: "object", properties: { resume: { type: "string", description: "Résumé clair du problème et de ce qui a été essayé" }, urgence: { type: "string", enum: ["normale", "urgente"] }, contact: { type: "string", description: "Numéro WhatsApp ou nom du bar si la personne l'a donné" } }, required: ["resume", "urgence"] } }];
+        const call = (msgs: unknown[]) => fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+          body: JSON.stringify({ model: Deno.env.get("ASSIST_MODEL") ?? "claude-haiku-5-5", max_tokens: 700, system: sys, tools, messages: msgs }) }).then(r => r.json());
+        let r = await call(messages);
+        if (r?.error) return fail("L'assistant est momentanément indisponible. Réessayez dans un instant.", 502);
+        let status = "ia";
+        const tu = (r.content ?? []).find((c: { type: string }) => c.type === "tool_use");
+        if (tu) {
+          const inp = tu.input ?? {};
+          await admin.from("support_threads").update({ status: "transmis", summary: String(inp.resume ?? "").slice(0, 1000), urgence: inp.urgence ?? "normale", contact: inp.contact ?? null, admin_seen_at: null }).eq("id", threadId);
+          status = "transmis";
+          r = await call([...messages, { role: "assistant", content: r.content }, { role: "user", content: [{ type: "tool_result", tool_use_id: tu.id, content: "Demande transmise à BISMO Agency." }] }]);
+        }
+        let reply = (r.content ?? []).filter((c: { type: string }) => c.type === "text").map((c: { text: string }) => c.text).join("\n").trim();
+        if (!reply) reply = status === "transmis" ? "Votre demande est transmise à BISMO Agency. Vous recevrez la réponse ici même, en général sous 24 h." : "Je n'ai pas compris, pouvez-vous reformuler ?";
+        await admin.from("support_messages").insert({ thread_id: threadId, sender: "ia", body: reply.slice(0, 4000) });
+        return json({ thread: threadId, status, reply, messages: await history() });
       }
 
       default:

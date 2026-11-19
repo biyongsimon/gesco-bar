@@ -343,6 +343,18 @@ input[type=date],input[type=time]{width:100%;min-height:46px;padding:10px 12px;b
 .slip h2{color:#111}.slip hr{border:0;border-top:1px dashed #bbb;margin:8px 0}.slip .kv{display:flex;justify-content:space-between;gap:10px;padding:4px 0}
 .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:70}
 .scrim{z-index:60}
+.helpsheet{display:flex;flex-direction:column;height:min(88vh,720px);max-height:88vh;padding:0!important;overflow:hidden}
+.helpbox{display:flex;flex-direction:column;gap:10px;height:100%;padding:16px}
+.hav{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#0f8a5f,#1f4fa8);color:#fff}
+.hlog{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:6px 2px;overscroll-behavior:contain}
+.hmsg{max-width:86%;padding:10px 12px;border-radius:16px;line-height:1.45;font-size:15px;animation:fadeUp .25s both;overflow-wrap:anywhere}
+.hmsg small{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:2px}
+.hmsg.client{align-self:flex-end;background:var(--brand);color:var(--brand-ink);border-bottom-right-radius:4px}
+.hmsg.ia{align-self:flex-start;background:var(--sunk);border-bottom-left-radius:4px}.hmsg.ia.err{background:var(--bad-soft);color:var(--bad)}
+.hmsg.bismo{align-self:flex-start;background:var(--amber-soft);border:1px solid color-mix(in srgb,var(--amber) 50%,var(--line));border-bottom-left-radius:4px}
+.typing{display:flex;gap:4px;padding:14px}.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:blink 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.hhead{flex-wrap:nowrap;gap:10px}.hhead .ib{flex:none}.hin{flex-wrap:nowrap}.hin input{flex:1;min-width:0}.hin .btn{flex:none;padding:0 14px}.hin .btn .ico{margin:0}
 .lockpin{gap:10px;min-height:86vh}.lockpin .pad{width:min(300px,86vw)}.lockpin .pad .go{background:var(--brand);color:var(--brand-ink);border-color:var(--brand);font-weight:800}
 .avatar.big{width:76px;height:76px;font-size:32px;border-radius:24px}
 .dots{display:flex;gap:12px;justify-content:center;margin:6px 0}.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted);transition:background .15s,transform .15s}.dots i.on{background:var(--brand);border-color:var(--brand);transform:scale(1.1)}
@@ -951,6 +963,18 @@ function DemoBackend() {
         if (t && ["sent", "cashed"].includes(t.status)) Object.assign(t, { status: "paid", pay_method: "momo", received: t.total, change_due: 0, change_status: "none", cashed_at: now(), paid_at: now(), updated_at: now() });
         log({ id: t ? t.waitress_id : null }, "momo_auto", { ticket: t && t.number, total: t && t.total }); save(); }
       return { status: m.status }; },
+    async assist(message, thread) { // démo : réponses types (l'assistant réel utilise l'IA sur la version en ligne)
+      await new Promise(r => setTimeout(r, 700)); const q = norm(message), th = thread || "demo-thread", H = LS.get(KEY + "-help-" + (S && S.me ? S.me.id : "anon"), []);
+      const A = [[/pin|code secret|oubli/, "Si vous avez oublié votre PIN : demandez à votre directeur ou à votre PDG de le changer dans Équipe (champ « Nouveau PIN », puis Enregistrer). Ensuite reconnectez-vous avec le nouveau PIN."],
+        [/abonn|payer|formule|prix/, "Pour payer l’abonnement : 1) ouvrez Abonnement, 2) choisissez la formule et la durée, 3) envoyez le montant par transfert au numéro affiché avec le motif indiqué, 4) collez la référence du SMS et touchez « Activer mon abonnement ». La formule s’active tout de suite pendant 72 h."],
+        [/son|notif|sonne/, "Pour entendre les notifications : touchez l’écran une fois après l’ouverture, essayez « Tester le son » dans le menu, activez les notifications quand l’application le propose et vérifiez que le téléphone n’est pas en silencieux."],
+        [/install|ecran d.accueil|telecharg/, "Pour installer l’application : sur Android, ouvrez le lien dans Chrome puis menu ⋮ → « Ajouter à l’écran d’accueil ». Sur iPhone, dans Safari : Partager → « Sur l’écran d’accueil »."],
+        [/humain|quelqu|appel|bismo|contact/, "TRANSMIS"]];
+      const hit = A.find(([re]) => re.test(q)); let reply = hit ? hit[1] : "Je peux vous aider sur les tickets, la caisse, le stock, le planning, la paie, les paiements Mobile Money et l’abonnement. Pouvez-vous préciser votre question ?", status = "ia";
+      if (reply === "TRANSMIS") { status = "transmis"; reply = "Votre demande est transmise à BISMO Agency. Vous recevrez la réponse ici même, en général sous 24 h."; }
+      H.push({ sender: "client", body: message, created_at: now() }, { sender: "ia", body: reply + "\n\n(Démo : sur la version en ligne, c’est l’assistant IA qui répond.)", created_at: now() }); LS.set(KEY + "-help-" + (S && S.me ? S.me.id : "anon"), H);
+      return { thread: th, status, reply, messages: H }; },
+    async assistHistory() { return { thread: "demo-thread", status: null, messages: LS.get(KEY + "-help-" + (S && S.me ? S.me.id : "anon"), []) }; },
     async uploadProof(file) { const c = ctx(); mgr(c); return db.bar.id + "/abonnement-demo-" + (file.name || "capture"); },
     async uploadDoc(file) { const c = ctx(); pdg(c); return db.bar.id + "/demo-" + (file.name || "piece"); },
     async staffCreate(name, role, pin) {
@@ -1032,6 +1056,8 @@ function LiveBackend() {
     staffCreate: (name, role, pin) => fn("staff_create", { name, role, pin }, true),
     momoPush: (ticket, phone, operator) => fn("momo_push", { ticket, phone, operator }, true),
     momoStatus: id => fn("momo_status", { id }, true),
+    assist: (message, thread, token) => fn("assist", { message, thread, token }, true),
+    assistHistory: (thread, token) => fn("assist_history", { thread, token }, true),
     async uploadProof(file) {
       const { data: bars } = await sb.from("bars").select("id").limit(1); if (!bars || !bars.length) throw bizErr("Bar introuvable.");
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, ""), path = `${bars[0].id}/abonnement-${Date.now()}.${ext}`;
@@ -1364,7 +1390,7 @@ function vLogin() {
       <button class="btn amber wide" data-a="register" ${V.busy ? "disabled" : ""}>${V.busy ? '<span class="spin"></span>' : "Créer mon bar"}</button>
       <p class="mu" style="margin:0">La carte est préremplie avec des boissons courantes. Ajustez les prix ensuite dans la rubrique Stock.</p></div>`;
   }
-  return `<div class="login"><div class="row" style="justify-content:flex-end">${themeBtn()}</div>${bismo(false)}<div class="hero"><div class="brandmark">GesCo<span> Bar</span></div><p>Chaque boisson a son ticket. Chaque ticket a sa serveuse.</p></div>
+  return `<div class="login"><div class="row" style="justify-content:flex-end"><button class="btn ghost sm" data-a="help">${ico("help")} Aide</button>${themeBtn()}</div>${bismo(false)}<div class="hero"><div class="brandmark">GesCo<span> Bar</span></div><p>Chaque boisson a son ticket. Chaque ticket a sa serveuse.</p></div>
     ${demo ? `<div class="demo"><b>Mode démo</b> : données d’exemple enregistrées dans ce navigateur. Code du bar <b>DEMO</b>. PIN : serveuses Aline <b>1111</b>, Brigitte <b>2222</b>, Carine <b>3333</b> · caisse Mireille <b>0000</b> · directeur Hervé <b>5555</b> · PDG Marcel <b>9999</b>.</div>` : ""}
     ${tabs}${body}${installBox()}</div>`;
 }
@@ -1495,6 +1521,8 @@ const IC = {
   left: '<path d="M15 6l-6 6 6 6"/>', right: '<path d="M9 6l6 6-6 6"/>',
   copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/>',
   alert: '<path d="M12 3 2 21h20z"/><path d="M12 10v4M12 17.5v.01"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01"/>',
+  send: '<path d="M4 12 20 4l-6 16-3-7z"/><path d="m11 13 9-9"/>',
   qr: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/>',
   star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>'
 };
@@ -1530,11 +1558,38 @@ function barBlock() { if (!S || !S.bar) return null; const b = S.bar; if (b.susp
   if (b.plan && b.plan !== "beta" && b.plan_until) { const lim = new Date(b.plan_until + "T23:59:59"); lim.setDate(lim.getDate() + 3);
     if (lim < Date.now() && !(b.plan_trial_until && new Date(b.plan_trial_until) > Date.now())) return "expire"; } return null; }
 const navFor = () => barBlock() === "expire" && isMgr() ? ["abo"] : NAV[ROLE()] || NAV.serveuse;
+/* ═══════════════ Aide : assistant IA + BISMO Agency ═══════════════ */
+const helpKey = () => "gesco-help-" + (S && S.me ? S.me.id : "anon");
+const helpTok = () => { let t = LS.get("gesco-help-tok", ""); if (!t || t.length < 16) { t = uuid().replace(/-/g, "") + uuid().replace(/-/g, ""); LS.set("gesco-help-tok", t); } return t; };
+const HELP_SUG = { serveuse: ["Comment envoyer une commande à la caisse ?", "Le client veut payer par Mobile Money", "J’ai oublié mon PIN"], caisse: ["Comment rendre la monnaie avec un bon ?", "Comment clôturer la journée ?", "Comment faire l’inventaire ?"],
+  directeur: ["Comment publier le planning ?", "Comment ajouter une serveuse ?", "Une serveuse a oublié son PIN"], pdg: ["Comment payer mon abonnement ?", "Comment payer les salaires ?", "Comment configurer le QR de paiement ?"],
+  anon: ["Comment installer l’application ?", "Je n’arrive pas à me connecter", "Comment créer mon bar ?"] };
+A.help = async () => { V.menu = false; V.help = { msgs: LS.get(helpKey() + "-cache", []), thread: LS.get(helpKey(), null), status: LS.get(helpKey() + "-st", null), sending: false }; V.modal = { type: "help" }; render(); helpScroll();
+  try { const r = await B.assistHistory(V.help.thread, helpTok()); if (V.help && r.thread) { V.help.msgs = r.messages; V.help.status = r.status; helpSave(r); render(); helpScroll(); } } catch (e) {} helpPoll(); };
+const helpSave = r => { LS.set(helpKey(), r.thread); LS.set(helpKey() + "-st", r.status); LS.set(helpKey() + "-cache", (r.messages || []).slice(-40)); };
+const helpScroll = () => setTimeout(() => { const e = document.getElementById("hlog"); if (e) e.scrollTop = e.scrollHeight; }, 30);
+function helpPoll() { clearInterval(window.__hp); window.__hp = setInterval(async () => { if (!V.help || !V.modal || V.modal.type !== "help") return clearInterval(window.__hp);
+  if (V.help.status !== "transmis" || V.help.sending) return; try { const r = await B.assistHistory(V.help.thread, helpTok()); if (r.messages && r.messages.length !== V.help.msgs.length) { V.help.msgs = r.messages; V.help.status = r.status; helpSave(r); render(); helpScroll(); } } catch (e) {} }, 8000); }
+A.helpSend = async d => { const h = V.help; if (!h || h.sending) return; const m = String(d && d.q || V.f.hq || "").trim(); if (!m) return;
+  V.f.hq = ""; h.sending = true; h.msgs = [...h.msgs, { sender: "client", body: m, created_at: new Date().toISOString() }]; render(); helpScroll();
+  try { const r = await B.assist(m, h.thread, helpTok()); h.thread = r.thread; h.status = r.status; h.msgs = r.messages; helpSave(r); if (r.status === "transmis") helpPoll(); }
+  catch (e) { h.msgs = [...h.msgs, { sender: "ia", body: "⚠ " + (e.message || "Assistant indisponible."), created_at: new Date().toISOString(), err: 1 }]; }
+  h.sending = false; render(); helpScroll(); const i = document.getElementById("hq"); if (i) i.focus(); };
+A.helpNew = () => { LS.del(helpKey()); LS.del(helpKey() + "-st"); LS.del(helpKey() + "-cache"); V.help = { msgs: [], thread: null, status: null, sending: false }; render(); };
+function vHelp() { const h = V.help || { msgs: [] }, sug = HELP_SUG[S && S.me ? ROLE() : "anon"] || HELP_SUG.anon;
+  const who = { client: "", ia: "Assistant GesCo", bismo: "BISMO Agency" };
+  return `<div class="helpbox"><div class="between hhead"><div class="row" style="gap:10px;flex-wrap:nowrap;min-width:0"><span class="hav">${ico("help")}</span><div><h2 style="margin:0">Aide GesCo Bar</h2><span class="mu">${h.status === "transmis" ? "Transmis à BISMO Agency · réponse ici même" : "Assistant disponible 24 h/24"}</span></div></div><button class="ib" data-a="close" aria-label="Fermer l’aide">${ico("x")}</button></div>
+    <div class="hlog" id="hlog" aria-live="polite">${h.msgs.length ? "" : `<div class="hmsg ia"><small>Assistant GesCo</small>Bonjour${S && S.me ? " " + esc(S.me.name) : ""} ! Posez votre question sur l’application : je réponds tout de suite. Si besoin, je transmets à l’équipe BISMO Agency.</div>`}
+      ${h.msgs.map(m => `<div class="hmsg ${m.sender}${m.err ? " err" : ""}">${who[m.sender] ? `<small>${who[m.sender]}</small>` : ""}${esc(m.body).replace(/\n/g, "<br>")}</div>`).join("")}
+      ${h.sending ? `<div class="hmsg ia typing"><i></i><i></i><i></i></div>` : ""}</div>
+    ${h.msgs.length ? "" : `<div class="chips">${sug.map(q => `<button class="chip pick" data-a="helpSend" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>`}
+    <div class="row hin"><input id="hq" data-k="hq" data-enter="helpSend" value="${val("hq")}" placeholder="Écrivez votre question…" maxlength="1500" autocomplete="off" aria-label="Votre question"><button class="btn" data-a="helpSend" ${h.sending ? "disabled" : ""} aria-label="Envoyer">${ico("send")}</button></div>
+    <div class="between"><span class="mu" style="font-size:12px">Ne partagez jamais votre PIN ni votre code secret Mobile Money.</span>${h.msgs.length ? `<button class="lnk" data-a="helpNew">Nouvelle discussion</button>` : ""}</div></div>`; }
 function lockView(k) {
   return `<div class="lockv"><div class="lock-ic">${ico("alert")}</div><h1>${k === "suspendu" ? "Accès suspendu" : "Abonnement expiré"}</h1>
     <p>${k === "suspendu" ? "L’accès de ce bar a été suspendu par BISMO Agency. Le PDG doit contacter BISMO Agency pour le rétablir." : "L’abonnement de " + esc(S.bar.name) + " est arrivé à échéance. Prévenez votre PDG ou votre directeur : il le renouvelle en un geste depuis l’application."}</p>
     <p class="mu">Vos données sont conservées et seront de nouveau accessibles dès le renouvellement.</p>
-    <div class="row" style="justify-content:center">${themeBtn()}<button class="btn bad" data-a="logout">${ico("out")} Se déconnecter</button></div></div>`;
+    <div class="row" style="justify-content:center"><button class="btn soft" data-a="help">${ico("help")} Aide</button>${themeBtn()}<button class="btn bad" data-a="logout">${ico("out")} Se déconnecter</button></div></div>`;
 }
 const norm = x => String(x ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const METH = { cash: "espèces", momo: "Mobile Money", banque: "banque" };
@@ -1582,7 +1637,7 @@ function header(b) {
   const pend = V.outbox.length, more = navFor().slice(4).reduce((x, k) => x + (b[k] || 0), 0);
   return `<header class="top"><div class="who"><div class="avatar">${esc(S.me.name[0])}</div><div style="min-width:0"><b>${esc(S.me.name)}</b><span class="mu">${ROLES[ROLE()]} · ${esc(S.bar.name)}</span></div></div>
     <div class="row" style="flex-wrap:nowrap;gap:6px;flex:none"><span class="net ${V.online ? "" : "off"}"><i></i><span class="nt">${V.online ? (pend ? `Envoi de ${pend}…` : "En ligne") : `Hors ligne${pend ? ` · ${pend} en attente` : ""}`}</span></span>
-    <button class="ib" data-a="search" aria-label="Rechercher">${ico("search")}</button>
+    <button class="ib" data-a="help" aria-label="Aide">${ico("help")}</button><button class="ib" data-a="search" aria-label="Rechercher">${ico("search")}</button>
     <button class="ib" data-a="menu" aria-label="Ouvrir le menu" aria-expanded="${V.menu}">${ico("menu")}${more ? `<i class="bd">${more}</i>` : ""}</button></div></header>`;
 }
 function bnav(nav, b) {
@@ -1603,6 +1658,7 @@ function drawer(nav, b) {
       <div class="between"><span class="mu">Connexion</span><span class="net ${V.online ? "" : "off"}"><i></i>${V.online ? "En ligne" : "Hors ligne"}${V.outbox.length ? ` · ${V.outbox.length} en attente` : ""}</span></div></div>
     <div class="row">${themeBtn()}<button class="btn ghost sm" data-a="notifTest">${ico("alert")} Tester le son</button>${"Notification" in window && Notification.permission !== "granted" ? `<button class="btn ghost sm" data-a="notifOn">Activer les notifications</button>` : ""}
       ${CFG.mode === "demo" ? `<button class="btn ghost sm" data-a="resetDemo">Réinitialiser la démo</button>` : ""}</div>
+    <button class="btn soft wide" data-a="help">${ico("help")} Aide et assistance</button>
     <button class="btn bad wide" data-a="logout">${ico("out")} Se déconnecter</button></aside>`;
 }
 function searchRes(q0) {
@@ -2380,6 +2436,7 @@ function vModal() {
       <div class="row">${m.url ? `<button class="btn grow" data-a="planShare">${ico("share")} Partager l’image</button><button class="btn soft grow" data-a="planDl">${ico("dl")} Télécharger</button>` : ""}</div>
       <a class="btn soft wide" href="https://wa.me/?text=${encodeURIComponent(planText())}" target="_blank" rel="noopener">Envoyer le planning en texte sur WhatsApp</a>
       <p class="mu" style="margin:0">Sur téléphone, « Partager l’image » ouvre la liste des applications : choisissez WhatsApp puis le groupe de l’équipe.</p><button class="btn ghost" data-a="close">Fermer</button>`;
+  if (m.type === "help") return `<div class="scrim help-scrim" data-a="close" data-self="1"><div class="sheet helpsheet" role="dialog" aria-modal="true" aria-label="Aide">${vHelp()}</div></div>`;
   if (m.type === "subRecu") { const x = (S.subs || []).find(y => y.id === m.id) || {}, P = S.platform || {};
     const txt = `REÇU D’ABONNEMENT GESCO BAR\n${S.bar.legal_name || S.bar.name}\nFormule : ${(PLANS[x.plan] || [""])[0]} · ${x.months} mois\nMontant : ${F(x.amount)}\nPayé le ${new Date(x.created_at).toLocaleDateString("fr-FR")} par ${x.method === "orange" ? "Orange Money" : "MTN MoMo"}\nRéférence : ${x.reference}\nBISMO Agency`;
     c = `<div class="slip printable"><div class="between" style="align-items:flex-start"><div><b style="font-size:16px">BISMO Agency</b><div>Bastos, Yaoundé</div><div>${esc(P.holder_name || "")}</div></div><img src="${LOGO}" alt="BISMO Agency" style="width:84px"></div>

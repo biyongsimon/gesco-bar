@@ -68,6 +68,18 @@ td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}tr.cli
 .toast.err{background:var(--bad);color:#fff}
 .empty{padding:24px;text-align:center;color:var(--muted)}
 .tabs-m{display:none}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.chip b{margin-left:4px}
+.sup{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:14px;align-items:start}
+.supl{padding:6px;display:flex;flex-direction:column;gap:4px;max-height:72vh;overflow:auto}
+.supi{display:flex;flex-direction:column;gap:3px;text-align:left;border:0;background:none;padding:10px 12px;border-radius:12px;cursor:pointer}
+.supi:hover{background:var(--sunk)}.supi.on{background:var(--sunk);box-shadow:inset 3px 0 0 var(--brand)}
+.supd{font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.slog{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow:auto;padding:4px 2px}
+.sm{max-width:85%;padding:9px 12px;border-radius:14px;font-size:14px;line-height:1.45;overflow-wrap:anywhere}.sm small{display:block;font-size:11px;font-weight:700;opacity:.75;margin-bottom:2px}
+.sm.client{align-self:flex-start;background:var(--sunk)}.sm.ia{align-self:flex-end;background:color-mix(in srgb,var(--brand) 12%,var(--surface));border:1px solid var(--line)}
+.sm.bismo{align-self:flex-end;background:var(--brand);color:#fff}
+textarea{resize:vertical;min-height:80px}
+@media (max-width:860px){.sup{grid-template-columns:minmax(0,1fr)}.supl{max-height:none}}
 @media (max-width:860px){.shell{grid-template-columns:1fr}.side{display:none}.tabs-m{display:flex;gap:6px;overflow-x:auto;position:sticky;top:0;z-index:20;background:var(--bg);padding:10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line)}
   .tabs-m a i{font-style:normal;margin-left:6px;background:#e5484d;color:#fff;border-radius:99px;font-size:11px;padding:1px 6px}td:first-child{min-width:130px}
   .tabs-m a{white-space:nowrap;padding:8px 14px;border-radius:99px;border:1px solid var(--line);text-decoration:none;color:var(--ink);font-weight:600;font-size:14px}.tabs-m a.on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
@@ -89,7 +101,7 @@ const ago = d => { if (!d) return "jamais"; const m = Math.round((Date.now() - n
 const PLANS = { beta: ["Bêta gratuite", 0, ""], simple: ["Snack Simple", 10000, "sky"], premium: ["Snack Premium", 15000, "sky"], gold: ["Snack Gold", 20000, "warn"], lounge: ["Lounge", 30000, "night"] };
 const MONTH = m => new Date(m + "-15").toLocaleDateString("fr-FR", { month: "short" });
 const V = { view: "login", tab: (location.hash || "#apercu").slice(1), f: {}, data: {}, filter: "tous", q: "", panel: null, busy: false, toast: null, setup: false };
-const SECT = [["apercu", "Vue d’ensemble"], ["paiements", "Paiements"], ["bars", "Bars"], ["reglages", "Réglages"], ["journal", "Journal"]];
+const SECT = [["apercu", "Vue d’ensemble"], ["paiements", "Paiements"], ["assistance", "Assistance"], ["bars", "Bars"], ["reglages", "Réglages"], ["journal", "Journal"]];
 
 function toast(msg, kind) { V.toast = { msg, kind }; render(); clearTimeout(window.__t); window.__t = setTimeout(() => { V.toast = null; render(); }, kind === "err" ? 5000 : 2800); }
 async function rpc(n, a) { const { data, error } = await sb.rpc(n, a || {}); if (error) throw new Error(error.message); return data; }
@@ -100,7 +112,7 @@ const run = async f => { if (V.busy) return; V.busy = true; render(); try { awai
 async function loadAll() {
   const [ov, bars, subs, log] = await Promise.all([rpc("gb_pf_overview"), rpc("gb_pf_bars"), rpc("gb_pf_subs"), sb.from("platform_log").select("*").order("created_at", { ascending: false }).limit(100).then(r => r.data || [])]);
   const { data: pc } = await sb.from("platform_config").select("*").limit(1);
-  V.data = { ov, bars, subs, log, pc: (pc || [])[0] || {} };
+  V.data = { ov, bars, subs, log, pc: (pc || [])[0] || {}, sup: await rpc("gb_pf_support_list").catch(() => []) };
   const need = subs.filter(s => s.status === "en_attente" && s.proof_path && !V.urls?.[s.proof_path]); V.urls = V.urls || {};
   await Promise.all(need.map(async s => { const { data } = await sb.storage.from("preuves").createSignedUrl(s.proof_path, 3600); if (data) V.urls[s.proof_path] = data.signedUrl; }));
 }
@@ -208,6 +220,30 @@ function vReglages() {
     <div class="card stack" style="max-width:640px;margin-top:14px"><h3>Votre compte</h3><div class="kv"><span class="mu">Connecté en tant que</span><b>${esc(V.me || "")}</b></div>
       <label class="f">Nouveau mot de passe<input id="s_pw" type="password" autocomplete="new-password" placeholder="10 caractères minimum"></label><button class="btn soft" data-a="changePw">Changer le mot de passe</button></div>`;
 }
+/* Assistance : discussions de l'assistant IA, demandes transmises à BISMO */
+const supNew = t => t.status === "transmis" && (!t.admin_seen_at || new Date(t.last_msg_at) > new Date(t.admin_seen_at));
+const ROLE_L = { pdg: "PDG", directeur: "Directeur", caisse: "Caisse", serveuse: "Serveuse" };
+const STAT = { ia: ["Assistant IA", ""], transmis: ["Transmis à BISMO", "warn"], resolu: ["Résolu", "ok"] };
+function vAssistance() {
+  const all = V.data.sup || [], f = V.supF || "transmis", list = all.filter(t => f === "tous" || t.status === f), t = all.find(x => x.id === V.thr);
+  const cnt = k => all.filter(x => k === "tous" || x.status === k).length;
+  return `<div class="ph"><div><h1>Assistance</h1><p class="mu" style="margin:4px 0 0">L’assistant IA répond 24 h/24. Les demandes qu’il ne peut pas régler arrivent ici, marquées « Transmis à BISMO ».</p></div><button class="btn soft" data-a="reload">Actualiser</button></div>
+    <div class="chips" style="margin-bottom:12px">${[["transmis", "À traiter"], ["ia", "Réglées par l’IA"], ["resolu", "Résolues"], ["tous", "Toutes"]].map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-a="supF" data-v="${k}">${l} <b>${cnt(k)}</b></button>`).join("")}</div>
+    <div class="sup"><div class="card supl">${list.map(x => `<button class="supi ${x.id === V.thr ? "on" : ""}" data-a="openThr" data-id="${x.id}">
+        <span class="row" style="justify-content:space-between"><b>${esc(x.bar_name || "Visiteur (non connecté)")}</b>${supNew(x) ? `<span class="pill bad">Nouveau</span>` : `<span class="mu" style="font-size:12px">${ago(x.last_msg_at)}</span>`}</span>
+        <span class="mu" style="font-size:13px">${esc(x.staff_name ? x.staff_name + " · " + (ROLE_L[x.staff_role] || "") : x.contact || "Sans contact")}${x.urgence === "haute" ? ` · <b style="color:var(--bad)">urgent</b>` : ""}</span>
+        <span class="supd">${esc(x.summary || x.dernier || "")}</span></button>`).join("") || `<div class="empty">Aucune discussion ici.</div>`}</div>
+      <div class="card stack supt">${t ? vThread(t) : `<div class="empty">Choisissez une discussion pour lire l’échange et répondre.</div>`}</div></div>`;
+}
+function vThread(t) {
+  const who = { client: t.staff_name || "Client", ia: "Assistant IA", bismo: "BISMO Agency" };
+  return `<div class="row" style="justify-content:space-between"><div><h2 style="font-size:20px">${esc(t.bar_name || "Visiteur")}${t.bar_code ? ` <span class="mu" style="font-size:14px">${esc(t.bar_code)}</span>` : ""}</h2>
+      <span class="mu" style="font-size:13px">${esc([t.staff_name, ROLE_L[t.staff_role], t.contact].filter(Boolean).join(" · ") || "Sans contact")} · ouvert ${ago(t.created_at)}</span></div><span class="pill ${STAT[t.status]?.[1] || ""}">${STAT[t.status]?.[0] || esc(t.status)}</span></div>
+    ${t.summary ? `<div class="kv" style="border:0;background:var(--warn-soft);border-radius:10px;padding:10px 12px"><span><b>Résumé de l’IA :</b> ${esc(t.summary)}</span></div>` : ""}
+    <div class="slog">${(V.msgs || []).map(m => `<div class="sm ${m.sender}"><small>${who[m.sender] || m.sender} · ${new Date(m.created_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</small>${esc(m.body).replace(/\n/g, "<br>")}</div>`).join("") || `<div class="empty"><span class="spin"></span></div>`}</div>
+    <label class="f">Votre réponse (le client la lit dans sa fenêtre d’aide)<textarea id="rep_${t.id}" rows="3" placeholder="Écrivez votre réponse…">${esc(V.f["rep_" + t.id] || "")}</textarea></label>
+    <div class="row"><button class="btn" data-a="reply" data-id="${t.id}" ${V.busy ? "disabled" : ""}>Envoyer</button><button class="btn ok" data-a="reply" data-id="${t.id}" data-close="1" ${V.busy ? "disabled" : ""}>Envoyer et marquer résolu</button>${t.status !== "resolu" ? `<button class="btn soft" data-a="reply" data-id="${t.id}" data-close="1" data-silent="1">Marquer résolu sans répondre</button>` : ""}</div>`;
+}
 function vJournal() {
   const name = id => (V.data.bars.find(b => b.id === id) || {}).name || "";
   const L = { paiement_valide: "Paiement validé", paiement_refuse: "Paiement refusé", bar_modifie: "Bar modifié", kyc: "Identité", reglages: "Réglages" };
@@ -219,8 +255,8 @@ function render() {
   if (V.view === "loading") h = `<div class="auth"><span class="spin"></span></div>`;
   else if (V.view === "login") h = vLogin();
   else if (V.view === "relock") h = vRelock();
-  else { const pend = (V.data.subs || []).filter(s => s.status === "en_attente").length, nav = (cls) => SECT.map(([k, l]) => `<a href="#${k}" class="${V.tab === k ? "on" : ""}">${l}${k === "paiements" && pend ? `<i>${pend}</i>` : ""}</a>`).join("");
-    const body = { apercu: vApercu, paiements: vPaiements, bars: vBars, reglages: vReglages, journal: vJournal }[V.tab] || vApercu;
+  else { const pend = (V.data.subs || []).filter(s => s.status === "en_attente").length, nsup = (V.data.sup || []).filter(supNew).length, nav = (cls) => SECT.map(([k, l]) => `<a href="#${k}" class="${V.tab === k ? "on" : ""}">${l}${k === "paiements" && pend ? `<i>${pend}</i>` : ""}${k === "assistance" && nsup ? `<i>${nsup}</i>` : ""}</a>`).join("");
+    const body = { apercu: vApercu, paiements: vPaiements, assistance: vAssistance, bars: vBars, reglages: vReglages, journal: vJournal }[V.tab] || vApercu;
     h = `<div class="shell"><nav class="side"><div class="brand"><img src="${LOGO}" alt="" style="width:46px;filter:brightness(1.2)"><div><b>GesCo Bar</b><small>Console éditeur</small></div></div>${nav()}
       <div class="foot"><span>${esc(V.me || "")}</span><button data-a="theme">Thème clair / sombre</button><button data-a="logout">Se déconnecter</button></div></nav>
       <div><div class="tabs-m">${nav()}<a href="#" data-a="logout">Quitter</a></div><main>${body()}</main></div></div>${V.panel ? vPanel() : ""}`; }
@@ -237,7 +273,13 @@ const A = {
     await fn("admin_setup", { email: em, password: pw, code }); const { error } = await sb.auth.signInWithPassword({ email: em, password: pw }); if (error) throw new Error(error.message);
     V.me = em; V.setup = false; await loadAll(); V.view = "app"; toast("Bienvenue dans votre console éditeur."); }),
   logout: async () => { await sb.auth.signOut(); V.view = "login"; V.data = {}; V.panel = null; render(); },
-  reload: () => run(loadAll),
+  reload: () => run(async () => { await loadAll(); if (V.thr) await loadMsgs(V.thr); }),
+  supF: d => { V.supF = d.v; render(); },
+  openThr: d => { V.thr = d.id; V.msgs = null; render(); loadMsgs(d.id).then(async () => { const t = (V.data.sup || []).find(x => x.id === d.id); if (t && supNew(t)) { await rpc("gb_pf_support_seen", { p_thread: d.id }).catch(() => {}); t.admin_seen_at = new Date().toISOString(); } render();
+    const l = document.querySelector(".slog"); if (l) l.scrollTop = l.scrollHeight; if (matchMedia("(max-width:860px)").matches) document.querySelector(".supt")?.scrollIntoView({ behavior: "smooth" }); }); },
+  reply: d => run(async () => { const body = d.silent ? "" : val("rep_" + d.id); if (!d.silent && !body) throw new Error("Écrivez une réponse.");
+    await rpc("gb_pf_support_reply", { p_thread: d.id, p_body: body, p_close: !!d.close }); delete V.f["rep_" + d.id]; await loadAll(); await loadMsgs(d.id);
+    toast(d.close ? "Discussion marquée résolue." : "Réponse envoyée : le client la voit dans l’application."); }),
   filter: d => { V.filter = d.v; render(); },
   openBar: d => { V.panel = d.id; V.f = {}; render(); },
   close: () => { V.panel = null; V.f = {}; render(); },
@@ -257,7 +299,7 @@ const A = {
 const val = id => { const e = document.getElementById(id); return e ? e.value.trim() : ""; };
 let armed = null; function confirmTwice(id) { if (armed === id) { armed = null; return true; } armed = id; toast("Touchez encore « Suspendre l’accès » pour confirmer : toute l’équipe du bar sera bloquée.", "err"); setTimeout(() => { if (armed === id) armed = null; }, 6000); return false; }
 document.addEventListener("click", e => { const el = e.target.closest("[data-a]"); if (!el) return; if (el.dataset.self && e.target !== el) return; if (el.tagName === "A" && el.dataset.a !== "logout") return; e.preventDefault(); const f = A[el.dataset.a]; if (f) f({ ...el.dataset }); });
-document.addEventListener("input", e => { if (e.target.id === "q") { V.q = e.target.value; clearTimeout(window.__q); window.__q = setTimeout(render, 150); } if (e.target.id === "p_plan" || e.target.id === "p_until" || e.target.id === "p_note") V.f[e.target.id] = e.target.value; });
+document.addEventListener("input", e => { if (e.target.id === "q") { V.q = e.target.value; clearTimeout(window.__q); window.__q = setTimeout(render, 150); } if (e.target.id === "p_plan" || e.target.id === "p_until" || e.target.id === "p_note" || e.target.id.startsWith("rep_")) V.f[e.target.id] = e.target.value; });
 document.addEventListener("change", e => { if (e.target.id === "p_plan") { V.f.p_plan = e.target.value; render(); } });
 document.addEventListener("keydown", e => { if (e.key === "Enter" && V.view === "relock") { e.preventDefault(); A.unlock(); return; }
   if (e.key === "Enter" && V.view === "login") { e.preventDefault(); A[V.setup && V.f.mode !== "login" ? "setup" : "login"](); } if (e.key === "Escape" && V.panel) A.close(); });
@@ -267,7 +309,16 @@ try { const t = localStorage.getItem("gesco-console-theme"); if (t) document.doc
 let lastAct = Date.now();
 ["pointerdown", "keydown", "touchstart", "wheel", "scroll"].forEach(ev => addEventListener(ev, () => { if (V.view === "app") lastAct = Date.now(); }, { passive: true, capture: true }));
 const lockIfIdle = () => { if (V.view === "app" && Date.now() - lastAct > 60000) { V.view = "relock"; V.panel = null; V.err = ""; render(); } };
-setInterval(lockIfIdle, 5000); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") lockIfIdle(); });
+setInterval(lockIfIdle, 5000);
+async function loadMsgs(id) { const { data } = await sb.from("support_messages").select("*").eq("thread_id", id).order("id"); if (V.thr === id) V.msgs = data || []; }
+/* Nouvelles demandes d'assistance : vérification toutes les 30 s + signal sonore */
+let supSeen = null;
+setInterval(async () => { if (V.view !== "app" || document.visibilityState !== "visible") return;
+  try { const sup = await rpc("gb_pf_support_list"), n = sup.filter(supNew).length, sig = sup.map(t => t.id + t.last_msg_at).join();
+    if (sig === (V.data.sup || []).map(t => t.id + t.last_msg_at).join()) return;
+    V.data.sup = sup; if (V.thr) await loadMsgs(V.thr);
+    if (supSeen != null && n > supSeen) { toast("Nouvelle demande d’assistance transmise par l’IA."); try { const c = new AudioContext(), o = c.createOscillator(), g = c.createGain(); o.connect(g); g.connect(c.destination); o.frequency.value = 880; g.gain.setValueAtTime(.15, c.currentTime); g.gain.exponentialRampToValueAtTime(.001, c.currentTime + .5); o.start(); o.stop(c.currentTime + .5); } catch (e) {} }
+    supSeen = n; if (!V.busy) render(); } catch (e) {} }, 30000); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") lockIfIdle(); });
 function vRelock() {
   return `<div class="auth"><form class="card" onsubmit="return false"><img class="logo" src="${LOGO}" alt="BISMO Agency">
     <div style="text-align:center"><h1 style="font-size:22px">Console verrouillée</h1><p class="mu" style="margin:4px 0 0">Après 1 minute d’inactivité, retapez votre mot de passe.</p></div>
