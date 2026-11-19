@@ -1,0 +1,13 @@
+# Netlify : publier le dossier généré par app/build.py
+[build]
+  publish = "dist/web"
+  command = "python3 app/build.py"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
