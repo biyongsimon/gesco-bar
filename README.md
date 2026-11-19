@@ -2,6 +2,10 @@
 
 SaaS B2B de gestion de bar : tickets par serveuse, envoi à la caisse, encaissement espèces / Mobile Money, reliquats et bons vérifiables, stock général et bouteilles en main, revenus, clôture de journée. Plusieurs bars, données séparées par établissement.
 
+**Application en ligne : https://gescobar-cm.netlify.app** (Netlify, compte biyongsimon). Code : https://github.com/biyongsimon/gesco-bar
+
+Mettre à jour le site : `python3 app/build.py`, compresser le contenu de `dist/web/` en zip, puis Netlify → gescobar-cm → Deploys → déposer le zip.
+
 ## Ce qui est déjà en place
 
 | Élément | État |
