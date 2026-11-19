@@ -86,3 +86,10 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 6. **Consignes (casiers et emballages vides)** et prix d'achat pour calculer la marge.
 8. Application installable : icônes PNG fournies ; tester l'installation sur un Android d'entrée de gamme.
 7. Passer Supabase en offre payante avant le lancement (l'offre gratuite met le projet en pause après une semaine sans activité).
+
+## v3.2 · Paiements et abonnement
+
+- **QR de paiement (serveuse)** : le PDG saisit ses codes marchands Orange Money / MTN MoMo (Réglages → Paiements). Le QR, animé, contient le code USSD avec le montant du ticket (`tel:` + USSD). Les modèles USSD sont modifiables : vérifiez-les auprès de l'opérateur.
+- **Paiement par numéro** : via un compte marchand Notch Pay (clé publique saisie par le PDG, gardée côté serveur dans `gb_private.pay_keys`). La fonction `gesco-admin` (actions `momo_push`, `momo_status`) envoie la demande ; le client valide sur son téléphone ; le ticket passe « payé » automatiquement.
+- **Permissions** : serveuses et caisse → directeur ; directeur → PDG ; personne ne valide sa propre demande.
+- **Abonnement** (directeur et PDG) : Snack Simple 10 000, Snack Premium 15 000, Snack Gold 20 000, Lounge 30 000 FCFA/mois ; 12 mois = 10 payés. Le codes marchands de BISMO Agency se règlent dans `public.platform_config`. Validation d'un paiement : `select public.gb_admin_sub_validate('<id>', true);` (service role).

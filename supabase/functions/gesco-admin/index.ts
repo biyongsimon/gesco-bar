@@ -1,4 +1,4 @@
-// GesCo Bar · fonction serveur : inscription d'un bar, connexion par PIN, ajout du personnel.
+// GesCo Bar · fonction serveur : inscription, connexion par PIN, ajout du personnel, paiement Mobile Money par numéro (Notch Pay).
 // verify_jwt = false : les actions publiques (inscription, liste, PIN) n'ont pas de session ;
 // l'action staff_create vérifie elle-même le jeton de l'appelant.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -114,6 +114,40 @@ Deno.serve(async (req) => {
         });
         if (e2) { await admin.auth.admin.deleteUser(u.user.id); return fail(e2.message); }
         return json({ ok: true, staff_id: sid });
+      }
+
+      case "momo_push": case "momo_status": {
+        const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+        const { data: me, error: e0 } = await admin.auth.getUser(jwt);
+        if (e0 || !me?.user) return fail("Session expirée. Reconnectez-vous.", 401);
+        const NP = "https://api.notchpay.co/payments";
+        const np = async (method: string, path: string, key: string, payload?: unknown) => {
+          const r = await fetch(NP + path, { method, headers: { Authorization: key, Accept: "application/json", "Content-Type": "application/json" }, body: payload ? JSON.stringify(payload) : undefined });
+          const j = await r.json().catch(() => ({})); return { ok: r.ok, j };
+        };
+        if (body.action === "momo_push") {
+          const { ticket, phone, operator } = body as Record<string, string>;
+          const { data: st, error: e1 } = await admin.rpc("gb_admin_momo_start", { p_user: me.user.id, p_ticket: ticket, p_phone: phone, p_operator: operator });
+          if (e1) return fail(e1.message);
+          const init = await np("POST", "", st.key, { amount: st.amount, currency: "XAF", reference: "gb-" + st.id, description: st.label, customer: { phone: st.phone, name: st.client } });
+          const ref = init.j?.transaction?.reference;
+          if (!init.ok || !ref) { await admin.rpc("gb_admin_momo_update", { p_req: st.id, p_status: "echoue", p_ref: null, p_msg: init.j?.message ?? "init" }); return fail("Le service de paiement a refusé la demande : " + (init.j?.message ?? "vérifiez la clé du PDG.")); }
+          const ch = await np("PUT", "/" + encodeURIComponent(ref), st.key, { channel: operator === "orange" ? "cm.orange" : "cm.mtn", data: { phone: st.phone } });
+          if (!ch.ok) { await admin.rpc("gb_admin_momo_update", { p_req: st.id, p_status: "echoue", p_ref: ref, p_msg: ch.j?.message ?? "charge" }); return fail("Envoi au téléphone impossible : " + (ch.j?.message ?? "réessayez.")); }
+          await admin.from("momo_requests").update({ provider_ref: ref }).eq("id", st.id);
+          return json({ ok: true, id: st.id, message: ch.j?.message ?? "Demande envoyée au téléphone du client." });
+        }
+        const { id } = body as Record<string, string>;
+        const { data: g, error: e2 } = await admin.rpc("gb_admin_momo_get", { p_user: me.user.id, p_req: id });
+        if (e2) return fail(e2.message);
+        if (g.status !== "en_cours") return json({ status: g.status });
+        if (!g.ref || !g.key) return json({ status: "en_cours" });
+        const v = await np("GET", "/" + encodeURIComponent(g.ref), g.key);
+        const s = String(v.j?.transaction?.status ?? "pending");
+        const old = Date.now() - new Date(g.created).getTime() > 5 * 60000;
+        const done = s === "complete" ? "reussi" : ["failed", "rejected", "canceled", "abandoned", "expired"].includes(s) || old ? "echoue" : null;
+        if (done) await admin.rpc("gb_admin_momo_update", { p_req: id, p_status: done, p_ref: g.ref, p_msg: s });
+        return json({ status: done ?? "en_cours", provider: s });
       }
 
       default:
