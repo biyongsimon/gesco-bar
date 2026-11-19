@@ -36,7 +36,10 @@ doc = f"""<!doctype html>
 web = OUT / "web"; web.mkdir(parents=True, exist_ok=True)
 (web / "index.html").write_text(doc, encoding="utf-8")
 for f in (ROOT / "public").iterdir(): shutil.copy(f, web / f.name)
-(web / "_headers").write_text("/sw.js\n  Cache-Control: no-cache\n/index.html\n  Cache-Control: no-cache\n", encoding="utf-8")
+(web / "_headers").write_text("/sw.js\n  Cache-Control: no-cache\n/index.html\n  Cache-Control: no-cache\n/console.html\n  Cache-Control: no-cache\n  X-Robots-Tag: noindex\n", encoding="utf-8")
+# Console éditeur (BISMO Agency)
+console = (ROOT / "src/admin.html").read_text(encoding="utf-8").replace("__LOGO_B64__", (ROOT / "src/logo.b64").read_text().strip()).replace("__URL__", SUPABASE_URL).replace("__KEY__", SUPABASE_KEY)
+(web / "console.html").write_text(console, encoding="utf-8")
 
 demo = SRC.replace("/*CONFIG*/", '{ mode: "demo" }').replace("<!--SUPABASE-->", "").replace(
     "<!--VIEWPORT_SIDES-->", '<meta name="claude:viewport-fit-sides" content="cover">')

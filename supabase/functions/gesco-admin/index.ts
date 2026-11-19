@@ -150,6 +150,25 @@ Deno.serve(async (req) => {
         return json({ status: done ?? "en_cours", provider: s });
       }
 
+      case "admin_setup_open": {
+        const { data } = await admin.rpc("gb_admin_setup_open");
+        return json({ open: !!data });
+      }
+
+      case "admin_setup": {
+        const { email, password, code } = body as Record<string, string>;
+        if (!email || !/^\S+@\S+\.\S+$/.test(email)) return fail("Adresse e-mail invalide.");
+        if (!password || password.length < 10) return fail("Le mot de passe doit faire au moins 10 caractères.");
+        if (!code || code.trim().length < 6) return fail("Indiquez le code d'installation.");
+        const { data: open } = await admin.rpc("gb_admin_setup_open");
+        if (!open) return fail("Le compte éditeur a déjà été créé.", 403);
+        const { data: u, error } = await admin.auth.admin.createUser({ email: email.trim().toLowerCase(), password, email_confirm: true, user_metadata: { name: "BISMO Agency", editeur: true } });
+        if (error || !u.user) return fail((error?.message ?? "").toLowerCase().includes("already") ? "Un compte existe déjà avec cet e-mail." : "Création impossible : " + (error?.message ?? ""));
+        const { error: e2 } = await admin.rpc("gb_admin_claim_setup", { p_code: code, p_user: u.user.id, p_email: email });
+        if (e2) { await admin.auth.admin.deleteUser(u.user.id); return fail(e2.message, 403); }
+        return json({ ok: true });
+      }
+
       default:
         return fail("Action inconnue.");
     }

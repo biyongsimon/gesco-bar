@@ -93,3 +93,10 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - **Paiement par numéro** : via un compte marchand Notch Pay (clé publique saisie par le PDG, gardée côté serveur dans `gb_private.pay_keys`). La fonction `gesco-admin` (actions `momo_push`, `momo_status`) envoie la demande ; le client valide sur son téléphone ; le ticket passe « payé » automatiquement.
 - **Permissions** : serveuses et caisse → directeur ; directeur → PDG ; personne ne valide sa propre demande.
 - **Abonnement** (directeur et PDG) : Snack Simple 10 000, Snack Premium 15 000, Snack Gold 20 000, Lounge 30 000 FCFA/mois ; 12 mois = 10 payés. Le codes marchands de BISMO Agency se règlent dans `public.platform_config`. Validation d'un paiement : `select public.gb_admin_sub_validate('<id>', true);` (service role).
+
+## v4 · Console éditeur (BISMO Agency)
+
+- Adresse : `/console.html` sur le site. Première connexion : e-mail, mot de passe choisi et code d'installation à usage unique (table `gb_private.platform_setup`).
+- Vue d'ensemble (revenu mensuel récurrent, encaissements, bars actifs, inscriptions), validation des paiements avec la capture du SMS, fiche de chaque bar (formule, date de fin, mois offerts, suspension, identité légale), réglages des numéros de réception, journal.
+- Blocage automatique 3 jours après la fin de l'abonnement (sauf activation provisoire de 72 h) ; le PDG et le directeur gardent l'accès à « Abonnement » pour renouveler. Suspension manuelle possible.
+- Limites des formules appliquées par le serveur : Simple (1 caisse, 3 serveuses, pas de directeur), Premium (2 caisses, 6 serveuses, pas de directeur), Gold (12 employés), Lounge et bêta illimités.

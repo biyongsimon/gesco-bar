@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0b1f17">
+<title>Console GesCo Bar</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#f3f6f4;--surface:#fff;--sunk:#eaf0ec;--ink:#13201a;--muted:#5b6a62;--line:#dbe3dd;--brand:#0f5c3c;--brand-ink:#fff;--ok:#1b7f4b;--ok-soft:#dff3e7;--warn:#8a5a06;--warn-soft:#fbf0d9;--bad:#b3261e;--bad-soft:#fbe4e2;--sky:#1f6fa8;--sky-soft:#e1eef8;--night:#5b3fa0;--night-soft:#ece6f8;
+  --display:"Bricolage Grotesque","Trebuchet MS",sans-serif;--body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b120e;--surface:#121c17;--sunk:#18241e;--ink:#e6efe9;--muted:#93a69b;--line:#24342c;--brand:#38b87a;--brand-ink:#06150e;--ok:#4fd08c;--ok-soft:#123222;--warn:#f0b54a;--warn-soft:#33270d;--bad:#ff7b72;--bad-soft:#3a1715;--sky:#6cb6ec;--sky-soft:#12283a;--night:#b9a2f5;--night-soft:#251b3d;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.02em}h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-family:var(--body);font-weight:700}
+button,input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+input:focus,select:focus,textarea:focus{outline:3px solid color-mix(in srgb,var(--brand) 40%,transparent);border-color:var(--brand)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:8px 16px;border-radius:10px;border:1px solid transparent;background:var(--brand);color:var(--brand-ink);font-weight:700;cursor:pointer}
+.btn.soft{background:var(--sunk);color:var(--ink);border-color:var(--line)}.btn.bad{background:var(--bad);color:#fff}.btn.ok{background:var(--ok);color:#fff}.btn.sm{min-height:34px;padding:5px 12px;font-size:13px}
+.btn[disabled]{opacity:.5;cursor:default}
+.mu{color:var(--muted)}.num{font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.bad{background:var(--bad-soft);color:var(--bad)}.pill.sky{background:var(--sky-soft);color:var(--sky)}.pill.night{background:var(--night-soft);color:var(--night)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.grow{flex:1 1 auto;min-width:0}.stack{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.f{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+/* connexion */
+.auth{min-height:100vh;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
+.auth .card{width:min(420px,100%);padding:28px;display:flex;flex-direction:column;gap:14px}
+.auth .logo{width:150px;margin:0 auto}
+.err{padding:10px 12px;border-radius:10px;background:var(--bad-soft);color:var(--bad);font-weight:600}
+/* coque */
+.shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}.shell>div{min-width:0}
+.side{position:sticky;top:0;height:100vh;padding:20px 14px;background:#0b1f17;color:#d9e8df;display:flex;flex-direction:column;gap:6px}
+.side .brand{display:flex;align-items:center;gap:10px;padding:0 8px 16px}.side .brand b{font:800 18px var(--display);color:#fff}.side .brand small{display:block;font-size:11px;color:#8fb3a1;letter-spacing:.08em;text-transform:uppercase}
+.side a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:#cfe0d6;text-decoration:none;font-weight:600}
+.side a:hover{background:#13301f}.side a.on{background:#1b4a32;color:#fff}.side a i{margin-left:auto;font-style:normal;background:#e5484d;color:#fff;border-radius:99px;font-size:11px;padding:1px 7px}
+.side .foot{margin-top:auto;font-size:12px;color:#8fb3a1;display:flex;flex-direction:column;gap:8px}
+.side .foot button{background:none;border:1px solid #2c5a42;color:#cfe0d6;border-radius:10px;padding:8px;cursor:pointer}
+main{padding:24px max(16px,env(safe-area-inset-right,0px)) 60px max(16px,env(safe-area-inset-left,0px));min-width:0;max-width:1200px}
+.ph{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:18px}.ph h1{font-size:30px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;animation:rise .45s both;animation-delay:calc(var(--i,0)*40ms)}
+.kpi span{font-size:12px;color:var(--muted);font-weight:600}.kpi b{display:block;font:800 26px/1.15 var(--display);margin-top:4px}.kpi small{color:var(--muted)}
+.kpi.hl{background:linear-gradient(135deg,#0f5c3c,#1d4f6e);color:#fff;border:0}.kpi.hl span,.kpi.hl small{color:#cfe8dc}
+.kpi.alert{border-color:var(--warn);background:var(--warn-soft)}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;font-size:12px;color:var(--muted);font-weight:700;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}tr.click{cursor:pointer}tr.click:hover td{background:var(--sunk)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 12px;font-weight:600;font-size:13px;cursor:pointer}.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.bars{display:flex;align-items:flex-end;gap:10px;height:140px;padding-top:10px}.bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+.bars i{display:block;width:100%;max-width:44px;border-radius:8px 8px 4px 4px;background:var(--brand);min-height:4px;transform-origin:bottom;animation:grow .7s both}
+@keyframes grow{from{transform:scaleY(0)}to{transform:none}}
+.pay{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:14px;align-items:start}
+.pay img,.pay .noimg{width:100%;border-radius:12px;border:1px solid var(--line);background:var(--sunk);aspect-ratio:3/4;object-fit:cover}
+.pay .noimg{display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center;padding:10px}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line)}.kv:last-child{border:0}
+.scrim{position:fixed;inset:0;background:rgba(5,12,9,.55);z-index:50;display:flex;justify-content:flex-end}
+.panel{width:min(520px,100%);height:100%;overflow:auto;background:var(--bg);padding:22px;display:flex;flex-direction:column;gap:14px;animation:slide .25s both}
+@keyframes slide{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:600;z-index:70;max-width:90vw}
+.toast.err{background:var(--bad);color:#fff}
+.empty{padding:24px;text-align:center;color:var(--muted)}
+.tabs-m{display:none}
+@media (max-width:860px){.shell{grid-template-columns:1fr}.side{display:none}.tabs-m{display:flex;gap:6px;overflow-x:auto;position:sticky;top:0;z-index:20;background:var(--bg);padding:10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line)}
+  .tabs-m a i{font-style:normal;margin-left:6px;background:#e5484d;color:#fff;border-radius:99px;font-size:11px;padding:1px 6px}td:first-child{min-width:130px}
+  .tabs-m a{white-space:nowrap;padding:8px 14px;border-radius:99px;border:1px solid var(--line);text-decoration:none;color:var(--ink);font-weight:600;font-size:14px}.tabs-m a.on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+  .pay{grid-template-columns:1fr}.pay img,.pay .noimg{max-width:260px}main{padding-top:14px}}
+.spin{width:18px;height:18px;border:2.5px solid var(--line);border-top-color:var(--brand);border-radius:50%;display:inline-block;animation:sp .8s linear infinite;vertical-align:middle}@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const CFG = { url: "__URL__", key: "__KEY__" }, LOGO = "data:image/png;base64,__LOGO_B64__";
+const sb = supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, storageKey: "gesco-console" } });
+const $ = document.getElementById("app");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const F = n => (Math.round(+n || 0)).toLocaleString("fr-FR").replace(/ | /g, " ") + " FCFA";
+const D = d => d ? new Date(d.length === 10 ? d + "T12:00:00" : d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "—";
+const ago = d => { if (!d) return "jamais"; const m = Math.round((Date.now() - new Date(d)) / 60000); return m < 60 ? `il y a ${m} min` : m < 1440 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
+const PLANS = { beta: ["Bêta gratuite", 0, ""], simple: ["Snack Simple", 10000, "sky"], premium: ["Snack Premium", 15000, "sky"], gold: ["Snack Gold", 20000, "warn"], lounge: ["Lounge", 30000, "night"] };
+const MONTH = m => new Date(m + "-15").toLocaleDateString("fr-FR", { month: "short" });
+const V = { view: "login", tab: (location.hash || "#apercu").slice(1), f: {}, data: {}, filter: "tous", q: "", panel: null, busy: false, toast: null, setup: false };
+const SECT = [["apercu", "Vue d’ensemble"], ["paiements", "Paiements"], ["bars", "Bars"], ["reglages", "Réglages"], ["journal", "Journal"]];
+
+function toast(msg, kind) { V.toast = { msg, kind }; render(); clearTimeout(window.__t); window.__t = setTimeout(() => { V.toast = null; render(); }, kind === "err" ? 5000 : 2800); }
+async function rpc(n, a) { const { data, error } = await sb.rpc(n, a || {}); if (error) throw new Error(error.message); return data; }
+async function fn(action, body) { const r = await fetch(CFG.url + "/functions/v1/gesco-admin", { method: "POST", headers: { "Content-Type": "application/json", apikey: CFG.key, Authorization: "Bearer " + CFG.key }, body: JSON.stringify({ action, ...body }) });
+  const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || "Erreur réseau."); return j; }
+const run = async f => { if (V.busy) return; V.busy = true; render(); try { await f(); } catch (e) { toast(e.message, "err"); } V.busy = false; render(); };
+
+async function loadAll() {
+  const [ov, bars, subs, log] = await Promise.all([rpc("gb_pf_overview"), rpc("gb_pf_bars"), rpc("gb_pf_subs"), sb.from("platform_log").select("*").order("created_at", { ascending: false }).limit(100).then(r => r.data || [])]);
+  const { data: pc } = await sb.from("platform_config").select("*").limit(1);
+  V.data = { ov, bars, subs, log, pc: (pc || [])[0] || {} };
+  const need = subs.filter(s => s.status === "en_attente" && s.proof_path && !V.urls?.[s.proof_path]); V.urls = V.urls || {};
+  await Promise.all(need.map(async s => { const { data } = await sb.storage.from("preuves").createSignedUrl(s.proof_path, 3600); if (data) V.urls[s.proof_path] = data.signedUrl; }));
+}
+async function boot() {
+  const { data } = await sb.auth.getSession();
+  if (data.session) { try { const w = await rpc("gb_pf_whoami"); if (w.admin) { V.me = w.email; V.view = "app"; await loadAll(); render(); return; } await sb.auth.signOut(); V.err = "Ce compte n’est pas un compte éditeur."; } catch (e) { V.err = e.message; } }
+  try { V.setup = (await fn("admin_setup_open", {})).open; } catch (e) {}
+  V.view = "login"; render();
+}
+
+/* ── Vues ── */
+function vLogin() {
+  const s = V.setup && V.f.mode !== "login";
+  return `<div class="auth"><form class="card" onsubmit="return false"><img class="logo" src="${LOGO}" alt="BISMO Agency">
+    <div style="text-align:center"><h1 style="font-size:24px">Console GesCo Bar</h1><p class="mu" style="margin:4px 0 0">${s ? "Créez votre compte éditeur avec le code d’installation reçu." : "Espace réservé à BISMO Agency."}</p></div>
+    ${V.err ? `<div class="err">${esc(V.err)}</div>` : ""}
+    <label class="f">E-mail<input id="em" type="email" autocomplete="username" value="${esc(V.f.em || "")}"></label>
+    <label class="f">Mot de passe${s ? " (10 caractères minimum)" : ""}<input id="pw" type="password" autocomplete="${s ? "new-password" : "current-password"}"></label>
+    ${s ? `<label class="f">Code d’installation<input id="code" autocomplete="off" placeholder="XXXX-XXXX" style="text-transform:uppercase"></label>` : ""}
+    <button class="btn" data-a="${s ? "setup" : "login"}" ${V.busy ? "disabled" : ""}>${V.busy ? '<span class="spin"></span>' : s ? "Créer mon compte éditeur" : "Se connecter"}</button>
+    ${V.setup ? `<button class="btn soft sm" data-a="mode">${s ? "J’ai déjà mon compte" : "Première connexion : utiliser le code d’installation"}</button>` : ""}</form></div>`;
+}
+const kpi = (l, v, s, cls, i) => `<div class="kpi ${cls || ""}" style="--i:${i || 0}"><span>${l}</span><b class="num">${v}</b>${s ? `<small>${s}</small>` : ""}</div>`;
+function planPill(b) { const t = b.plan_trial_until && new Date(b.plan_trial_until) > Date.now();
+  if (b.suspended) return `<span class="pill bad">Suspendu</span>`;
+  if (b.blocage) return `<span class="pill bad">Expiré · bloqué</span>`;
+  if (t) return `<span class="pill warn">${PLANS[b.trial_plan][0]} · provisoire</span>`;
+  if (b.plan === "beta") return `<span class="pill">Bêta</span>`;
+  const d = Math.ceil((new Date(b.plan_until + "T23:59:59") - Date.now()) / 864e5);
+  return `<span class="pill ${d < 0 ? "bad" : d <= 7 ? "warn" : PLANS[b.plan][2]}">${PLANS[b.plan][0]} · ${d < 0 ? "expiré" : d + " j"}</span>`; }
+function vApercu() {
+  const o = V.data.ov, bars = V.data.bars, mx = Math.max(1, ...o.inscriptions.map(x => x.n));
+  const soon = bars.filter(b => b.plan !== "beta" && b.plan_until && (new Date(b.plan_until) - Date.now()) / 864e5 <= 7).slice(0, 8);
+  const top = [...bars].sort((a, b) => b.ventes_30j - a.ventes_30j).slice(0, 6);
+  return `<div class="ph"><div><h1>Vue d’ensemble</h1><p class="mu" style="margin:4px 0 0">${new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p></div><button class="btn soft" data-a="reload">Actualiser</button></div>
+    <div class="kpis">${kpi("Revenu mensuel récurrent", F(o.mrr), `${o.payants} bar(s) payant(s)`, "hl", 0)}${kpi("Encaissé ce mois", F(o.encaisse_mois), `Total : ${F(o.encaisse_total)}`, "", 1)}
+      ${kpi("Paiements à valider", o.a_valider, o.a_valider ? "Ouvrir Paiements" : "Rien en attente", o.a_valider ? "alert" : "", 2)}${kpi("Bars inscrits", o.bars, `${o.beta} en bêta · ${o.bars_actifs_7j} actif(s) sur 7 j`, "", 3)}
+      ${kpi("Employés actifs", o.employes, "toutes équipes confondues", "", 4)}${kpi("Expirent sous 7 jours", o.expirent_7j, `${o.expires} expiré(s) · ${o.suspendus} suspendu(s)`, o.expirent_7j || o.expires ? "alert" : "", 5)}
+      ${kpi("Ventes des bars (30 j)", F(o.ventes_30j), `${o.tickets_30j} tickets encaissés`, "", 6)}</div>
+    <div class="grid2"><div class="card"><h3>Nouveaux bars par mois</h3><div class="bars">${o.inscriptions.map((x, i) => `<div><b class="num">${x.n}</b><i style="height:${Math.max(4, x.n / mx * 100)}px;animation-delay:${i * 60}ms"></i>${MONTH(x.mois)}</div>`).join("")}</div></div>
+      <div class="card"><h3>À relancer</h3>${soon.length ? `<table>${soon.map(b => `<tr class="click" data-a="openBar" data-id="${b.id}"><td><b>${esc(b.name)}</b><br><span class="mu">${esc(b.pdg || "")}</span></td><td>${planPill(b)}</td></tr>`).join("")}</table>` : `<div class="empty">Aucun abonnement ne se termine cette semaine.</div>`}</div>
+      <div class="card"><h3>Bars les plus actifs (30 j)</h3><table>${top.map(b => `<tr class="click" data-a="openBar" data-id="${b.id}"><td><b>${esc(b.name)}</b><br><span class="mu">${esc(b.city || "")}</span></td><td class="num" style="text-align:right">${F(b.ventes_30j)}<br><span class="mu">${b.tickets_30j} tickets</span></td></tr>`).join("") || `<tr><td class="empty">Pas encore d’activité.</td></tr>`}</table></div></div>`;
+}
+function vPaiements() {
+  const subs = V.data.subs, pend = subs.filter(s => s.status === "en_attente"), done = subs.filter(s => s.status !== "en_attente");
+  const SST = { validee: ["ok", "Validé"], refusee: ["bad", "Refusé"] };
+  return `<div class="ph"><div><h1>Paiements</h1><p class="mu" style="margin:4px 0 0">Vérifiez la réception sur votre téléphone, puis validez : la formule s’active et la date de fin est prolongée.</p></div></div>
+    <div class="stack">${pend.map(s => { const img = s.proof_path && V.urls[s.proof_path];
+      return `<div class="card pay"><div class="stack" style="gap:6px"><div class="row" style="justify-content:space-between"><h2 style="font-size:20px">${esc(s.bar_name)} <span class="mu" style="font:500 14px var(--body)">· ${esc(s.bar_code)} · ${esc(s.city || "")}</span></h2><span class="pill warn">À vérifier</span></div>
+        <div class="kv"><span class="mu">Formule</span><b>${PLANS[s.plan][0]} · ${s.months} mois</b></div><div class="kv"><span class="mu">Montant attendu</span><b class="num" style="font-size:20px">${F(s.amount)}</b></div>
+        <div class="kv"><span class="mu">Envoyé sur</span><b>${s.method === "orange" ? "Orange Money (" + esc(V.data.pc.om_number || "") + ")" : "MTN MoMo (" + esc(V.data.pc.mtn_number || "") + ")"}</b></div>
+        <div class="kv"><span class="mu">Référence SMS</span><b style="word-break:break-all">${esc(s.reference)}</b></div><div class="kv"><span class="mu">Motif attendu</span><b>${esc(s.pay_ref || "")}</b></div>
+        <div class="kv"><span class="mu">Demandé par</span><span>${esc(s.demandeur || "—")} · ${ago(s.created_at)}</span></div>
+        <label class="f" style="margin-top:6px">Note (facultatif, ex. motif du refus)<input id="note_${s.id}" placeholder="Ex. montant reçu incomplet"></label>
+        <div class="row" style="margin-top:6px"><button class="btn ok grow" data-a="decide" data-id="${s.id}" data-ok="1" ${V.busy ? "disabled" : ""}>Valider le paiement</button><button class="btn bad" data-a="decide" data-id="${s.id}" data-ok="0" ${V.busy ? "disabled" : ""}>Refuser</button></div></div>
+        ${img ? `<a href="${esc(img)}" target="_blank" rel="noopener"><img src="${esc(img)}" alt="Capture du SMS de paiement"></a>` : `<div class="noimg">${s.proof_path ? "Capture en cours de chargement…" : "Pas de capture : vérifiez la référence dans vos SMS."}</div>`}</div>`; }).join("") || `<div class="card empty">Aucun paiement en attente. 🎉</div>`}
+    <div class="card"><h3>Historique</h3><div class="scroll"><table><tr><th>Date</th><th>Bar</th><th>Formule</th><th>Montant</th><th>Opérateur</th><th>Référence</th><th>Statut</th></tr>
+      ${done.map(s => `<tr><td>${D(s.created_at)}</td><td>${esc(s.bar_name)}</td><td>${PLANS[s.plan][0]} · ${s.months} m</td><td class="num">${F(s.amount)}</td><td>${s.method === "orange" ? "Orange" : "MTN"}</td><td style="word-break:break-all">${esc(s.reference)}</td><td><span class="pill ${SST[s.status][0]}">${SST[s.status][1]}</span>${s.admin_note ? `<br><span class="mu">${esc(s.admin_note)}</span>` : ""}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">Aucun paiement traité.</td></tr>`}</table></div></div></div>`;
+}
+function vBars() {
+  const q = (V.q || "").toLowerCase(), now = Date.now();
+  const FL = { tous: () => true, payants: b => b.plan !== "beta" && !b.blocage, beta: b => b.plan === "beta", bientot: b => b.plan !== "beta" && b.plan_until && (new Date(b.plan_until) - now) / 864e5 <= 7 && !b.blocage, bloques: b => b.blocage || b.suspended, inactifs: b => !b.derniere_activite || now - new Date(b.derniere_activite) > 7 * 864e5 };
+  const list = V.data.bars.filter(FL[V.filter]).filter(b => !q || (b.name + " " + b.code + " " + (b.city || "") + " " + (b.pdg || "") + " " + (b.email || "")).toLowerCase().includes(q));
+  return `<div class="ph"><div><h1>Bars</h1><p class="mu" style="margin:4px 0 0">${V.data.bars.length} bar(s) inscrit(s)</p></div><input style="max-width:320px" id="q" placeholder="Rechercher : nom, code, ville, PDG…" value="${esc(V.q)}"></div>
+    <div class="chips" style="margin-bottom:12px">${[["tous", "Tous"], ["payants", "Payants"], ["beta", "Bêta"], ["bientot", "Expirent bientôt"], ["bloques", "Bloqués"], ["inactifs", "Inactifs 7 j"]].map(([k, l]) => `<button class="chip ${V.filter === k ? "on" : ""}" data-a="filter" data-v="${k}">${l}</button>`).join("")}</div>
+    <div class="card scroll" style="padding:4px 8px"><table><tr><th>Bar</th><th>PDG</th><th>Formule</th><th>Équipe</th><th>Ventes 30 j</th><th>Dernière activité</th><th></th></tr>
+      ${list.map(b => `<tr class="click" data-a="openBar" data-id="${b.id}"><td><b>${esc(b.name)}</b><br><span class="mu">${esc(b.code)} · ${esc(b.city || "—")}</span></td><td>${esc(b.pdg || "—")}<br><span class="mu">${esc(b.email || "")}</span></td>
+        <td>${planPill(b)}${b.a_valider ? ` <span class="pill warn">Paiement à valider</span>` : ""}</td><td>${b.employes} <span class="mu">(${b.serveuses} serv.)</span></td><td class="num">${F(b.ventes_30j)}</td><td>${ago(b.derniere_activite)}</td><td>›</td></tr>`).join("") || `<tr><td colspan="7" class="empty">Aucun bar ne correspond.</td></tr>`}</table></div>`;
+}
+function vPanel() {
+  const b = V.data.bars.find(x => x.id === V.panel); if (!b) return "";
+  const f = V.f, plan = f.p_plan ?? b.plan, until = f.p_until ?? (b.plan_until || ""), KY = { non_renseigne: "Non renseignée", a_verifier: "À vérifier", verifie: "Vérifiée", refuse: "Refusée" };
+  const addM = n => { const d = new Date(Math.max(Date.now(), b.plan_until ? new Date(b.plan_until + "T12:00:00") : 0)); d.setMonth(d.getMonth() + n); return d.toLocaleDateString("sv-SE"); };
+  return `<div class="scrim" data-a="close" data-self="1"><aside class="panel" role="dialog" aria-label="Fiche du bar">
+    <div class="row" style="justify-content:space-between"><div><h2>${esc(b.name)}</h2><span class="mu">${esc(b.code)} · ${esc(b.city || "")} · inscrit le ${D(b.created_at)}</span></div><button class="btn soft sm" data-a="close">Fermer</button></div>
+    <div class="row">${planPill(b)}${b.qr_ok ? '<span class="pill ok">QR configuré</span>' : '<span class="pill">QR non configuré</span>'}${b.push_enabled ? '<span class="pill ok">Paiement par numéro</span>' : ""}</div>
+    ${b.blocage ? `<div class="err">${esc(String(b.blocage).replace(/^ACCES_BLOQUE:\s*/, ""))}</div>` : ""}
+    <div class="card"><div class="kv"><span class="mu">PDG</span><b>${esc(b.pdg || "—")}</b></div><div class="kv"><span class="mu">E-mail</span><span style="word-break:break-all">${esc(b.email || "—")}</span></div>
+      <div class="kv"><span class="mu">Équipe active</span><span>${b.employes} dont ${b.serveuses} serveuse(s)</span></div><div class="kv"><span class="mu">Ventes 30 j</span><b class="num">${F(b.ventes_30j)} · ${b.tickets_30j} tickets</b></div>
+      <div class="kv"><span class="mu">Dernière activité</span><span>${ago(b.derniere_activite)}</span></div><div class="kv"><span class="mu">Raison sociale / NIU</span><span>${esc(b.legal_name || "—")} · ${esc(b.niu || "—")}</span></div></div>
+    <div class="card stack"><h3>Abonnement</h3>
+      <div class="row"><label class="f grow">Formule<select id="p_plan">${Object.entries(PLANS).map(([k, [n]]) => `<option value="${k}" ${plan === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+      <label class="f grow">Valable jusqu’au<input id="p_until" type="date" value="${esc(until)}" ${plan === "beta" ? "disabled" : ""}></label></div>
+      <div class="row"><span class="mu">Offrir :</span>${[1, 3, 12].map(n => `<button class="btn soft sm" data-a="addM" data-v="${addM(n)}">+${n} mois</button>`).join("")}</div>
+      <label class="f">Note interne<input id="p_note" value="${esc(f.p_note ?? (b.admin_note || ""))}" placeholder="Ex. offert pour le pilote"></label>
+      <div class="row"><button class="btn grow" data-a="saveBar" data-id="${b.id}" ${V.busy ? "disabled" : ""}>Enregistrer</button>
+        <button class="btn ${b.suspended ? "ok" : "bad"}" data-a="suspend" data-id="${b.id}" data-v="${b.suspended ? 0 : 1}" ${V.busy ? "disabled" : ""}>${b.suspended ? "Réactiver l’accès" : "Suspendre l’accès"}</button></div>
+      <p class="mu" style="margin:0;font-size:13px">Sans renouvellement, l’application se bloque 3 jours après la date de fin. Les données sont conservées.</p></div>
+    <div class="card stack"><h3>Identité légale</h3><div class="row"><span class="pill ${b.kyc_status === "verifie" ? "ok" : b.kyc_status === "refuse" ? "bad" : b.kyc_status === "a_verifier" ? "warn" : ""}">${KY[b.kyc_status] || "—"}</span>
+      ${b.id_doc_path ? `<button class="btn soft sm" data-a="doc" data-p="${esc(b.id_doc_path)}">Voir la pièce d’identité</button>` : '<span class="mu">Aucune pièce transmise</span>'}</div>
+      <div class="row">${[["verifie", "Marquer vérifiée"], ["refuse", "Refuser"], ["a_verifier", "À vérifier"]].map(([k, l]) => `<button class="btn soft sm" data-a="kyc" data-id="${b.id}" data-v="${k}">${l}</button>`).join("")}</div></div>
+    <div class="card stack"><h3>Paiements de ce bar</h3>${V.data.subs.filter(s => s.bar_id === b.id).map(s => `<div class="kv"><span>${D(s.created_at)} · ${PLANS[s.plan][0]} ${s.months} m</span><span class="num">${F(s.amount)} <span class="pill ${s.status === "validee" ? "ok" : s.status === "refusee" ? "bad" : "warn"}">${s.status === "validee" ? "Validé" : s.status === "refusee" ? "Refusé" : "À vérifier"}</span></span></div>`).join("") || '<span class="mu">Aucun paiement.</span>'}</div>
+  </aside></div>`;
+}
+function vReglages() {
+  const p = V.data.pc;
+  return `<div class="ph"><div><h1>Réglages</h1><p class="mu" style="margin:4px 0 0">Ces informations s’affichent dans la rubrique Abonnement de chaque bar.</p></div></div>
+    <div class="card stack" style="max-width:640px"><h3>Réception des abonnements</h3>
+      <label class="f">Nom affiché du bénéficiaire<input id="s_holder" value="${esc(p.holder_name || "")}"></label>
+      <div class="row"><label class="f grow">Numéro Orange Money<input id="s_om" inputmode="numeric" value="${esc(p.om_number || "")}"></label><label class="f grow">Numéro MTN MoMo<input id="s_mtn" inputmode="numeric" value="${esc(p.mtn_number || "")}"></label></div>
+      <details><summary class="mu" style="cursor:pointer">Raccourcis USSD de transfert (facultatif)</summary><div class="stack" style="margin-top:10px">
+        <p class="mu" style="margin:0;font-size:13px">Si un raccourci de transfert direct fonctionne sur votre téléphone, saisissez-le avec {numero} et {montant} : le bouton « Payer » des bars préremplira le transfert. Laissez vide pour ouvrir le menu de l’opérateur.</p>
+        <label class="f">Orange Money<input id="s_omt" value="${esc(p.om_tpl || "")}" placeholder="#150*1*1*{numero}*{montant}#"></label><label class="f">MTN MoMo<input id="s_mtnt" value="${esc(p.mtn_tpl || "")}" placeholder="*126*1*1*{numero}*{montant}#"></label></div></details>
+      <button class="btn" data-a="saveSettings" ${V.busy ? "disabled" : ""}>Enregistrer</button></div>
+    <div class="card stack" style="max-width:640px;margin-top:14px"><h3>Votre compte</h3><div class="kv"><span class="mu">Connecté en tant que</span><b>${esc(V.me || "")}</b></div>
+      <label class="f">Nouveau mot de passe<input id="s_pw" type="password" autocomplete="new-password" placeholder="10 caractères minimum"></label><button class="btn soft" data-a="changePw">Changer le mot de passe</button></div>`;
+}
+function vJournal() {
+  const name = id => (V.data.bars.find(b => b.id === id) || {}).name || "";
+  const L = { paiement_valide: "Paiement validé", paiement_refuse: "Paiement refusé", bar_modifie: "Bar modifié", kyc: "Identité", reglages: "Réglages" };
+  return `<div class="ph"><h1>Journal</h1></div><div class="card scroll"><table><tr><th>Date</th><th>Action</th><th>Bar</th><th>Détails</th></tr>${V.data.log.map(l => `<tr><td>${new Date(l.created_at).toLocaleString("fr-FR")}</td><td>${L[l.action] || esc(l.action)}</td><td>${esc(name(l.bar_id))}</td><td class="mu">${esc(Object.entries(l.data || {}).filter(([, v]) => v != null && v !== "").map(([k, v]) => k + " : " + v).join(" · "))}</td></tr>`).join("") || `<tr><td colspan="4" class="empty">Aucune action pour le moment.</td></tr>`}</table></div>`;
+}
+function render() {
+  const ae = document.activeElement, fid = ae && ae.id, pos = ae && ae.selectionStart;
+  let h;
+  if (V.view === "loading") h = `<div class="auth"><span class="spin"></span></div>`;
+  else if (V.view === "login") h = vLogin();
+  else { const pend = (V.data.subs || []).filter(s => s.status === "en_attente").length, nav = (cls) => SECT.map(([k, l]) => `<a href="#${k}" class="${V.tab === k ? "on" : ""}">${l}${k === "paiements" && pend ? `<i>${pend}</i>` : ""}</a>`).join("");
+    const body = { apercu: vApercu, paiements: vPaiements, bars: vBars, reglages: vReglages, journal: vJournal }[V.tab] || vApercu;
+    h = `<div class="shell"><nav class="side"><div class="brand"><img src="${LOGO}" alt="" style="width:46px;filter:brightness(1.2)"><div><b>GesCo Bar</b><small>Console éditeur</small></div></div>${nav()}
+      <div class="foot"><span>${esc(V.me || "")}</span><button data-a="theme">Thème clair / sombre</button><button data-a="logout">Se déconnecter</button></div></nav>
+      <div><div class="tabs-m">${nav()}<a href="#" data-a="logout">Quitter</a></div><main>${body()}</main></div></div>${V.panel ? vPanel() : ""}`; }
+  $.innerHTML = h + (V.toast ? `<div class="toast ${V.toast.kind || ""}" role="status">${esc(V.toast.msg)}</div>` : "");
+  if (fid) { const e = document.getElementById(fid); if (e) { e.focus(); try { if (pos != null) e.setSelectionRange(pos, pos); } catch (x) {} } }
+}
+const A = {
+  mode: () => { V.f.mode = V.f.mode === "login" ? "" : "login"; V.err = ""; render(); },
+  login: () => run(async () => { V.err = ""; const em = val("em"), pw = val("pw"); V.f.em = em;
+    const { error } = await sb.auth.signInWithPassword({ email: em, password: pw }); if (error) throw new Error("E-mail ou mot de passe incorrect.");
+    const w = await rpc("gb_pf_whoami"); if (!w.admin) { await sb.auth.signOut(); throw new Error("Ce compte n’est pas un compte éditeur."); }
+    V.me = w.email; await loadAll(); V.view = "app"; }),
+  setup: () => run(async () => { V.err = ""; const em = val("em"), pw = val("pw"), code = val("code"); V.f.em = em;
+    await fn("admin_setup", { email: em, password: pw, code }); const { error } = await sb.auth.signInWithPassword({ email: em, password: pw }); if (error) throw new Error(error.message);
+    V.me = em; V.setup = false; await loadAll(); V.view = "app"; toast("Bienvenue dans votre console éditeur."); }),
+  logout: async () => { await sb.auth.signOut(); V.view = "login"; V.data = {}; V.panel = null; render(); },
+  reload: () => run(loadAll),
+  filter: d => { V.filter = d.v; render(); },
+  openBar: d => { V.panel = d.id; V.f = {}; render(); },
+  close: () => { V.panel = null; V.f = {}; render(); },
+  addM: d => { V.f.p_until = d.v; if ((V.f.p_plan ?? (V.data.bars.find(b => b.id === V.panel) || {}).plan) === "beta") V.f.p_plan = "gold"; render(); },
+  saveBar: d => run(async () => { const plan = val("p_plan"), until = val("p_until") || null; if (plan !== "beta" && !until) throw new Error("Indiquez la date de fin.");
+    await rpc("gb_pf_bar_set", { p_bar: d.id, p_plan: plan, p_until: until, p_suspended: null, p_note: val("p_note") }); V.f = {}; await loadAll(); toast("Bar mis à jour."); }),
+  suspend: d => run(async () => { const b = V.data.bars.find(x => x.id === d.id);
+    if (d.v === "1" && !confirmTwice(d.id)) return;
+    await rpc("gb_pf_bar_set", { p_bar: d.id, p_plan: b.plan, p_until: b.plan_until, p_suspended: d.v === "1", p_note: b.admin_note }); await loadAll(); toast(d.v === "1" ? "Accès suspendu." : "Accès rétabli."); }),
+  kyc: d => run(async () => { await rpc("gb_pf_kyc", { p_bar: d.id, p_status: d.v }); await loadAll(); toast("Statut mis à jour."); }),
+  doc: d => run(async () => { const { data, error } = await sb.storage.from("kyc").createSignedUrl(d.p, 600); if (error) throw new Error("Document introuvable."); window.open(data.signedUrl, "_blank", "noopener"); }),
+  decide: d => run(async () => { await rpc("gb_pf_sub_decide", { p_id: d.id, p_ok: d.ok === "1", p_note: val("note_" + d.id) }); await loadAll(); toast(d.ok === "1" ? "Paiement validé : la formule est active." : "Paiement refusé."); }),
+  saveSettings: () => run(async () => { await rpc("gb_pf_settings", { p_holder: val("s_holder"), p_om: val("s_om").replace(/\D/g, ""), p_mtn: val("s_mtn").replace(/\D/g, ""), p_om_tpl: val("s_omt"), p_mtn_tpl: val("s_mtnt") }); await loadAll(); toast("Réglages enregistrés."); }),
+  changePw: () => run(async () => { const p = val("s_pw"); if (p.length < 10) throw new Error("10 caractères minimum."); const { error } = await sb.auth.updateUser({ password: p }); if (error) throw new Error(error.message); toast("Mot de passe changé."); }),
+  theme: () => { const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; r.dataset.theme = dark ? "light" : "dark"; try { localStorage.setItem("gesco-console-theme", r.dataset.theme); } catch (e) {} }
+};
+const val = id => { const e = document.getElementById(id); return e ? e.value.trim() : ""; };
+let armed = null; function confirmTwice(id) { if (armed === id) { armed = null; return true; } armed = id; toast("Touchez encore « Suspendre l’accès » pour confirmer : toute l’équipe du bar sera bloquée.", "err"); setTimeout(() => { if (armed === id) armed = null; }, 6000); return false; }
+document.addEventListener("click", e => { const el = e.target.closest("[data-a]"); if (!el) return; if (el.dataset.self && e.target !== el) return; if (el.tagName === "A" && el.dataset.a !== "logout") return; e.preventDefault(); const f = A[el.dataset.a]; if (f) f({ ...el.dataset }); });
+document.addEventListener("input", e => { if (e.target.id === "q") { V.q = e.target.value; clearTimeout(window.__q); window.__q = setTimeout(render, 150); } if (e.target.id === "p_plan" || e.target.id === "p_until" || e.target.id === "p_note") V.f[e.target.id] = e.target.value; });
+document.addEventListener("change", e => { if (e.target.id === "p_plan") { V.f.p_plan = e.target.value; render(); } });
+document.addEventListener("keydown", e => { if (e.key === "Enter" && V.view === "login") { e.preventDefault(); A[V.setup && V.f.mode !== "login" ? "setup" : "login"](); } if (e.key === "Escape" && V.panel) A.close(); });
+addEventListener("hashchange", () => { V.tab = location.hash.slice(1) || "apercu"; V.panel = null; render(); scrollTo(0, 0); });
+try { const t = localStorage.getItem("gesco-console-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+V.view = "loading"; render(); boot();
+</script>
+</body>
+</html>
