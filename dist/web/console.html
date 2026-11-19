@@ -107,7 +107,9 @@ function toast(msg, kind) { V.toast = { msg, kind }; render(); clearTimeout(wind
 async function rpc(n, a) { const { data, error } = await sb.rpc(n, a || {}); if (error) throw new Error(error.message); return data; }
 async function fn(action, body) { const r = await fetch(CFG.url + "/functions/v1/gesco-admin", { method: "POST", headers: { "Content-Type": "application/json", apikey: CFG.key, Authorization: "Bearer " + CFG.key }, body: JSON.stringify({ action, ...body }) });
   const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || "Erreur réseau."); return j; }
-const run = async f => { if (V.busy) return; V.busy = true; render(); try { await f(); } catch (e) { toast(e.message, "err"); } V.busy = false; render(); };
+// Les champs sont relus AVANT le re-rendu (sinon le bouton « en cours » efface ce qui vient d'être tapé).
+const run = async f => { if (V.busy) return; const snap = {}; document.querySelectorAll("input,select,textarea").forEach(e => { if (e.id) snap[e.id] = e.value; }); V.snap = snap;
+  V.busy = true; render(); try { await f(); } catch (e) { toast(e.message, "err"); } V.snap = null; V.busy = false; render(); };
 
 async function loadAll() {
   const [ov, bars, subs, log] = await Promise.all([rpc("gb_pf_overview"), rpc("gb_pf_bars"), rpc("gb_pf_subs"), sb.from("platform_log").select("*").order("created_at", { ascending: false }).limit(100).then(r => r.data || [])]);
@@ -265,11 +267,11 @@ function render() {
 }
 const A = {
   mode: () => { V.f.mode = V.f.mode === "login" ? "" : "login"; V.err = ""; render(); },
-  login: () => run(async () => { V.err = ""; const em = val("em"), pw = val("pw"); V.f.em = em;
+  login: () => run(async () => { V.err = ""; const em = val("em").replace(/\s+/g, "").toLowerCase(), pw = val("pw"); V.f.em = em;
     const { error } = await sb.auth.signInWithPassword({ email: em, password: pw }); if (error) throw new Error("E-mail ou mot de passe incorrect.");
     const w = await rpc("gb_pf_whoami"); if (!w.admin) { await sb.auth.signOut(); throw new Error("Ce compte n’est pas un compte éditeur."); }
     V.me = w.email; await loadAll(); V.view = "app"; }),
-  setup: () => run(async () => { V.err = ""; const em = val("em"), pw = val("pw"), code = val("code"); V.f.em = em;
+  setup: () => run(async () => { V.err = ""; const em = val("em").replace(/\s+/g, "").toLowerCase(), pw = val("pw"), code = val("code").toUpperCase(); V.f.em = em;
     await fn("admin_setup", { email: em, password: pw, code }); const { error } = await sb.auth.signInWithPassword({ email: em, password: pw }); if (error) throw new Error(error.message);
     V.me = em; V.setup = false; await loadAll(); V.view = "app"; toast("Bienvenue dans votre console éditeur."); }),
   logout: async () => { await sb.auth.signOut(); V.view = "login"; V.data = {}; V.panel = null; render(); },
@@ -296,7 +298,7 @@ const A = {
   changePw: () => run(async () => { const p = val("s_pw"); if (p.length < 10) throw new Error("10 caractères minimum."); const { error } = await sb.auth.updateUser({ password: p }); if (error) throw new Error(error.message); toast("Mot de passe changé."); }),
   theme: () => { const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; r.dataset.theme = dark ? "light" : "dark"; try { localStorage.setItem("gesco-console-theme", r.dataset.theme); } catch (e) {} }
 };
-const val = id => { const e = document.getElementById(id); return e ? e.value.trim() : ""; };
+const val = id => { if (V.snap && id in V.snap) return String(V.snap[id]).trim(); const e = document.getElementById(id); return e ? e.value.trim() : ""; };
 let armed = null; function confirmTwice(id) { if (armed === id) { armed = null; return true; } armed = id; toast("Touchez encore « Suspendre l’accès » pour confirmer : toute l’équipe du bar sera bloquée.", "err"); setTimeout(() => { if (armed === id) armed = null; }, 6000); return false; }
 document.addEventListener("click", e => { const el = e.target.closest("[data-a]"); if (!el) return; if (el.dataset.self && e.target !== el) return; if (el.tagName === "A" && el.dataset.a !== "logout") return; e.preventDefault(); const f = A[el.dataset.a]; if (f) f({ ...el.dataset }); });
 document.addEventListener("input", e => { if (e.target.id === "q") { V.q = e.target.value; clearTimeout(window.__q); window.__q = setTimeout(render, 150); } if (e.target.id === "p_plan" || e.target.id === "p_until" || e.target.id === "p_note" || e.target.id.startsWith("rep_")) V.f[e.target.id] = e.target.value; });
