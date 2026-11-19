@@ -1226,9 +1226,9 @@ A.lkGo = async () => { if (V.busy || V.lpin.length < 4) return; const pin = V.lp
   V.ltries = (V.ltries || 0) + 1; V.lpin = ""; V.lerr = true;
   if (V.ltries >= 5) { V.locked = false; await logout(true); toast("5 PIN incorrects : vous avez été déconnecté.", "err"); return; }
   toast(`PIN incorrect. ${5 - V.ltries} essai(s) restant(s).`, "err"); render(); };
-A.ownerGo = () => run(async () => { await B.ownerLogin(V.f.email || "", V.f.pw || ""); V.f.pw = ""; LS.del(LKH); await enterApp(); });
+A.ownerGo = () => run(async () => { await B.ownerLogin(String(V.f.email || "").replace(/\s+/g, "").toLowerCase(), V.f.pw || ""); V.f.pw = ""; LS.del(LKH); await enterApp(); });
 A.register = () => run(async () => {
-  const f = { bar_name: V.f.r_bar, city: V.f.r_city, owner_name: V.f.r_name, email: V.f.r_email, password: V.f.r_pw, pin: V.f.r_pin };
+  const f = { bar_name: V.f.r_bar, city: V.f.r_city, owner_name: V.f.r_name, email: String(V.f.r_email || "").replace(/\s+/g, "").toLowerCase(), password: V.f.r_pw, pin: V.f.r_pin };
   if (!f.bar_name || !f.owner_name || !f.email || !f.password || !f.pin) throw bizErr("Remplissez tous les champs.");
   const niu = (V.f.r_niu || "").replace(/\s/g, "").toUpperCase();
   if (niu && !/^[PM]\d{12}[A-Z]$/.test(niu)) throw bizErr("NIU invalide : 14 caractères, P ou M, 12 chiffres, puis une lettre (ex. M012345678901A). Laissez vide si vous ne l’avez pas.");

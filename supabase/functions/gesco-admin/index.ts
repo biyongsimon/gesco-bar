@@ -51,6 +51,8 @@ Deno.serve(async (req) => {
   const publicKey = req.headers.get("apikey") ?? pickKey("SUPABASE_ANON_KEY", "SUPABASE_PUBLISHABLE_KEYS") ?? "";
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return fail("Requête invalide."); }
+  // Les claviers de téléphone ajoutent souvent un espace après l'adresse (saisie automatique) : on le retire.
+  if (typeof body.email === "string") body.email = body.email.replace(/\s+/g, "").toLowerCase();
 
   try {
     switch (body.action) {
