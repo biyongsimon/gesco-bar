@@ -639,7 +639,7 @@ async function enterApp() {
 async function logout(silent) {
   try { await B.logout(); } catch (e) {}
   V.screen = "login"; S = null; LS.del(SNAP); V.open = {}; V.f = {}; V.modal = null; V.rev = null; V.vres = null; V.outbox = []; saveOutbox();
-  V.pin = ""; V.pick = null; V.list = null; if (!silent) toast("Vous êtes déconnecté.");
+  V.pin = ""; V.pick = null; V.list = null; V.ltab = "staff"; if (!silent) toast("Vous êtes déconnecté.");
   render();
   if (V.code && V.ltab === "staff") A.loadStaff(); // liste du personnel toujours à jour
 }
