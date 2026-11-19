@@ -199,6 +199,136 @@ th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05
 .poster{text-align:center}
 @media print{body:not(.print-report) *{visibility:hidden}.printable,.printable *{visibility:visible}.printable{position:fixed;left:0;top:0;border:0;background:#fff;color:#000}
   .receipt.printable{width:58mm;padding:2mm}.poster.printable{width:100%;padding:12mm}}
+/* ── v3 : cadre par rôle, menu, planning animé ── */
+:root{--sky:#1f6fa8;--sky-soft:#e1eef8;--night:#5b3fa0;--night-soft:#ece6f8}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--sky:#6cb6ec;--sky-soft:#12283a;--night:#b9a2f5;--night-soft:#251b3d}}
+:root[data-theme="dark"]{--sky:#6cb6ec;--sky-soft:#12283a;--night:#b9a2f5;--night-soft:#251b3d}
+#app{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:25;background:var(--bg)}
+.ico{width:20px;height:20px;flex:none}
+.btn .ico{width:18px;height:18px;margin-right:6px}
+.pill.sky{background:var(--sky-soft);color:var(--sky)}.pill.night{background:var(--night-soft);color:var(--night)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;flex-wrap:nowrap;margin:-12px calc(-1 * max(16px,env(safe-area-inset-right,0px))) 6px calc(-1 * max(16px,env(safe-area-inset-left,0px)));
+  padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:color-mix(in srgb,var(--bg) 86%,transparent);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+.who>div>b,.who .mu{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib{position:relative;width:42px;height:42px;flex:none;display:grid;place-items:center;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.ib[disabled]{opacity:.4;cursor:default}
+.bd{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--bad);color:#fff;font:700 11px/18px var(--body);font-style:normal;text-align:center;box-shadow:0 0 0 2px var(--bg)}
+@media (max-width:420px){.top .nt{display:none}}
+.ptitle{margin:10px 0 14px}.ptitle h1{font-size:28px;letter-spacing:-.025em;line-height:1.1}.ptitle p{margin:3px 0 0}
+.sec{animation:fadeUp .4s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(0ms - var(--el,0ms))}
+.rise{animation:rise .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0) * 45ms + 80ms - var(--el,0ms))}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:none}}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes growX{from{transform:scaleX(0)}to{transform:none}}
+.gx{transform-origin:left;animation:growX .8s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0) * 70ms + 150ms - var(--el,0ms))}
+/* Barre de navigation du bas */
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:center;background:color-mix(in srgb,var(--surface) 90%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+.bnav .in{display:flex;width:100%;max-width:560px;gap:2px}
+.bnav button{flex:1 1 0;min-width:0;position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px 5px;border:0;background:none;color:var(--muted);font-size:11px;font-weight:700;border-radius:14px;cursor:pointer}
+.bnav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bnav button .ico{width:22px;height:22px;position:relative;z-index:1}
+.bnav button.on{color:var(--brand)}
+.bnav button.on::before{content:"";position:absolute;top:3px;left:50%;width:48px;height:30px;margin-left:-24px;border-radius:15px;background:color-mix(in srgb,var(--brand) 15%,transparent);animation:pop .35s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(0ms - var(--el,0ms))}
+.bnav .bd{top:0;right:calc(50% - 22px)}
+/* Menu latéral et recherche */
+.dscrim{position:fixed;inset:0;z-index:55;background:rgba(5,12,9,.5);animation:fade .25s both;animation-delay:calc(0ms - var(--el,0ms))}
+.drawer{position:fixed;top:0;right:0;bottom:0;z-index:56;width:min(380px,90vw);background:var(--surface);display:flex;flex-direction:column;gap:14px;overflow:auto;box-shadow:-20px 0 50px rgba(0,0,0,.25);
+  padding:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) 16px;animation:slideIn .3s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(0ms - var(--el,0ms))}
+.srch{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:14px;padding:0 12px;background:var(--sunk);color:var(--muted)}
+.srch:focus-within{outline:3px solid color-mix(in srgb,var(--brand) 45%,transparent)}
+.srch input{border:0!important;background:transparent!important;outline:none!important;padding:0!important;color:var(--ink)}
+.nav-l,.sres{display:flex;flex-direction:column;gap:2px}
+.nav-l button,.sr,.todo{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:0;border-radius:12px;background:none;color:var(--ink);cursor:pointer;text-align:left;position:relative}
+.nav-l button,.sr{animation:rise .4s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0) * 25ms + 60ms - var(--el,0ms))}
+.sr{animation-delay:calc(var(--i,0) * 25ms)}
+.nav-l button:hover,.sr:hover,.todo:hover{background:var(--sunk)}
+.nav-l button.on{background:color-mix(in srgb,var(--brand) 13%,transparent);color:var(--brand)}
+.nav-l b,.sr b,.todo b{display:block;font-weight:700}
+.nav-l small,.sr small,.todo small{display:block;color:var(--muted);font-size:12px;line-height:1.35}
+.nav-l .bd,.todo .bd{position:static;box-shadow:none}
+.todo{padding:12px 4px;border-radius:0}.todo>.ico:first-child{color:var(--brand)}.todo>.ico:last-child{color:var(--muted);width:18px}
+/* Bandeau du service du jour */
+.shb{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;border-radius:16px;padding:14px;border:1px solid var(--line);background:var(--surface);margin-bottom:14px;
+  animation:rise .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(60ms - var(--el,0ms))}
+.stack>.shb{margin-bottom:0}
+.shb b{display:block;font:700 17px/1.25 var(--display)}.shb .grow>span{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.shb.morning{background:linear-gradient(120deg,var(--amber-soft),var(--surface) 75%);border-color:color-mix(in srgb,var(--amber) 40%,var(--line))}
+.shb.afternoon{background:linear-gradient(120deg,var(--sky-soft),var(--surface) 75%);border-color:color-mix(in srgb,var(--sky) 35%,var(--line))}
+.shb.night{background:linear-gradient(120deg,var(--night-soft),var(--surface) 75%);border-color:color-mix(in srgb,var(--night) 35%,var(--line))}
+.lnk{background:none;border:0;color:var(--brand);font-weight:700;cursor:pointer;padding:6px 2px;min-height:36px}
+.banner-btn{border:0;width:100%;text-align:left;cursor:pointer;font:inherit}
+/* Planning */
+.wkbar{display:flex;align-items:center;gap:8px}
+.stack>*{min-width:0}
+.row>.btn.grow{white-space:normal;text-align:center}
+.mywk{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(118px,1fr);gap:10px;overflow-x:auto;padding:4px 2px 10px;scroll-snap-type:x mandatory;scrollbar-width:thin}
+.dcard{scroll-snap-align:start;position:relative;overflow:hidden;border-radius:18px;padding:12px;border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:5px;min-height:150px;
+  animation:rise .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0) * 60ms + 100ms - var(--el,0ms))}
+.dcard .dn{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.dcard .dd{font:800 30px/1 var(--display)}
+.dcard .sh{font:800 17px/1.15 var(--display);margin-top:auto}.dcard .sh small{display:block;font:600 13px var(--body);color:var(--muted)}
+.dcard .mu{font-size:12px}
+.dcard.morning{background:linear-gradient(165deg,var(--amber-soft) 10%,var(--surface));border-color:color-mix(in srgb,var(--amber) 45%,var(--line))}.dcard.morning .sh{color:var(--warn)}
+.dcard.afternoon{background:linear-gradient(165deg,var(--sky-soft) 10%,var(--surface));border-color:color-mix(in srgb,var(--sky) 40%,var(--line))}.dcard.afternoon .sh{color:var(--sky)}
+.dcard.night{background:linear-gradient(165deg,var(--night-soft) 10%,var(--surface));border-color:color-mix(in srgb,var(--night) 40%,var(--line))}.dcard.night .sh{color:var(--night)}
+.dcard.off{background:repeating-linear-gradient(135deg,var(--sunk) 0 10px,var(--surface) 10px 20px)}.dcard.off .sh{color:var(--muted)}
+.dcard.none{border-style:dashed}
+.dcard.past{opacity:.62}
+.dcard.today{border:2px solid var(--brand);box-shadow:0 10px 26px color-mix(in srgb,var(--brand) 22%,transparent)}
+.dcard.today::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,color-mix(in srgb,var(--surface) 70%,transparent) 50%,transparent 60%);background-size:250% 100%;animation:shine 2.4s 1s ease-in-out infinite;pointer-events:none}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);animation:pulse 1.8s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 55%,transparent)}70%,100%{box-shadow:0 0 0 9px transparent}}
+.pgrid table{min-width:720px}.pgrid th{text-align:center;white-space:nowrap}.pgrid td{text-align:center;padding:4px 3px;vertical-align:middle}
+.pgrid th:first-child,.pgrid td:first-child{text-align:left;position:sticky;left:0;z-index:1;background:var(--surface);padding-right:10px;min-width:110px}
+.pgrid .today{background:color-mix(in srgb,var(--brand) 8%,transparent)}.pgrid th.today{color:var(--brand)}
+.pc{display:block;width:100%;min-height:50px;border-radius:12px;padding:6px 4px;border:0;font:700 13px/1.3 var(--body);font-variant-numeric:tabular-nums;color:var(--muted);background:transparent;
+  animation:pop .45s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0) * 12ms + 120ms - var(--el,0ms))}
+.pc em{display:block;font-style:normal;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--sky)}
+button.pc{cursor:pointer;transition:transform .12s}button.pc:hover{transform:translateY(-1px)}button.pc:active{transform:scale(.96)}
+.pc.morning,.chip.pchip.morning{background:var(--amber-soft);color:var(--warn)}
+.pc.afternoon,.chip.pchip.afternoon{background:var(--sky-soft);color:var(--sky)}
+.pc.night,.chip.pchip.night{background:var(--night-soft);color:var(--night)}
+.pc.off{background:repeating-linear-gradient(135deg,var(--sunk) 0 7px,transparent 7px 14px);color:var(--muted)}
+.pc.none{border:1.5px dashed var(--line);font-weight:500}
+.chip.pchip{border:0;animation:pop .4s both;animation-delay:calc(var(--i,0) * 50ms + 100ms - var(--el,0ms))}
+.legend{display:flex;gap:6px 12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+.legend .lg-morning{background:var(--amber)}.legend .lg-afternoon{background:var(--sky)}.legend .lg-night{background:var(--night)}.legend .lg-off{background:var(--line)}
+.bills button small{font-weight:600;color:var(--muted)}
+.tgl{display:flex;align-items:center;gap:10px;border:0;background:none;padding:4px 0;font-weight:600;cursor:pointer;text-align:left}
+.tgl i{flex:none;width:44px;height:26px;border-radius:13px;background:var(--line);position:relative;transition:background .2s}
+.tgl i::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.tgl.on i{background:var(--brand)}.tgl.on i::after{transform:translateX(18px)}
+.planimg{width:100%;border-radius:12px;border:1px solid var(--line)}
+/* Présences */
+.segs{display:flex;flex-wrap:wrap;gap:6px}
+.segs button{min-height:38px;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:13px;cursor:pointer;color:var(--muted)}
+.segs button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.segs button.on.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok)}.segs button.on.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+.segs button.on.bad{background:var(--bad-soft);color:var(--bad);border-color:var(--bad)}.segs button.on.sky{background:var(--sky-soft);color:var(--sky);border-color:var(--sky)}
+input[type=date],input[type=time]{width:100%;min-height:46px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+/* PDG */
+.hero-pdg{position:relative;overflow:hidden;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;border-radius:20px;padding:20px;color:#fff;
+  background:linear-gradient(135deg,#0f5c3c,#1d4f6e 60%,#3d2f73);animation:rise .6s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(40ms - var(--el,0ms))}
+.hero-pdg::after{content:"";position:absolute;width:280px;height:280px;right:-80px;top:-120px;border-radius:50%;background:radial-gradient(circle,rgba(240,180,60,.35),transparent 65%);pointer-events:none}
+.hero-pdg h2{color:#fff;font-size:26px;margin:4px 0}.hero-pdg p{margin:0;opacity:.85}
+.hero-pdg .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.1em;opacity:.8;font-weight:700}
+.hero-num{position:relative;z-index:1}.hero-num span{display:block;font-size:12px;opacity:.8;font-weight:600}.hero-num b{font:800 30px/1.1 var(--display)}
+.quick{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:8px;margin-top:10px}
+.quick button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px;border-radius:14px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font-weight:700;font-size:13px;cursor:pointer;
+  animation:pop .45s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0) * 40ms + 150ms - var(--el,0ms))}
+.quick button .ico{color:var(--brand);width:24px;height:24px}
+.slip{background:#fff;color:#111;border-radius:10px;padding:16px;font-size:14px;border:1px solid #ddd}
+.slip h2{color:#111}.slip hr{border:0;border-top:1px dashed #bbb;margin:8px 0}.slip .kv{display:flex;justify-content:space-between;gap:10px;padding:4px 0}
+.toast{bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:70}
+.scrim{z-index:60}
+@media print{.slip.printable{width:100%;padding:12mm;border:0}}
+@media (prefers-reduced-motion:reduce){.dcard.today::after,.live-dot{animation:none}}
 </style>
 
 <div id="app"><div class="empty"><span class="spin"></span></div></div>
@@ -248,7 +378,7 @@ function beep() { try { const ac = window.__ac || (window.__ac = new (window.Aud
   o.frequency.value = 880; g.gain.setValueAtTime(0.18, ac.currentTime + d); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + d + 0.15); o.connect(g).connect(ac.destination); o.start(ac.currentTime + d); o.stop(ac.currentTime + d + 0.16); }); } catch (e) {}
   try { navigator.vibrate && navigator.vibrate([120, 60, 120]); } catch (e) {} }
 function notifyNew() { // la caisse est prévenue de chaque nouvelle commande, demande d'annulation ou paiement MoMo
-  if (!S || !isCaisse()) { seenSent = null; return; }
+  if (!S || ROLE() !== "caisse") { seenSent = null; return; }
   const keys = new Set(S.tickets.filter(t => !isCounter(t) && (t.status === "sent" || t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo"))).map(t => t.id + ":" + t.status + ":" + (t.cancel_requested ? 1 : 0)));
   if (seenSent) { const fresh = [...keys].filter(k => !seenSent.has(k)); if (fresh.length) { const t = S.tickets.find(x => x.id === fresh[0].split(":")[0]);
     const what = t.cancel_requested ? "Annulation demandée" : t.status === "cashed" ? "Paiement Mobile Money à vérifier" : "Nouvelle commande";
@@ -258,7 +388,7 @@ const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentC
 
 /* ═══════════════ Moteur DÉMO (données locales, mêmes règles que le serveur) ═══════════════ */
 function DemoBackend() {
-  const KEY = "gesco-demo-v6";
+  const KEY = "gesco-demo-v7";
   let db = LS.get(KEY), sess = LS.get(KEY + "-sess");
   const listeners = [];
   const save = () => LS.set(KEY, db);
@@ -267,7 +397,11 @@ function DemoBackend() {
   const bizDate = () => new Date(Date.now() - 6 * 3600e3).toLocaleDateString("sv-SE");
   const E = m => { throw bizErr(m); };
   const ctx = () => { const s = db.staff.find(x => x.id === sess && x.active); if (!s) E("Session invalide. Reconnectez-vous."); return s; };
-  const caisse = c => { if (c.role !== "caisse") E("Action réservée à la caisse."); };
+  const caisse = c => { if (!["caisse", "pdg"].includes(c.role)) E("Action réservée à la caisse."); };
+  const pdg = c => { if (c.role !== "pdg") E("Action réservée au PDG."); };
+  const mgr = c => { if (!["directeur", "pdg"].includes(c.role)) E("Action réservée au directeur ou au PDG."); };
+  const canManage = (c, s) => { if (c.role === "pdg" && s.role !== "pdg") return; if (c.role === "directeur" && ["caisse", "serveuse"].includes(s.role)) return;
+    E(s.role === "pdg" ? "Seul le PDG modifie son propre compte." : "Le directeur gère seulement la caisse et les serveuses."); };
   const log = (c, action, details) => { db.audit.unshift({ id: db.seq++, staff_id: c && c.id, action, details: details || {}, created_at: now() }); db.audit = db.audit.slice(0, 400); };
   const curDay = c => { let d = db.days.find(x => x.status === "open"); if (!d) { d = { id: uuid(), business_date: bizDate(), status: "open", opened_at: now(), opened_by: c.id }; db.days.push(d); } return d.id; };
   const prod = id => db.products.find(x => x.id === id) || E("Produit introuvable.");
@@ -278,7 +412,7 @@ function DemoBackend() {
   const rcode = n => { const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = new Uint8Array(n); crypto.getRandomValues(b); return [...b].map(x => a[x % 32]).join(""); };
   const pinOk = p => /^[0-9]{4,6}$/.test(p || "") || E("Le PIN doit contenir 4 à 6 chiffres.");
   const move = (c, p, w, q, kind) => { db.moves.unshift({ id: uuid(), product_id: p, waitress_id: w, qty: q, kind, created_by: c.id, created_at: now() }); db.moves = db.moves.slice(0, 300); };
-  const own = (c, t) => { if (c.role !== "caisse" && t.waitress_id !== c.id) E("Ce ticket appartient à une autre serveuse."); };
+  const own = (c, t) => { if (!["caisse", "pdg"].includes(c.role) && t.waitress_id !== c.id) E("Ce ticket appartient à une autre serveuse."); };
   const counter = t => (db.staff.find(s => s.id === t.waitress_id) || {}).role === "caisse"; // vente comptoir de la caisse
   function cancel(t, c) {
     t.items.forEach(i => counter(t) ? (prod(i.product_id).stock += i.qty) : hold(t.waitress_id, i.product_id, i.qty));
@@ -297,7 +431,7 @@ function DemoBackend() {
     },
     gb_ticket_set_qty({ p_ticket, p_product, p_qty }) {
       const c = ctx(), t = tk(p_ticket);
-      if (t.waitress_id !== c.id) E(c.role === "caisse" ? "La caisse ne peut pas modifier la commande d’une serveuse. Seule la serveuse corrige sa commande." : "Ce ticket appartient à une autre serveuse.");
+      if (t.waitress_id !== c.id) E(c.role !== "serveuse" ? "La caisse ne peut pas modifier la commande d’une serveuse. Seule la serveuse corrige sa commande." : "Ce ticket appartient à une autre serveuse.");
       if (!["draft", "sent"].includes(t.status)) E("Ticket déjà encaissé : il est verrouillé.");
       const p = prod(p_product); p_qty = Math.max(0, Math.floor(+p_qty || 0)); if (p_qty > 200) E("Quantité trop élevée.");
       let it = t.items.find(i => i.product_id === p_product); const cur = it ? it.qty : 0, d = p_qty - cur; if (!d) return;
@@ -322,7 +456,7 @@ function DemoBackend() {
     },
     gb_ticket_delete({ p_ticket }) {
       const c = ctx(), t = tk(p_ticket); if (t.status === "cancelled") return "cancelled";
-      if (c.role === "caisse") { cancel(t, c); return "cancelled"; }
+      if (["caisse", "pdg"].includes(c.role)) { cancel(t, c); return "cancelled"; }
       own(c, t);
       if (t.status === "draft") { cancel(t, c); return "cancelled"; }
       if (t.status === "sent") { t.cancel_requested = true; log(c, "annulation_demandee", { ticket: t.number, client: t.client_label, total: t.total }); return "requested"; }
@@ -406,14 +540,14 @@ function DemoBackend() {
     },
     gb_product_set_cost({ p_product, p_cost }) { const c = ctx(); caisse(c); if (p_cost == null || p_cost < 0) E("Indiquez un prix d’achat valide."); prod(p_product).cost = +p_cost; },
     gb_expense_add({ p_day, p_category, p_label, p_amount, p_method }) {
-      const c = ctx(); caisse(c); if (!(+p_amount > 0)) E("Indiquez un montant."); if (!(p_category || "").trim()) E("Choisissez une catégorie de dépense.");
+      const c = ctx(); pdg(c); if (!(+p_amount > 0)) E("Indiquez un montant."); if (!(p_category || "").trim()) E("Choisissez une catégorie de dépense.");
       const e = { id: uuid(), day: p_day || bizDate(), category: p_category.trim(), label: (p_label || "").trim() || null, amount: +p_amount, method: p_method || "cash" };
       (db.expenses = db.expenses || []).push(e); log(c, "depense_ajoutee", { categorie: e.category, montant: e.amount }); return e.id;
     },
-    gb_expense_delete({ p_id }) { const c = ctx(); caisse(c); const e = (db.expenses || []).find(x => x.id === p_id); if (!e) return;
+    gb_expense_delete({ p_id }) { const c = ctx(); pdg(c); const e = (db.expenses || []).find(x => x.id === p_id); if (!e) return;
       db.expenses = db.expenses.filter(x => x !== e); log(c, "depense_supprimee", { categorie: e.category, montant: e.amount }); },
     gb_accounting({ p_month }) {
-      const c = ctx(); caisse(c); const m = p_month || bizDate().slice(0, 7), y = m.slice(0, 4), dayOf = id => (db.days.find(d => d.id === id) || {}).business_date || bizDate();
+      const c = ctx(); pdg(c); const m = p_month || bizDate().slice(0, 7), y = m.slice(0, 4), dayOf = id => (db.days.find(d => d.id === id) || {}).business_date || bizDate();
       const sold = db.tickets.filter(t => ["cashed", "paid"].includes(t.status) && dayOf(t.day_id).startsWith(m)), P = id => db.products.find(p => p.id === id) || {};
       const hist = db.history.filter(h => h.date.startsWith(m)), sum = (a, f) => a.reduce((x, v) => x + (f(v) || 0), 0);
       const D = {}; const addD = (day, tot, cash, momo, n) => { const x = D[day] = D[day] || { day, total: 0, tickets: 0, cash: 0, momo: 0 }; x.total += tot; x.cash += cash; x.momo += momo; x.tickets += n; };
@@ -443,7 +577,7 @@ function DemoBackend() {
       log(c, "inventaire", { ecarts: details.length, manquant_valeur: loss }); return { ecarts: details.length, details, manquant_valeur: loss };
     },
     gb_bar_identity({ p_legal_name, p_niu, p_doc_path }) {
-      const c = ctx(); caisse(c); const n = (p_niu || "").replace(/\s/g, "").toUpperCase();
+      const c = ctx(); pdg(c); const n = (p_niu || "").replace(/\s/g, "").toUpperCase();
       if (n && !/^[PM]\d{12}[A-Z]$/.test(n)) E("NIU invalide : 14 caractères, P ou M, 12 chiffres, puis une lettre (ex. M012345678901A).");
       const ln = (p_legal_name || "").trim() || null;
       Object.assign(db.bar, { legal_name: ln, niu: n || null, id_doc_path: p_doc_path || db.bar.id_doc_path || null, kyc_status: ln && n ? "a_verifier" : (db.bar.kyc_status || "non_renseigne") });
@@ -458,8 +592,14 @@ function DemoBackend() {
       log(c, "bouteille_ouverte", { produit: par.name, quantite: n0, verres: n }); return n;
     },
     gb_staff_update({ p_staff, p_name, p_role, p_active }) {
-      const c = ctx(); caisse(c); const s = member(p_staff);
-      if (p_staff === c.id && (p_active === false || (p_role && p_role !== "caisse"))) E("Vous ne pouvez pas retirer votre propre accès caisse.");
+      const c = ctx(); mgr(c); const s = member(p_staff);
+      if (s.id !== c.id) canManage(c, s);
+      if (p_role && p_role !== s.role) {
+        if (s.id === c.id) E("Vous ne pouvez pas changer votre propre rôle.");
+        if (!["directeur", "caisse", "serveuse"].includes(p_role)) E("Il n’y a qu’un seul PDG par bar.");
+        if (p_role === "directeur" && c.role !== "pdg") E("Seul le PDG nomme un directeur.");
+      }
+      if (s.id === c.id && p_active === false) E("Vous ne pouvez pas désactiver votre propre compte.");
       if (p_active === false && s.active) {
         const busy = db.tickets.filter(t => t.waitress_id === s.id && ["draft", "sent", "cashed"].includes(t.status)).length;
         if (busy) E(`${s.name} a encore ${busy} ticket(s) non soldé(s).`);
@@ -470,11 +610,11 @@ function DemoBackend() {
       Object.assign(s, { name: nn || s.name, role: p_role || s.role, active: p_active ?? s.active });
     },
     gb_staff_set_pin({ p_staff, p_pin }) {
-      const c = ctx(); if (p_staff !== c.id) caisse(c); pinOk(p_pin); const s = member(p_staff); s.pin = p_pin; s.fails = 0; s.lock = 0;
+      const c = ctx(), s = member(p_staff); if (p_staff !== c.id) { mgr(c); canManage(c, s); } pinOk(p_pin); s.pin = p_pin; s.fails = 0; s.lock = 0;
       log(c, "pin_change", { membre: s.name });
     },
     gb_bar_update({ p_name, p_city, p_cash_cap, p_low_stock }) {
-      const c = ctx(); caisse(c);
+      const c = ctx(); pdg(c);
       Object.assign(db.bar, { name: (p_name || "").trim() || db.bar.name, city: (p_city ?? db.bar.city), cash_cap: p_cash_cap ?? db.bar.cash_cap, low_stock: p_low_stock ?? db.bar.low_stock });
       log(c, "reglages_modifies", { nom: p_name, plafond_especes: p_cash_cap, seuil_stock: p_low_stock });
     },
@@ -498,7 +638,7 @@ function DemoBackend() {
       return { ...s, attendu: exp, compte: +p_counted, ecart: +p_counted - exp, date: d.business_date };
     },
     gb_revenue() {
-      const c = ctx(); caisse(c); const m0 = bizDate().slice(0, 7), dayOf = id => (db.days.find(d => d.id === id) || {}).business_date || bizDate();
+      const c = ctx(); pdg(c); const m0 = bizDate().slice(0, 7), dayOf = id => (db.days.find(d => d.id === id) || {}).business_date || bizDate();
       const M = {}, D = {}, W = {}, P = {};
       const addM = (m, tot, paid, n) => { const x = M[m] = M[m] || { month: m, total: 0, paid: 0, tickets: 0 }; x.total += tot; x.paid += paid; x.tickets += n; };
       db.history.forEach(h => { addM(h.date.slice(0, 7), h.total, h.total, h.tickets);
@@ -512,16 +652,100 @@ function DemoBackend() {
       return { months: sortD(M, "month").slice(0, 12), days: sortD(D, "day"), waitresses: Object.values(W).sort((a, b) => b.total - a.total), products: Object.values(P).sort((a, b) => b.qty - a.qty), demo_history: true };
     }
   };
+  const dAdd = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return x.toLocaleDateString("sv-SE"); };
+  const t8 = v => v ? String(v).slice(0, 5) + ":00" : null;
+  const attRow = (sid, d) => { let a = db.attendance.find(x => x.staff_id === sid && x.day === d); if (!a) db.attendance.push(a = { id: uuid(), staff_id: sid, day: d, arrived_at: null, left_at: null, late_minutes: 0, note: null }); return a; };
+  Object.assign(R, {
+    gb_ticket_served({ p_ticket }) {
+      const c = ctx(), t = tk(p_ticket); if (t.waitress_id !== c.id) E("Seule la serveuse du ticket confirme le service.");
+      if (!["sent", "cashed", "paid"].includes(t.status)) E("Envoyez d’abord la commande à la caisse."); t.served_at = t.served_at || now(); t.updated_at = now();
+    },
+    gb_shift_set({ p_staff, p_day, p_kind, p_start, p_end, p_note }) {
+      const c = ctx(); mgr(c); const s = member(p_staff); if (!s.active) E("Membre introuvable.");
+      db.shifts = db.shifts.filter(x => !(x.staff_id === p_staff && x.day === p_day)); if (p_kind === "aucun") return;
+      if (!["travail", "repos"].includes(p_kind)) E("Type de planning inconnu.");
+      if (p_kind === "travail" && (!p_start || !p_end)) E("Indiquez l’heure de début et de fin.");
+      db.shifts.push({ id: uuid(), staff_id: p_staff, day: p_day, kind: p_kind, start_time: p_kind === "travail" ? t8(p_start) : null, end_time: p_kind === "travail" ? t8(p_end) : null,
+        note: (p_note || "").trim() || null, updated_by: c.id });
+    },
+    gb_shift_copy_week({ p_from, p_to }) {
+      const c = ctx(); mgr(c); const off = Math.round((new Date(p_to + "T12:00:00") - new Date(p_from + "T12:00:00")) / 864e5);
+      db.shifts = db.shifts.filter(x => !(x.day >= p_to && x.day < dAdd(p_to, 7)));
+      const src = db.shifts.filter(x => x.day >= p_from && x.day < dAdd(p_from, 7) && (db.staff.find(s => s.id === x.staff_id) || {}).active);
+      src.forEach(x => db.shifts.push({ ...x, id: uuid(), day: dAdd(x.day, off), updated_by: c.id }));
+      log(c, "planning_copie", { de: p_from, vers: p_to, creneaux: src.length }); return src.length;
+    },
+    gb_clock_in() {
+      const c = ctx(), d = bizDate(), a0 = db.attendance.find(x => x.staff_id === c.id && x.day === d);
+      if (a0 && a0.arrived_at) return { status: a0.status, late: a0.late_minutes, deja: true };
+      const sh = db.shifts.find(x => x.staff_id === c.id && x.day === d && x.kind === "travail"); let late = 0, st = "present";
+      if (sh) { const st0 = new Date((sh.start_time < "06:00" ? dAdd(d, 1) : d) + "T" + sh.start_time); late = Math.max(0, Math.floor((Date.now() - st0) / 60000)); if (late > 10) st = "retard"; else late = 0; }
+      Object.assign(attRow(c.id, d), { status: st, arrived_at: now(), late_minutes: late, recorded_by: c.id, left_at: null });
+      return { status: st, late, planifie: !!sh };
+    },
+    gb_clock_out() { const c = ctx(), a = db.attendance.find(x => x.staff_id === c.id && x.day === bizDate() && x.arrived_at); if (!a) E("Pointez d’abord votre arrivée."); a.left_at = now(); },
+    gb_attendance_set({ p_staff, p_day, p_status, p_late, p_note }) {
+      const c = ctx(); mgr(c); const s = member(p_staff);
+      if (p_status === "aucun") { db.attendance = db.attendance.filter(x => !(x.staff_id === p_staff && x.day === p_day)); return; }
+      if (!["present", "retard", "absent", "permission", "repos"].includes(p_status)) E("Statut inconnu.");
+      const a = attRow(p_staff, p_day);
+      Object.assign(a, { status: p_status, late_minutes: p_status === "retard" ? Math.max(+p_late || 0, 1) : 0, note: (p_note || "").trim() || a.note || null, recorded_by: c.id,
+        arrived_at: a.arrived_at || (["present", "retard"].includes(p_status) ? now() : null) });
+      log(c, "presence", { membre: s.name, date: p_day, statut: p_status, retard_min: p_late || null });
+    },
+    gb_leave_request({ p_from, p_to, p_reason }) {
+      const c = ctx(); if (!p_from || !p_to || p_to < p_from) E("Choisissez des dates valides.");
+      if ((new Date(p_to) - new Date(p_from)) / 864e5 > 31) E("Une permission ne peut pas dépasser 31 jours.");
+      if (!(p_reason || "").trim()) E("Indiquez le motif de la permission.");
+      const id = uuid(); db.leaves.unshift({ id, staff_id: c.id, day_from: p_from, day_to: p_to, reason: p_reason.trim(), status: "en_attente", created_at: now() });
+      log(c, "permission_demandee", { du: p_from, au: p_to }); return id;
+    },
+    gb_leave_decide({ p_id, p_accept }) {
+      const c = ctx(); mgr(c); const l = db.leaves.find(x => x.id === p_id) || E("Demande introuvable."); if (l.status !== "en_attente") E("Cette demande a déjà été traitée.");
+      Object.assign(l, { status: p_accept ? "acceptee" : "refusee", decided_by: c.id, decided_at: now() });
+      if (p_accept) for (let d = l.day_from; d <= l.day_to; d = dAdd(d, 1)) Object.assign(attRow(l.staff_id, d), { status: "permission", note: l.reason, late_minutes: 0, recorded_by: c.id });
+      log(c, p_accept ? "permission_acceptee" : "permission_refusee", { membre: member(l.staff_id).name, du: l.day_from, au: l.day_to });
+    },
+    gb_salary_set({ p_staff, p_salary }) {
+      const c = ctx(); pdg(c); if (p_salary == null || p_salary < 0) E("Indiquez un salaire valide."); member(p_staff);
+      const x = db.salaries.find(y => y.staff_id === p_staff); if (x) x.salary = +p_salary; else db.salaries.push({ staff_id: p_staff, salary: +p_salary });
+    },
+    gb_pay({ p_staff, p_month, p_bonus, p_deduction, p_method, p_note }) {
+      const c = ctx(); pdg(c); const s = member(p_staff);
+      if (db.payroll.some(p => p.staff_id === p_staff && p.month === p_month)) E(`${s.name} a déjà été payé(e) pour ce mois.`);
+      const base = (db.salaries.find(x => x.staff_id === p_staff) || {}).salary || 0, b = Math.max(+p_bonus || 0, 0), dd = Math.max(+p_deduction || 0, 0), net = base + b - dd;
+      if (net < 0) E("La retenue dépasse le salaire."); if (!net) E("Le montant à payer est nul : indiquez d’abord le salaire.");
+      const e = { id: uuid(), day: bizDate(), category: "Salaires", label: `Salaire ${s.name} (${p_month})`, amount: net, method: p_method || "cash" }; db.expenses.push(e);
+      const id = uuid(); db.payroll.unshift({ id, staff_id: p_staff, month: p_month, base, bonus: b, deduction: dd, net, method: p_method || "cash", note: (p_note || "").trim() || null, expense_id: e.id, paid_by: c.id, paid_at: now() });
+      log(c, "salaire_paye", { membre: s.name, mois: p_month, montant: net }); return { id, net };
+    },
+    gb_pay_cancel({ p_id }) {
+      const c = ctx(); pdg(c); const p = db.payroll.find(x => x.id === p_id) || E("Paiement introuvable.");
+      db.payroll = db.payroll.filter(x => x !== p); db.expenses = db.expenses.filter(x => x.id !== p.expense_id); log(c, "salaire_annule", { mois: p.month, montant: p.net });
+    },
+    gb_staff_stats({ p_month }) {
+      const c = ctx(); mgr(c); const m = p_month || bizDate().slice(0, 7), inM = d => String(d).slice(0, 7) === m, dayOf = id => (db.days.find(d => d.id === id) || {}).business_date || bizDate();
+      const ord = { pdg: 0, directeur: 1, caisse: 2, serveuse: 3 };
+      return db.staff.map(s => { const at = db.attendance.filter(a => a.staff_id === s.id && inM(a.day)), sold = db.tickets.filter(t => t.waitress_id === s.id && ["cashed", "paid"].includes(t.status) && inM(dayOf(t.day_id))),
+        hi = db.history.filter(h => h.waitress === s.name && inM(h.date));
+        return { id: s.id, name: s.name, role: s.role, active: s.active, jours_prevus: db.shifts.filter(x => x.staff_id === s.id && x.kind === "travail" && inM(x.day)).length,
+          presents: at.filter(a => ["present", "retard"].includes(a.status)).length, retards: at.filter(a => a.status === "retard").length, minutes_retard: at.reduce((x, a) => x + (a.late_minutes || 0), 0),
+          absences: at.filter(a => a.status === "absent").length, permissions: at.filter(a => a.status === "permission").length,
+          tickets: sold.length + hi.reduce((x, h) => x + h.tickets, 0), ventes: sold.reduce((x, t) => x + t.total, 0) + hi.reduce((x, h) => x + h.total, 0),
+          ecart_caisse: db.remits.filter(r => r.waitress_id === s.id && inM(dayOf(r.day_id))).reduce((x, r) => x + r.diff, 0) }; })
+        .sort((a, b) => ord[a.role] - ord[b.role] || a.name.localeCompare(b.name));
+    }
+  });
   function seed() {
     db = { seq: 1, bar: { id: "bar-demo", name: "Le Manguier", code: "DEMO", city: "Yaoundé", cash_cap: 20000, low_stock: 12, next_ticket: 1, next_voucher: 1, legal_name: null, niu: null, id_doc_path: null, kyc_status: "non_renseigne" },
-      staff: [["Mireille", "caisse", "0000"], ["Aline", "serveuse", "1111"], ["Brigitte", "serveuse", "2222"], ["Carine", "serveuse", "3333"]]
+      staff: [["Marcel", "pdg", "9999"], ["Hervé", "directeur", "5555"], ["Mireille", "caisse", "0000"], ["Aline", "serveuse", "1111"], ["Brigitte", "serveuse", "2222"], ["Carine", "serveuse", "3333"]]
         .map(([name, role, pin]) => ({ id: uuid(), name, role, pin, active: true, fails: 0, lock: 0 })),
       products: [["Castel Beer 65cl", "Bières", 650, 48], ["33 Export 65cl", "Bières", 650, 36], ["Mützig 65cl", "Bières", 650, 24], ["Beaufort 65cl", "Bières", 650, 24],
         ["Guinness 65cl", "Bières", 1000, 18], ["Orijin", "Bières", 650, 24], ["Coca-Cola", "Sucreries", 500, 24], ["Top Pamplemousse", "Sucreries", 500, 24], ["Eau minérale 1,5 L", "Eaux", 600, 10],
         ["Vin rouge Bordeaux", "Vins rouges", 6000, 6], ["Vin rouge (verre)", "Vins rouges", 1000, 6, "verre"], ["Vin blanc Côtes de Gascogne", "Vins blancs", 6000, 4],
         ["Whisky J&B 75cl", "Spiritueux", 15000, 3], ["Whisky J&B (verre)", "Spiritueux", 1500, 15, "verre"], ["Jack Daniel’s 70cl", "Spiritueux", 25000, 2]]
         .map(([name, category, price, stock, unit], i) => ({ id: uuid(), name, category, price, stock, active: true, sort: i + 1, unit: unit || "bouteille", parent_id: null, doses: null })),
-      days: [], tickets: [], holdings: [], vouchers: [], remits: [], audit: [], moves: [], history: [] };
+      days: [], tickets: [], holdings: [], vouchers: [], remits: [], audit: [], moves: [], history: [], shifts: [], attendance: [], leaves: [], salaries: [], payroll: [] };
     const link = (g, b, n) => { const G = db.products.find(p => p.name === g); G.parent_id = db.products.find(p => p.name === b).id; G.doses = n; };
     link("Vin rouge (verre)", "Vin rouge Bordeaux", 6); link("Whisky J&B (verre)", "Whisky J&B 75cl", 15);
     db.products.forEach(p => { p.low_at = p.parent_id ? 3 : /Vins|Spiritueux/.test(p.category) ? 2 : null; });
@@ -529,11 +753,32 @@ function DemoBackend() {
     db.products.forEach(p => { const k = Object.keys(COST).find(x => p.name.startsWith(x)); p.cost = k ? COST[k] : 0; });
     db.expenses = [];
     const ex = (dAgo, category, label, amount, method) => db.expenses.push({ id: uuid(), day: new Date(Date.now() - 6 * 3600e3 - dAgo * 86400e3).toLocaleDateString("sv-SE"), category, label, amount, method });
-    ex(14, "Loyer", "Loyer du local", 80000, "cash"); ex(10, "Électricité et eau", "Facture ENEO", 32000, "momo"); ex(5, "Salaires", "Avance serveuses", 45000, "cash"); ex(2, "Transport", "Livraison casiers", 6000, "cash");
+    ex(14, "Loyer", "Loyer du local", 80000, "cash"); ex(10, "Électricité et eau", "Facture ENEO", 32000, "momo"); ex(2, "Transport", "Livraison casiers", 6000, "cash");
     // Historique d'exemple : 75 jours de ventes passées pour l'onglet Revenus
     let s = 7; const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
     for (let i = 1; i <= 75; i++) { const d = new Date(Date.now() - 6 * 3600e3 - i * 86400e3).toLocaleDateString("sv-SE");
       ["Aline", "Brigitte", "Carine"].forEach(w => { const n = 6 + Math.floor(rnd() * 14); db.history.push({ date: d, waitress: w, tickets: n, total: Math.round(n * (1400 + rnd() * 1600) / 50) * 50 }); }); }
+    // Planning type : [début, fin, jour de repos (0 = lundi)], 5 semaines passées + 2 à venir, présences des jours passés
+    const SID = n => db.staff.find(x => x.name === n).id, PAT = { "Hervé": ["15:00", "23:00", 6], "Mireille": ["16:00", "00:00", 0], "Aline": ["17:00", "01:00", 2], "Brigitte": ["12:00", "20:00", 1], "Carine": ["18:00", "02:00", 3] };
+    const t0 = bizDate(), mon = (() => { const x = new Date(t0 + "T12:00:00"); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x.toLocaleDateString("sv-SE"); })();
+    for (let d = dAdd(mon, -35); d < dAdd(mon, 14); d = dAdd(d, 1)) {
+      const wd = (new Date(d + "T12:00:00").getDay() + 6) % 7;
+      Object.entries(PAT).forEach(([n, [a, b, off]]) => { const work = wd !== off;
+        db.shifts.push({ id: uuid(), staff_id: SID(n), day: d, kind: work ? "travail" : "repos", start_time: work ? a + ":00" : null, end_time: work ? b + ":00" : null, note: null });
+        if (!work || d >= t0) return; const r = rnd(), late = 5 + Math.floor(rnd() * 30);
+        db.attendance.push({ id: uuid(), staff_id: SID(n), day: d, status: r < .06 ? "absent" : r < .17 ? "retard" : "present", late_minutes: r >= .06 && r < .17 ? late : 0,
+          arrived_at: r < .06 ? null : new Date(d + "T" + a + ":00").toISOString(), left_at: null, note: null }); }); }
+    const wd0 = (new Date(t0 + "T12:00:00").getDay() + 6) % 7, arr = (n, st, late) => { if (PAT[n][2] === wd0) return;
+      db.attendance.push({ id: uuid(), staff_id: SID(n), day: t0, status: st, late_minutes: late, arrived_at: new Date(Date.now() - 40 * 60000).toISOString(), left_at: null, note: null }); };
+    arr("Hervé", "present", 0); arr("Mireille", "present", 0); arr("Aline", "present", 0); arr("Brigitte", "retard", 12);
+    const pastLeave = dAdd(mon, -9); db.leaves.push({ id: uuid(), staff_id: SID("Aline"), day_from: pastLeave, day_to: pastLeave, reason: "Rendez-vous à l’hôpital", status: "acceptee", created_at: new Date(Date.now() - 12 * 864e5).toISOString() });
+    const al = db.attendance.find(a => a.staff_id === SID("Aline") && a.day === pastLeave); if (al) Object.assign(al, { status: "permission", late_minutes: 0, arrived_at: null, note: "Rendez-vous à l’hôpital" });
+    db.leaves.unshift({ id: uuid(), staff_id: SID("Carine"), day_from: dAdd(mon, 12), day_to: dAdd(mon, 12), reason: "Mariage de ma sœur à Douala", status: "en_attente", created_at: new Date(Date.now() - 3 * 3600e3).toISOString() });
+    [["Hervé", 150000], ["Mireille", 90000], ["Aline", 60000], ["Brigitte", 60000], ["Carine", 60000]].forEach(([n, v]) => db.salaries.push({ staff_id: SID(n), salary: v }));
+    const m1 = t0.slice(0, 8) + "01", pm = dAdd(m1, -1).slice(0, 7);
+    db.salaries.forEach(x => { const n = db.staff.find(y => y.id === x.staff_id).name, eid = uuid();
+      db.expenses.push({ id: eid, day: m1, category: "Salaires", label: `Salaire ${n} (${pm})`, amount: x.salary, method: "cash" });
+      db.payroll.push({ id: uuid(), staff_id: x.staff_id, month: pm, base: x.salary, bonus: 0, deduction: 0, net: x.salary, method: "cash", note: null, expense_id: eid, paid_by: SID("Marcel"), paid_at: new Date(m1 + "T10:00:00").toISOString() }); });
     const as = n => { sess = db.staff.find(x => x.name === n).id; }, P = n => db.products.find(p => p.name.startsWith(n)).id, W = n => db.staff.find(x => x.name === n).id;
     as("Mireille"); [["Aline", "Castel", 6], ["Aline", "Guinness", 3], ["Aline", "Coca", 4], ["Brigitte", "33 Export", 6], ["Brigitte", "Mützig", 4], ["Carine", "Castel", 4]]
       .forEach(([w, p, q]) => R.gb_dotation({ p_waitress: W(w), p_product: P(p), p_qty: q }));
@@ -554,7 +799,7 @@ function DemoBackend() {
     async init() { return !!(sess && db.staff.find(x => x.id === sess && x.active)); },
     async staffList(code) {
       if ((code || "").trim().toUpperCase() !== db.bar.code) throw bizErr("Aucun bar ne correspond à ce code. En démo, le code est DEMO.");
-      return { bar: db.bar.name, staff: db.staff.filter(s => s.active).sort((a, b) => a.role === b.role ? a.name.localeCompare(b.name) : a.role === "caisse" ? -1 : 1).map(pub) };
+      return { bar: db.bar.name, staff: db.staff.filter(s => s.active).sort((a, b) => a.name.localeCompare(b.name)).map(pub) };
     },
     async pinLogin(code, id, pin) {
       const s = db.staff.find(x => x.id === id && x.active); if (!s) throw bizErr("Membre introuvable pour ce bar.");
@@ -567,18 +812,22 @@ function DemoBackend() {
     async register() { throw bizErr("La création d’un bar se fait sur la version en ligne. En démo, utilisez le bar DEMO."); },
     async logout() { sess = null; LS.del(KEY + "-sess"); },
     async load() {
-      const me = ctx(), cs = me.role === "caisse", day = db.days.find(d => d.status === "open") || null, mine = x => cs || x.waitress_id === me.id;
+      const me = ctx(), cs = me.role !== "serveuse", mg = ["directeur", "pdg"].includes(me.role), pg = me.role === "pdg";
+      const day = db.days.find(d => d.status === "open") || null, mine = x => cs || x.waitress_id === me.id, own = x => x.staff_id === me.id;
       const clone = o => JSON.parse(JSON.stringify(o));
       return clone({ bar: db.bar, me: pub(me), staff: db.staff.map(pub), products: [...db.products].sort((a, b) => a.sort - b.sort), day,
         tickets: db.tickets.filter(t => mine(t) && (["draft", "sent", "cashed"].includes(t.status) || t.change_status === "pending" || (day && t.day_id === day.id))),
         holdings: db.holdings.filter(mine), vouchers: db.vouchers.filter(mine).slice(0, 200), remits: db.remits.filter(r => mine(r) && day && r.day_id === day.id),
         audit: cs ? db.audit.slice(0, 200) : [], moves: cs ? db.moves.slice(0, 150) : [],
-        days: cs ? db.days.filter(d => d.status === "closed").sort((a, b) => a.closed_at < b.closed_at ? 1 : -1).slice(0, 30) : [] });
+        days: cs ? db.days.filter(d => d.status === "closed").sort((a, b) => a.closed_at < b.closed_at ? 1 : -1).slice(0, 30) : [],
+        shifts: db.shifts, attendance: db.attendance.filter(a => mg || own(a)).sort((a, b) => a.day < b.day ? 1 : -1), leaves: db.leaves.filter(l => mg || own(l)),
+        salaries: db.salaries.filter(x => pg || own(x)), payroll: db.payroll.filter(x => pg || own(x)) });
     },
     async rpc(name, args) { const f = R[name]; if (!f) throw bizErr("Action inconnue."); db = LS.get(KEY) || db; const r = f(args || {}); save(); return r; },
-    async uploadDoc(file) { const c = ctx(); caisse(c); return db.bar.id + "/demo-" + (file.name || "piece"); },
+    async uploadDoc(file) { const c = ctx(); pdg(c); return db.bar.id + "/demo-" + (file.name || "piece"); },
     async staffCreate(name, role, pin) {
-      const c = ctx(); caisse(c); name = (name || "").trim(); if (!name) throw bizErr("Indiquez un nom."); pinOk(pin);
+      const c = ctx(); mgr(c); name = (name || "").trim(); if (!name) throw bizErr("Indiquez un nom."); pinOk(pin);
+      if (!["directeur", "caisse", "serveuse"].includes(role)) throw bizErr("Rôle inconnu."); if (role === "directeur" && c.role !== "pdg") throw bizErr("Seul le PDG peut ajouter un directeur.");
       if (db.staff.some(s => s.name.toLowerCase() === name.toLowerCase())) throw bizErr("Ce nom est déjà utilisé dans l’équipe.");
       db.staff.push({ id: uuid(), name, role, pin, active: true, fails: 0, lock: 0 }); log(c, "membre_ajoute", { membre: name, role }); save();
     },
@@ -605,7 +854,7 @@ function LiveBackend() {
   function subscribe(bid) {
     if (channel && barId === bid) return; if (channel) sb.removeChannel(channel); barId = bid;
     channel = sb.channel("bar-" + bid);
-    ["tickets", "ticket_items", "holdings", "vouchers", "remittances", "products", "service_days"].forEach(t =>
+    ["tickets", "ticket_items", "holdings", "vouchers", "remittances", "products", "service_days", "shifts", "attendance", "leave_requests"].forEach(t =>
       channel.on("postgres_changes", { event: "*", schema: "public", table: t, filter: "bar_id=eq." + bid }, () => listeners.forEach(f => f())));
     channel.subscribe();
   }
@@ -627,7 +876,15 @@ function LiveBackend() {
         q(sb.from("products").select("*").order("sort")),
         q(sb.from("service_days").select("*").eq("status", "open").limit(1))]);
       const meRow = staff.find(s => s.user_id === uid && s.active); if (!meRow || !bars.length) { const e = bizErr("Compte non rattaché à un bar ou désactivé."); e.auth = true; throw e; }
-      const me = { id: meRow.id, name: meRow.name, role: meRow.role }, cs = me.role === "caisse", day = days[0] || null;
+      const me = { id: meRow.id, name: meRow.name, role: meRow.role }, cs = me.role !== "serveuse", day = days[0] || null;
+      const t0 = new Date(Date.now() - 6 * 3600e3), dd = n => { const x = new Date(t0); x.setDate(x.getDate() + n); return x.toLocaleDateString("sv-SE"); };
+      const extra = Promise.all([
+        q(sb.from("shifts").select("id,staff_id,day,kind,start_time,end_time,note").gte("day", dd(-49)).lte("day", dd(49)).order("day")),
+        q(sb.from("attendance").select("id,staff_id,day,status,arrived_at,left_at,late_minutes,note").gte("day", dd(-70)).order("day", { ascending: false })),
+        q(sb.from("leave_requests").select("*").order("created_at", { ascending: false }).limit(150)),
+        q(sb.from("staff_salaries").select("staff_id,salary")),
+        q(sb.from("payroll").select("*").order("paid_at", { ascending: false }).limit(300))]);
+      extra.catch(() => {});
       let tq = sb.from("tickets").select("*, ticket_items(product_id,qty,unit_price)").order("created_at", { ascending: false }).limit(600);
       tq = tq.or("status.in.(draft,sent,cashed),change_status.eq.pending" + (day ? ",day_id.eq." + day.id : ""));
       const jobs = [q(tq), q(sb.from("holdings").select("waitress_id,product_id,qty")), q(sb.from("vouchers").select("*").order("issued_at", { ascending: false }).limit(200)),
@@ -636,9 +893,11 @@ function LiveBackend() {
         q(sb.from("stock_moves").select("*").order("created_at", { ascending: false }).limit(150)),
         q(sb.from("service_days").select("*").eq("status", "closed").order("closed_at", { ascending: false }).limit(30)));
       const [tickets, holdings, vouchers, remits, audit = [], moves = [], closed = []] = await Promise.all(jobs);
+      const [shifts, attendance, leaves, salaries, payroll] = await extra;
       subscribe(bars[0].id);
       return { bar: bars[0], me, staff: staff.map(s => ({ id: s.id, name: s.name, role: s.role, active: s.active })), products, day,
-        tickets: tickets.map(t => { const { ticket_items, ...r } = t; return { ...r, items: ticket_items || [] }; }), holdings, vouchers, remits, audit, moves, days: closed };
+        tickets: tickets.map(t => { const { ticket_items, ...r } = t; return { ...r, items: ticket_items || [] }; }), holdings, vouchers, remits, audit, moves, days: closed,
+        shifts, attendance, leaves, salaries, payroll };
     },
     async rpc(name, args) { const { data, error } = await sb.rpc(name, args || {}); if (error) { const e = toErr(error); if (/non soldé/.test(error.message)) e.pending = true; throw e; } return data; },
     staffCreate: (name, role, pin) => fn("staff_create", { name, role, pin }, true),
@@ -659,11 +918,17 @@ const OBX = "gesco-outbox", SNAP = "gesco-snapshot";
 let S = null;
 const V = { screen: "boot", ltab: "staff", code: LS.get("gesco-code", CFG.mode === "demo" ? "DEMO" : ""), list: null, pick: null, pin: "",
   tab: LS.get("gesco-tab", "direct"), wf: "open", open: {}, f: {}, modal: null, toast: null, busy: false, rev: null, vres: null,
-  online: navigator.onLine, outbox: LS.get(OBX, []), regDone: null, salesOpen: {} };
+  online: navigator.onLine, outbox: LS.get(OBX, []), regDone: null, salesOpen: {}, menu: false, menuT: 0, wk: 0, secT: Date.now(), stats: null };
 const val = k => esc(V.f[k] ?? "");
 const prodName = id => (S.products.find(p => p.id === id) || { name: "Produit retiré" }).name;
 const staffName = id => (S.staff.find(s => s.id === id) || { name: "—" }).name;
-const isCaisse = () => S && S.me.role === "caisse";
+const ROLES = { pdg: "PDG", directeur: "Directeur", caisse: "Caisse", serveuse: "Serveuse" };
+const RO = { pdg: 0, directeur: 1, caisse: 2, serveuse: 3 };
+const roleSort = (a, b) => (RO[a.role] - RO[b.role]) || a.name.localeCompare(b.name);
+const ROLE = () => S ? S.me.role : "";
+const isCaisse = () => ["caisse", "pdg"].includes(ROLE()); // gestes de caisse : caissière, et le PDG en secours
+const isMgr = () => ["directeur", "pdg"].includes(ROLE());
+const isPdg = () => ROLE() === "pdg";
 const isCounter = t => (S.staff.find(s => s.id === t.waitress_id) || {}).role === "caisse"; // vente au comptoir par la caisse
 const lowAt = p => p.low_at ?? S.bar.low_stock;
 const isLow = p => p.active && p.stock <= lowAt(p);
@@ -677,7 +942,7 @@ let toastTimer = null;
 function toast(msg, kind) { V.toast = { msg, kind }; clearTimeout(toastTimer); toastTimer = setTimeout(() => { V.toast = null; render(); }, kind === "err" ? 5200 : 2600); render(); }
 
 /* File d'attente hors ligne : les gestes de service sont appliqués tout de suite à l'écran, puis envoyés dans l'ordre */
-const QUEUE = new Set(["gb_ticket_create", "gb_ticket_set_qty", "gb_ticket_send", "gb_ticket_cash", "gb_ticket_delete"]);
+const QUEUE = new Set(["gb_ticket_create", "gb_ticket_set_qty", "gb_ticket_send", "gb_ticket_cash", "gb_ticket_delete", "gb_ticket_served"]);
 function applyLocal(op) {
   const a = op.a, t = S.tickets.find(x => x.id === (a.p_ticket || a.p_id));
   if (op.n === "gb_ticket_create") { if (!t) S.tickets.unshift({ id: a.p_id, number: null, client_label: a.p_client, waitress_id: S.me.id, day_id: S.day && S.day.id, status: "draft", total: 0, items: [],
@@ -690,6 +955,7 @@ function applyLocal(op) {
     else { let h = S.holdings.find(x => x.waitress_id === t.waitress_id && x.product_id === p.id); if (!h) S.holdings.push(h = { waitress_id: t.waitress_id, product_id: p.id, qty: 0 }); h.qty -= d; }
     t.total = sum(t.items, i => i.qty * i.unit_price); }
   if (op.n === "gb_ticket_send" && t.status === "draft" && t.total > 0) t.status = "sent";
+  if (op.n === "gb_ticket_served" && ["sent", "cashed", "paid"].includes(t.status)) t.served_at = t.served_at || new Date().toISOString();
   if (op.n === "gb_ticket_cash" && (t.status === "sent" || (isCounter(t) && t.status === "draft" && t.total > 0))) { const r = a.p_method === "cash" ? (a.p_received ?? t.total) : t.total;
     Object.assign(t, { status: isCounter(t) ? "paid" : "cashed", pay_method: a.p_method, received: r, change_due: r - t.total, change_status: r > t.total ? "pending" : "none" }); }
   if (op.n === "gb_ticket_delete") { if (isCaisse() || t.status === "draft") { t.items.forEach(i => { if (isCounter(t)) { const p = S.products.find(x => x.id === i.product_id); if (p) p.stock += i.qty; return; }
@@ -738,13 +1004,13 @@ async function enterApp() {
     if (e.net && snap) { S = snap; V.online = false; V.outbox.forEach(applyLocal); toast("Hors ligne : dernières données affichées. Vos tickets seront envoyés au retour du réseau."); }
     else { await logout(true); toast(e.message, "err"); return; }
   }
-  if (!isCaisse()) V.tab = "direct"; notifyNew();
+  V.tab = LS.get("gesco-tab-" + ROLE(), navFor()[0]); if (!navFor().includes(V.tab)) V.tab = navFor()[0]; V.secT = Date.now(); V.menu = false; notifyNew(); lazyLoad();
   render(); flush();
 }
 async function logout(silent) {
   try { await B.logout(); } catch (e) {}
   V.screen = "login"; S = null; LS.del(SNAP); ANIM.login = 0; ANIM.app = 0; V.open = {}; V.f = {}; V.modal = null; V.rev = null; V.vres = null; V.outbox = []; saveOutbox();
-  V.pin = ""; V.pick = null; V.list = null; V.ltab = "staff"; if (!silent) toast("Vous êtes déconnecté.");
+  V.pin = ""; V.pick = null; V.list = null; V.ltab = "staff"; V.menu = false; V.stats = null; V.acc = null; V.wk = 0; if (!silent) toast("Vous êtes déconnecté.");
   render();
   if (V.code && V.ltab === "staff") A.loadStaff(); // liste du personnel toujours à jour
 }
@@ -756,7 +1022,7 @@ async function run(fn) {
   try { await fn(); } catch (e) { if (e.auth) { await logout(true); } toast(e.message || String(e), "err"); }
   finally { V.busy = false; render(); }
 }
-const ask = (title, text, ok, a, d, danger) => { V.modal = { type: "confirm", title, text, ok, a, d, danger }; render(); };
+const ask = (title, text, ok, a, d, danger) => { V.menu = false; V.modal = { type: "confirm", title, text, ok, a, d, danger }; render(); };
 const num = k => { const v = String(V.f[k] ?? "").replace(/\s/g, ""); return v === "" ? null : Math.trunc(+v); };
 
 A.theme = () => { THEME = { system: "light", light: "dark", dark: "system" }[THEME]; LS.set("gesco-theme", THEME); applyTheme(THEME); toast(THEMES[THEME]); };
@@ -783,7 +1049,9 @@ A.logout = () => ask("Se déconnecter ?", V.outbox.length ? `${V.outbox.length} 
 A.logoutGo = () => logout();
 A.close = () => { V.modal = null; render(); };
 A.okModal = () => { const m = V.modal; V.modal = null; render(); if (m && A[m.a]) A[m.a](m.d || {}); };
-A.tab = d => { V.tab = d.v; LS.set("gesco-tab", d.v); if (d.v === "rev") A.loadRev(); if (d.v === "acc") A.loadAcc(); render(); };
+A.go = d => { V.menu = false; V.modal = null; V.f.gq = ""; if (V.tab !== d.v) { V.tab = d.v; V.secT = Date.now(); LS.set("gesco-tab-" + ROLE(), d.v); V.top = 1; } lazyLoad(); render(); if (V.top) { V.top = 0; try { scrollTo({ top: 0 }); } catch (e) {} } };
+A.tab = A.go;
+function lazyLoad() { const k = V.tab; if ((k === "rev" || k === "home") && isPdg()) A.loadRev(); if (k === "acc") A.loadAcc(); if ((k === "pres" || k === "paie") && isMgr()) A.loadStats(); }
 A.wf = d => { V.wf = d.v; render(); };
 A.tog = d => { V.open[d.id] = !V.open[d.id]; render(); };
 A.togSales = d => { V.salesOpen[d.id] = !V.salesOpen[d.id]; render(); };
@@ -804,7 +1072,8 @@ A.del = d => { const t = S.tickets.find(x => x.id === d.t);
     : `La commande a déjà été envoyée. La caisse doit valider l’annulation du ticket « ${t.client_label} ».`;
   ask(isCaisse() || t.status === "draft" ? "Supprimer ce ticket ?" : "Demander l’annulation ?", txt, isCaisse() || t.status === "draft" ? "Supprimer" : "Demander l’annulation", "delGo", d, true); };
 A.delGo = d => { call("gb_ticket_delete", { p_ticket: d.t }); };
-A.showV = d => { const v = S.vouchers.find(x => x.id === d.v); if (v) { V.modal = { type: "voucher", v }; render(); } };
+A.served = d => { call("gb_ticket_served", { p_ticket: d.t }); toast("Commande marquée servie : le directeur le voit."); };
+A.showV = d => { const v = S.vouchers.find(x => x.id === d.v); if (v) { V.menu = false; V.modal = { type: "voucher", v }; render(); } };
 
 // Caisse
 A.remit = d => run(async () => { const r = num("rem_" + d.w); if (r == null) throw bizErr("Saisissez le montant reçu.");
@@ -900,11 +1169,11 @@ function vLogin() {
   if (V.ltab === "staff") {
     if (!V.list) body = `<div class="card stack"><label class="f" for="code">Code du bar<input id="code" data-k="code" value="${esc(V.f.code ?? V.code)}" autocapitalize="characters" autocomplete="off" placeholder="Ex. 7K2QPA" data-enter="loadStaff"></label>
       <button class="btn wide" data-a="loadStaff" ${V.busy ? "disabled" : ""}>${V.busy ? '<span class="spin"></span>' : "Continuer"}</button>
-      <p class="mu" style="margin:0">Le code est affiché dans l’espace caisse, onglet Équipe.</p></div>`;
+      <p class="mu" style="margin:0">Le code du bar est affiché dans le menu de l’application (directeur et PDG : rubrique Équipe).</p></div>`;
     else if (!V.pick) {
-      const grp = r => V.list.staff.filter(s => s.role === r).map(s => `<button data-a="pick" data-id="${s.id}">${esc(s.name)}<span>${r === "caisse" ? "Caisse" : "Serveuse"}</span></button>`).join("");
+      const grp = r => V.list.staff.filter(s => s.role === r).map(s => `<button data-a="pick" data-id="${s.id}">${esc(s.name)}<span>${ROLES[r]}</span></button>`).join("");
       body = `<div class="card stack"><div class="between"><div><h3>${esc(V.code)}</h3><b>${esc(V.list.bar)}</b></div><button class="btn ghost sm" data-a="changeBar">Changer de bar</button></div>
-        <p class="mu" style="margin:0">Touchez votre nom.</p><div class="who-pick">${grp("serveuse")}${grp("caisse")}</div></div>`;
+        <p class="mu" style="margin:0">Touchez votre nom.</p><div class="who-pick">${grp("serveuse")}${grp("caisse")}${grp("directeur")}${grp("pdg")}</div></div>`;
     } else body = `<div class="card stack" style="text-align:center"><div class="between"><button class="btn ghost sm" data-a="unpick">← Retour</button><span class="mu">${esc(V.list.bar)}</span></div>
         <div><div class="avatar" style="margin:0 auto 6px">${esc(V.pick.name[0])}</div><b style="font-size:18px">${esc(V.pick.name)}</b><div class="mu">Saisissez votre PIN</div></div>
         <div class="pin-dots" aria-label="${V.pin.length} chiffres saisis">${Array.from({ length: Math.max(4, V.pin.length) }, (_, i) => `<i class="${i < V.pin.length ? "f" : ""}"></i>`).join("")}</div>
@@ -915,23 +1184,23 @@ function vLogin() {
     body = `<div class="card stack"><label class="f" for="email">E-mail<input id="email" type="email" data-k="email" value="${val("email")}" autocomplete="username"></label>
       <label class="f" for="pw">Mot de passe<input id="pw" type="password" data-k="pw" value="${val("pw")}" autocomplete="current-password" data-enter="ownerGo"></label>
       <button class="btn wide" data-a="ownerGo" ${V.busy ? "disabled" : ""}>${V.busy ? '<span class="spin"></span>' : "Se connecter"}</button>
-      <p class="mu" style="margin:0">Pour le propriétaire qui a créé le bar. Il arrive dans l’espace caisse.</p></div>`;
+      <p class="mu" style="margin:0">Pour le PDG qui a créé le bar, avec son e-mail et son mot de passe.</p></div>`;
   } else {
-    body = `<div class="card stack"><p style="margin:0">Créez l’espace de votre bar en une minute. Vous recevrez un code à donner à vos serveuses.</p>
+    body = `<div class="card stack"><p style="margin:0">Créez l’espace de votre bar en une minute. Vous en devenez le PDG et recevez un code à donner à votre équipe.</p>
       <label class="f" for="r_bar">Nom du bar<input id="r_bar" data-k="r_bar" value="${val("r_bar")}" placeholder="Ex. Snack Le Manguier"></label>
       <label class="f" for="r_city">Ville et quartier<input id="r_city" data-k="r_city" value="${val("r_city")}" placeholder="Ex. Yaoundé, Bastos"></label>
-      <label class="f" for="r_name">Votre nom (caisse)<input id="r_name" data-k="r_name" value="${val("r_name")}"></label>
+      <label class="f" for="r_name">Votre nom (PDG)<input id="r_name" data-k="r_name" value="${val("r_name")}"></label>
       <label class="f" for="r_email">E-mail<input id="r_email" type="email" data-k="r_email" value="${val("r_email")}" autocomplete="email"></label>
       <label class="f" for="r_pw">Mot de passe (8 caractères minimum)<input id="r_pw" type="password" data-k="r_pw" value="${val("r_pw")}" autocomplete="new-password"></label>
-      <label class="f" for="r_pin">Votre PIN caisse (4 à 6 chiffres)<input id="r_pin" type="tel" inputmode="numeric" maxlength="6" data-k="r_pin" value="${val("r_pin")}"></label>
+      <label class="f" for="r_pin">Votre PIN (4 à 6 chiffres)<input id="r_pin" type="tel" inputmode="numeric" maxlength="6" data-k="r_pin" value="${val("r_pin")}"></label>
       <div class="sub stack"><b>Entreprise (facultatif)</b><span class="mu">Utile pour vos factures d’abonnement. Vous pourrez le compléter plus tard.</span>
       <label class="f" for="r_legal">Raison sociale<input id="r_legal" data-k="r_legal" value="${val("r_legal")}" placeholder="Ex. SNACK LE MANGUIER SARL"></label>
       <label class="f" for="r_niu">NIU (numéro d’identifiant unique DGI)<input id="r_niu" data-k="r_niu" value="${val("r_niu")}" placeholder="Ex. M012345678901A" autocapitalize="characters" maxlength="16"></label></div>
       <button class="btn amber wide" data-a="register" ${V.busy ? "disabled" : ""}>${V.busy ? '<span class="spin"></span>' : "Créer mon bar"}</button>
-      <p class="mu" style="margin:0">La carte est préremplie avec des boissons courantes. Ajustez les prix ensuite dans l’onglet Stock.</p></div>`;
+      <p class="mu" style="margin:0">La carte est préremplie avec des boissons courantes. Ajustez les prix ensuite dans la rubrique Stock.</p></div>`;
   }
   return `<div class="login"><div class="row" style="justify-content:flex-end">${themeBtn()}</div>${bismo(false)}<div class="hero"><div class="brandmark">GesCo<span> Bar</span></div><p>Chaque boisson a son ticket. Chaque ticket a sa serveuse.</p></div>
-    ${demo ? `<div class="demo"><b>Mode démo</b> : données d’exemple enregistrées dans ce navigateur. Code du bar <b>DEMO</b>. PIN : Aline <b>1111</b>, Brigitte <b>2222</b>, Carine <b>3333</b>, Mireille (caisse) <b>0000</b>.</div>` : ""}
+    ${demo ? `<div class="demo"><b>Mode démo</b> : données d’exemple enregistrées dans ce navigateur. Code du bar <b>DEMO</b>. PIN : serveuses Aline <b>1111</b>, Brigitte <b>2222</b>, Carine <b>3333</b> · caisse Mireille <b>0000</b> · directeur Hervé <b>5555</b> · PDG Marcel <b>9999</b>.</div>` : ""}
     ${tabs}${body}${installBox()}</div>`;
 }
 function installBox() {
@@ -942,13 +1211,6 @@ function installBox() {
 }
 
 /* ═══════════════ Rendu : composants ═══════════════ */
-function header(sub) {
-  const pend = V.outbox.length;
-  return `<div class="top"><div class="who"><div class="avatar">${esc(S.me.name[0])}</div><div><b>${esc(S.me.name)}</b><span class="mu">${sub}</span></div></div>
-    <div class="row"><span class="net ${V.online ? "" : "off"}"><i></i>${V.online ? (pend ? `Envoi de ${pend} action(s)…` : "En ligne") : `Hors ligne${pend ? ` · ${pend} en attente` : ""}`}</span>
-    ${CFG.mode === "demo" && isCaisse() ? `<button class="btn ghost sm" data-a="resetDemo">Réinitialiser la démo</button>` : ""}
-    ${themeBtn()}<button class="btn ghost sm" data-a="logout">Déconnexion</button></div></div>`;
-}
 function kpi(l, v, cls, extra) { return `<div class="kpi ${cls || ""}"><div class="l">${l}</div><div class="v">${v}</div>${extra ? `<div class="mu">${extra}</div>` : ""}</div>`; }
 function statusPill(t) {
   if (t.status === "draft") return `<span class="pill">Brouillon</span>`;
@@ -996,7 +1258,8 @@ function payBox(t) {
 }
 function ticket(t, opts = {}) {
   const open = !!V.open[t.id], editable = ["draft", "sent"].includes(t.status) && t.waitress_id === S.me.id;
-  const meta = `${t.number ? "N°" + t.number : "Nouveau"} · ${opts.who ? esc(staffName(t.waitress_id)) + " · " : ""}${t.items.reduce((a, i) => a + i.qty, 0)} article(s)${t._local && V.outbox.length ? " · en cours d’envoi" : ""}`;
+  const meta = `${t.number ? "N°" + t.number : "Nouveau"} · ${opts.who ? esc(staffName(t.waitress_id)) + " · " : ""}${t.items.reduce((a, i) => a + i.qty, 0)} article(s)${t.served_at ? " · servi ✓" : ""}${t._local && V.outbox.length ? " · en cours d’envoi" : ""}`;
+  const servedBtn = t.waitress_id === S.me.id && !isCounter(t) && ["sent", "cashed", "paid"].includes(t.status) && !t.served_at ? `<button class="btn amber sm" data-a="served" data-t="${t.id}">Commande servie au client</button>` : "";
   let body = "";
   if (open) {
     if (editable) {
@@ -1004,9 +1267,10 @@ function ticket(t, opts = {}) {
       if (t.cancel_requested) body += `<div class="note bad">Annulation demandée : en attente de la caisse.</div>`;
       if (t.status === "draft" && isCounter(t)) body += (t.total ? payBox(t) : "") + `<div class="row"><span class="mu grow">Vente au comptoir : le paiement est validé directement.</span><button class="btn bad sm" data-a="del" data-t="${t.id}">Supprimer</button></div>`;
       else if (t.status === "draft") body += `<div class="row"><button class="btn grow" data-a="send" data-t="${t.id}" ${t.total ? "" : "disabled"}>Envoyer à la caisse</button><button class="btn bad" data-a="del" data-t="${t.id}">Supprimer</button></div>`;
-      else { if (!t.cancel_requested) body += payBox(t); body += `<div class="row"><span class="mu grow">Le client change d’avis ? Corrigez les quantités : chaque correction est tracée.</span>${t.cancel_requested && !isCaisse() ? "" : `<button class="btn bad sm" data-a="del" data-t="${t.id}">${isCaisse() ? "Supprimer" : "Annuler la commande"}</button>`}</div>`; }
+      else { body += servedBtn; if (!t.cancel_requested) body += payBox(t); body += `<div class="row"><span class="mu grow">Le client change d’avis ? Corrigez les quantités : chaque correction est tracée.</span>${t.cancel_requested && !isCaisse() ? "" : `<button class="btn bad sm" data-a="del" data-t="${t.id}">${isCaisse() ? "Supprimer" : "Annuler la commande"}</button>`}</div>`; }
     } else {
-      body = lines(t) + `<div class="total"><span class="mu">Total${t.pay_method ? " · " + (t.pay_method === "momo" ? "Mobile Money" : "espèces") : ""}</span><b>${F(t.total)}</b></div>` + changeBlock(t);
+      body = lines(t) + `<div class="total"><span class="mu">Total${t.pay_method ? " · " + (t.pay_method === "momo" ? "Mobile Money" : "espèces") : ""}</span><b>${F(t.total)}</b></div>` + changeBlock(t) + servedBtn;
+      if (ROLE() === "directeur" && !isCounter(t)) body += `<div class="note info">${t.served_at ? `Servie au client à ${hm(t.served_at)}.` : `Envoyée ${ago(t.sent_at || t.created_at)}, pas encore marquée servie.`} La validation reste à la caisse.</div>`;
       if (isCaisse() && t.status === "sent" && !isCounter(t)) body += `<div class="note info">Commande de ${esc(staffName(t.waitress_id))}. Seule la serveuse peut la modifier ; la caisse suit son évolution ici.</div>`;
       if (isCaisse() && t.status !== "cancelled") body += `<div class="row">${sold(t) ? `<button class="btn soft sm" data-a="reopen" data-t="${t.id}">Rouvrir pour modifier</button>` : ""}<button class="btn bad sm" data-a="del" data-t="${t.id}">Supprimer</button></div>`;
     }
@@ -1016,7 +1280,7 @@ function ticket(t, opts = {}) {
 }
 
 /* ═══════════════ Rendu : serveuse ═══════════════ */
-function vWaitress() {
+function wService() {
   const mine = S.tickets.filter(t => t.waitress_id === S.me.id && t.status !== "cancelled");
   const today = mine.filter(t => S.day && t.day_id === S.day.id);
   const cashHand = sum(mine.filter(t => t.status === "cashed" && t.pay_method === "cash"), cashOf);
@@ -1025,7 +1289,7 @@ function vWaitress() {
   const lists = { open: mine.filter(t => ["draft", "sent"].includes(t.status)), cash: mine.filter(t => t.status === "cashed" || (t.status === "paid" && t.change_status === "pending")), done: mine.filter(t => t.status === "paid" && t.change_status !== "pending") };
   const over = cashHand > S.bar.cash_cap;
   const L = lists[V.wf] || lists.open;
-  return header(`Serveuse · ${esc(S.bar.name)}`) +
+  return shiftBanner() +
     `<div class="kpis">${kpi("Mes ventes du jour", F(sum(today.filter(sold), t => t.total)), "", `${today.filter(sold).length} ticket(s)`)}
     ${kpi("Espèces à remettre", F(cashHand), over ? "alert" : cashHand ? "hl" : "", over ? "Plafond dépassé : versez à la caisse" : `Plafond ${F(S.bar.cash_cap)}`)}
     ${kpi("Tickets en cours", lists.open.length)}${kpi("Bouteilles en main", inHand, owe ? "hl" : "", owe ? `${owe} à prendre à la caisse` : "")}</div>
@@ -1036,33 +1300,383 @@ function vWaitress() {
     <div class="stack">${L.map(t => ticket(t)).join("") || `<div class="empty">${V.wf === "open" ? "Aucun ticket en cours. Saisissez le nom du client ci-dessus pour commencer." : "Rien ici pour le moment."}</div>`}</div>`;
 }
 
-/* ═══════════════ Rendu : caisse ═══════════════ */
-function vCaisse() {
-  const DT = dayT(), act = S.tickets.filter(t => t.status !== "cancelled");
-  const toRecv = act.filter(t => t.status === "cashed"), pend = act.filter(t => t.change_status === "pending");
-  const cancels = act.filter(t => t.cancel_requested), momo = toRecv.filter(t => t.pay_method === "momo");
-  const vAct = S.vouchers.filter(v => v.status === "active"), low = S.products.filter(isLow);
-  const alerts = cancels.length + momo.length + pend.length;
-  const tabs = [["direct", "En direct", alerts], ["sales", "Ventes"], ["rev", "Revenus"], ["vouch", "Bons"], ["stock", "Stock", low.length], ["acc", "Compta"], ["team", "Équipe"], ["day", "Journée"], ["log", "Journal"]];
-  let body = "";
-  if (V.tab === "direct") body = cDirect(act, toRecv, pend, cancels, momo);
-  else if (V.tab === "sales") body = cSales(DT);
-  else if (V.tab === "rev") body = cRev();
-  else if (V.tab === "vouch") body = cVouch(vAct);
-  else if (V.tab === "stock") body = cStock(low);
-  else if (V.tab === "team") body = cTeam();
-  else if (V.tab === "day") body = cDay(DT);
-  else if (V.tab === "acc") body = cAcc();
-  else body = cLog();
-  return header(`Caisse · ${esc(S.bar.name)} · code <b class="num">${esc(S.bar.code)}</b>`) +
-    `<div class="kpis">${kpi("Ventes du jour", F(sum(DT.filter(sold), t => t.total)), "", `${DT.filter(sold).length} ticket(s)`)}
+/* ═══════════════ Cadre commun : rubriques par rôle, menu, recherche ═══════════════ */
+const IC = {
+  service: '<path d="M4 7h16l-1.5 11a2 2 0 0 1-2 1.7H7.5a2 2 0 0 1-2-1.7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
+  orders: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  stock: '<path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',
+  bon: '<path d="M4 6h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4z"/><path d="M14 7v10" stroke-dasharray="2 3"/>',
+  sales: '<path d="M5 20V11M11 20V5M17 20v-6M3 20h18"/>',
+  rev: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+  acc: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/>',
+  team: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/>',
+  cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7.5 14h3M13.5 14h3M7.5 17.5h3"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  pay: '<path d="M3 7a2 2 0 0 1 2-2h13v4"/><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 13.5h2"/>',
+  log: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  day: '<path d="M12 3v2M5.6 5.6 7 7M3 12h2M19 12h2M17 7l1.4-1.4"/><path d="M7 16a5 5 0 0 1 10 0"/><path d="M3 20h18"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  check: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h10"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  out: '<path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4"/><path d="M10 17l5-5-5-5M15 12H3"/>',
+  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',
+  dl: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
+  left: '<path d="M15 6l-6 6 6 6"/>', right: '<path d="M9 6l6 6-6 6"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/>',
+  alert: '<path d="M12 3 2 21h20z"/><path d="M12 10v4M12 17.5v.01"/>'
+};
+const ico = n => `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || ""}</svg>`;
+const SEC = {
+  service: ["Service", "service", "Mes tickets, mes clients, mes bouteilles"],
+  direct: ["Commandes", "orders", "Commandes en direct, versements, comptoir et dotations"],
+  sup: ["Supervision", "eye", "Commandes prises et servies, équipe du jour"],
+  home: ["Accueil", "home", "Vue d’ensemble de votre bar"],
+  stock: ["Stock", "stock", "Inventaire, approvisionnement, carte des produits"],
+  vouch: ["Bons", "bon", "Vérifier et suivre les bons de reliquat"],
+  sales: ["Ventes", "sales", "Ventes du jour par serveuse et par boisson"],
+  rev: ["Revenus", "rev", "Revenus mensuels et jour par jour"],
+  acc: ["Compta", "acc", "Comptabilité automatique du mois"],
+  paie: ["Paie", "pay", "Salaires, primes, retenues et fiches de paie"],
+  pres: ["Présences", "check", "Présences, retards, absences et permissions"],
+  planning: ["Planning", "cal", "Jours de travail, horaires et repos"],
+  team: ["Équipe", "team", "Membres, rôles, codes PIN et installation"],
+  day: ["Journée", "day", "Clôture de caisse et rapports"],
+  log: ["Journal", "log", "Toutes les actions et les mouvements de stock"],
+  settings: ["Réglages", "gear", "Identité légale et réglages du bar"],
+  moi: ["Mon espace", "user", "Pointage, permissions et fiches de paie"]
+};
+const NAV = {
+  serveuse: ["service", "planning", "moi"],
+  caisse: ["direct", "stock", "vouch", "sales", "day", "planning", "moi"],
+  directeur: ["sup", "pres", "planning", "team", "sales", "log", "moi"],
+  pdg: ["home", "paie", "acc", "team", "direct", "sales", "rev", "pres", "planning", "stock", "vouch", "day", "log", "settings"]
+};
+const navFor = () => NAV[ROLE()] || NAV.serveuse;
+const norm = x => String(x ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const METH = { cash: "espèces", momo: "Mobile Money", banque: "banque" };
+
+/* Dates, planning, présences */
+const today = () => new Date(Date.now() - 6 * 3600e3).toLocaleDateString("sv-SE");
+const dAdd = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return x.toLocaleDateString("sv-SE"); };
+const monday = d => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x.toLocaleDateString("sv-SE"); };
+const wkStart = () => dAdd(monday(today()), 7 * (V.wk || 0));
+const weekDays = () => [...Array(7)].map((_, i) => dAdd(wkStart(), i));
+const DOW = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+const t5 = t => t ? String(t).slice(0, 5) : "";
+const shiftOf = (sid, d) => (S.shifts || []).find(x => x.staff_id === sid && x.day === d);
+const attOf = (sid, d) => (S.attendance || []).find(x => x.staff_id === sid && x.day === d);
+const period = sh => !sh ? "none" : sh.kind === "repos" ? "off" : (h => h < 12 ? "morning" : h < 17 ? "afternoon" : "night")(+t5(sh.start_time).slice(0, 2));
+const PERIOD = { morning: "Matin", afternoon: "Après-midi", night: "Soir et nuit", off: "Repos", none: "Non planifié" };
+const shTxt = sh => !sh ? "Non planifié" : sh.kind === "repos" ? "Repos" : `${t5(sh.start_time)} – ${t5(sh.end_time)}`;
+const span = sh => { const [h1, m1] = t5(sh.start_time).split(":").map(Number), [h2, m2] = t5(sh.end_time).split(":").map(Number);
+  const s = new Date(sh.day + "T12:00:00"); if (h1 < 6) s.setDate(s.getDate() + 1); s.setHours(h1, m1, 0, 0);
+  const e = new Date(s); e.setHours(h2, m2, 0, 0); if (e <= s) e.setDate(e.getDate() + 1); return [s, e]; };
+const dur = ms => { const m = Math.round(ms / 60000); return m < 60 ? m + " min" : Math.floor(m / 60) + " h" + (m % 60 ? " " + String(m % 60).padStart(2, "0") : ""); };
+const countdown = sh => { if (!sh || sh.kind !== "travail") return ""; const [s, e] = span(sh), n = Date.now(); return n < s ? `Commence dans ${dur(s - n)}` : n < e ? `En service · fin dans ${dur(e - n)}` : "Service terminé"; };
+const hours = sh => sh && sh.kind === "travail" ? (([s, e]) => (e - s) / 36e5)(span(sh)) : 0;
+const ATT = { present: ["ok", "Présent"], retard: ["warn", "Retard"], absent: ["bad", "Absent"], permission: ["sky", "Permission"], repos: ["", "Repos"] };
+const attPill = a => a ? `<span class="pill ${ATT[a.status][0]}">${ATT[a.status][1]}${a.status === "retard" && a.late_minutes ? ` · ${a.late_minutes} min` : ""}</span>` : `<span class="pill">Non pointé</span>`;
+const nextShift = () => (S.shifts || []).filter(x => x.staff_id === S.me.id && x.kind === "travail" && x.day > today()).sort((a, b) => a.day < b.day ? -1 : 1)[0];
+const crewOf = () => S.staff.filter(s => s.active && s.role !== "pdg").sort(roleSort);
+const elapsed = t => Math.max(0, Date.now() - (t || 0));
+
+function badges() {
+  const act = S.tickets.filter(t => t.status !== "cancelled"), b = {};
+  const alerts = act.filter(t => t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo") || t.change_status === "pending").length;
+  const pend = (S.leaves || []).filter(l => l.status === "en_attente").length;
+  b.direct = ROLE() === "caisse" || isPdg() ? alerts : 0; b.stock = S.products.filter(isLow).length; b.pres = isMgr() ? pend : 0;
+  b.sup = lateOrders().length + pend; b.home = pend + alerts;
+  const sh = shiftOf(S.me.id, today()), a = attOf(S.me.id, today());
+  b.moi = sh && sh.kind === "travail" && !(a && (a.arrived_at || ["absent", "permission", "repos"].includes(a.status))) ? 1 : 0;
+  return b;
+}
+const lateOrders = () => S.tickets.filter(t => t.status === "sent" && !t.served_at && !isCounter(t) && Date.now() - new Date(t.sent_at || t.created_at) > 6e5);
+
+function header(b) {
+  const pend = V.outbox.length, more = navFor().slice(4).reduce((x, k) => x + (b[k] || 0), 0);
+  return `<header class="top"><div class="who"><div class="avatar">${esc(S.me.name[0])}</div><div style="min-width:0"><b>${esc(S.me.name)}</b><span class="mu">${ROLES[ROLE()]} · ${esc(S.bar.name)}</span></div></div>
+    <div class="row" style="flex-wrap:nowrap;gap:6px;flex:none"><span class="net ${V.online ? "" : "off"}"><i></i><span class="nt">${V.online ? (pend ? `Envoi de ${pend}…` : "En ligne") : `Hors ligne${pend ? ` · ${pend} en attente` : ""}`}</span></span>
+    <button class="ib" data-a="search" aria-label="Rechercher">${ico("search")}</button>
+    <button class="ib" data-a="menu" aria-label="Ouvrir le menu" aria-expanded="${V.menu}">${ico("menu")}${more ? `<i class="bd">${more}</i>` : ""}</button></div></header>`;
+}
+function bnav(nav, b) {
+  const prim = nav.slice(0, 4), more = nav.slice(4), mb = more.reduce((x, k) => x + (b[k] || 0), 0);
+  const btn = k => `<button class="${V.tab === k ? "on" : ""}" data-a="go" data-v="${k}" ${V.tab === k ? 'aria-current="page"' : ""}>${ico(SEC[k][1])}<span>${k === "moi" ? "Moi" : SEC[k][0]}</span>${b[k] ? `<i class="bd">${b[k]}</i>` : ""}</button>`;
+  return `<nav class="bnav" aria-label="Navigation principale" style="--el:${elapsed(V.secT)}ms"><div class="in">${prim.map(btn).join("")}
+    <button class="${more.includes(V.tab) ? "on" : ""}" data-a="menu" aria-label="Toutes les rubriques">${ico("menu")}<span>Menu</span>${mb ? `<i class="bd">${mb}</i>` : ""}</button></div></nav>`;
+}
+function drawer(nav, b) {
+  const q = V.f.gq || "";
+  return `<div class="dscrim" data-a="menuClose" data-self="1" style="--el:${elapsed(V.menuT)}ms"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-label="Menu" style="--el:${elapsed(V.menuT)}ms">
+    <div class="between"><div class="who"><div class="avatar">${esc(S.me.name[0])}</div><div style="min-width:0"><b>${esc(S.me.name)}</b><span class="mu">${ROLES[ROLE()]} · ${esc(S.bar.name)}</span></div></div>
+      <button class="ib" data-a="menuClose" aria-label="Fermer le menu">${ico("x")}</button></div>
+    <label class="srch">${ico("search")}<input id="gq" data-k="gq" value="${esc(q)}" placeholder="Client, ticket, boisson, employé, bon…" autocomplete="off" aria-label="Rechercher dans l’application"></label>
+    ${q.trim() ? searchRes(q) : `<nav class="nav-l" aria-label="Rubriques">${nav.map((k, i) => `<button class="${V.tab === k ? "on" : ""}" data-a="go" data-v="${k}" style="--i:${i}">${ico(SEC[k][1])}<span class="grow"><b>${SEC[k][0]}</b><small>${SEC[k][2]}</small></span>${b[k] ? `<i class="bd">${b[k]}</i>` : ""}</button>`).join("")}</nav>`}
+    <div class="sub stack" style="gap:6px"><div class="between"><span class="mu">Code du bar</span><b class="num" style="letter-spacing:.12em">${esc(S.bar.code)}</b></div>
+      <div class="between"><span class="mu">Connexion</span><span class="net ${V.online ? "" : "off"}"><i></i>${V.online ? "En ligne" : "Hors ligne"}${V.outbox.length ? ` · ${V.outbox.length} en attente` : ""}</span></div></div>
+    <div class="row">${themeBtn()}${CFG.mode === "demo" ? `<button class="btn ghost sm" data-a="resetDemo">Réinitialiser la démo</button>` : ""}<button class="btn ghost sm" data-a="logout">${ico("out")} Déconnexion</button></div></aside>`;
+}
+function searchRes(q0) {
+  const q = norm(q0.trim()), nav = navFor(), out = [];
+  const add = (ic, t, sub, a) => out.push(`<button class="sr" ${a} style="--i:${out.length}">${ico(ic)}<span class="grow"><b>${t}</b><small>${sub}</small></span></button>`);
+  nav.forEach(k => { if (norm(SEC[k][0] + " " + SEC[k][2]).includes(q)) add(SEC[k][1], SEC[k][0], "Rubrique · " + SEC[k][2], `data-a="go" data-v="${k}"`); });
+  const nq = q.replace(/^n°?\s*/, "");
+  S.tickets.filter(t => t.status !== "cancelled" && (norm(t.client_label).includes(q) || (nq && String(t.number) === nq))).slice(0, 8)
+    .forEach(t => add("orders", esc(t.client_label), `Ticket N°${t.number || "—"} · ${esc(staffName(t.waitress_id))} · ${F(t.total)}`, `data-a="openTk" data-t="${t.id}"`));
+  S.staff.filter(x => x.active && norm(x.name).includes(q)).forEach(x => add("user", esc(x.name), `${ROLES[x.role]} · planning de la semaine`, `data-a="staffCard" data-s="${x.id}"`));
+  S.products.filter(p => (p.active || nav.includes("stock")) && norm(p.name + " " + p.category).includes(q)).slice(0, 8)
+    .forEach(p => add("stock", esc(p.name), `${esc(p.category)} · ${F(p.price)}${nav.includes("stock") ? ` · stock ${p.stock}` : ""}`, nav.includes("stock") ? `data-a="openP" data-p="${p.id}"` : `data-a="menuClose"`));
+  if (nav.includes("vouch")) S.vouchers.filter(v => norm(v.number + " " + v.code + " " + v.client_label).includes(q)).slice(0, 6)
+    .forEach(v => add("bon", "Bon " + esc(v.number), `${esc(v.client_label)} · ${F(v.amount)} · ${v.status === "active" ? "en circulation" : v.status === "used" ? "utilisé" : "annulé"}`, `data-a="showV" data-v="${v.id}"`));
+  return `<div class="sres" aria-live="polite">${out.join("") || '<div class="empty">Aucun résultat pour cette recherche.</div>'}</div>`;
+}
+
+function vApp() {
+  const nav = navFor(); if (!nav.includes(V.tab)) V.tab = nav[0];
+  const b = badges(), [l, , d] = SEC[V.tab];
+  const VIEW = {
+    service: () => wService(), direct: () => (ROLE() === "caisse" ? shiftBanner() : "") + cOps(), sup: dSup, home: pHome,
+    stock: () => cStock(S.products.filter(isLow)), vouch: () => cVouch(S.vouchers.filter(v => v.status === "active")), sales: () => cSales(dayT()),
+    rev: cRev, acc: cAcc, paie: pPaie, pres: mPres, planning: vPlanning, team: cTeam, day: () => cDay(dayT()), log: cLog, settings: cSettings, moi: vMoi };
+  return header(b) + `<main class="sec" style="--el:${elapsed(V.secT)}ms"><div class="ptitle"><h1>${l}</h1><p class="mu">${d}</p></div>${VIEW[V.tab]()}</main>`
+    + bnav(nav, b) + (V.menu ? drawer(nav, b) : "");
+}
+
+/* Bandeau « mon service du jour » + pointage */
+function shiftBanner() {
+  if (isPdg()) return "";
+  const d = today(), sh = shiftOf(S.me.id, d), a = attOf(S.me.id, d), nx = nextShift();
+  const nxt = nx ? `Prochain service : ${dfr(nx.day, { weekday: "long", day: "numeric", month: "short" })} à ${t5(nx.start_time)}` : "";
+  let main, act = "";
+  if (a && a.status === "permission") main = `<b>En permission aujourd’hui</b><span>${nxt || "Bon repos."}</span>`;
+  else if (sh && sh.kind === "repos") main = `<b>Jour de repos</b><span>${nxt || "Profitez-en."}</span>`;
+  else if (sh) main = `<b>Aujourd’hui · ${shTxt(sh)}</b><span>${countdown(sh)}</span>`;
+  else main = `<b>Pas de service planifié aujourd’hui</b><span>${nxt || "Le planning de la semaine n’est pas encore publié."}</span>`;
+  if (a && ["permission", "absent", "repos"].includes(a.status)) act = attPill(a);
+  else if (a && a.arrived_at) act = `<span class="pill ${a.status === "retard" ? "warn" : "ok"}">Arrivée ${hm(a.arrived_at)}${a.status === "retard" ? ` · retard ${a.late_minutes} min` : ""}</span>`
+    + (a.left_at ? `<span class="pill">Départ ${hm(a.left_at)}</span>` : `<button class="btn ghost sm" data-a="clockOut">Pointer mon départ</button>`);
+  else if (!(a && ["absent", "permission", "repos"].includes(a.status)) && !(sh && sh.kind === "repos")) act = `<button class="btn amber sm" data-a="clockIn">${ico("clock")} Pointer mon arrivée</button>`;
+  else if (a) act = attPill(a);
+  return `<div class="shb ${period(sh)}"><div class="grow" style="min-width:0">${main}</div><div class="row">${act}${V.tab !== "planning" ? `<button class="lnk" data-a="go" data-v="planning">Planning ›</button>` : ""}</div></div>`;
+}
+
+/* ═══════════════ Caisse ═══════════════ */
+function cKpis() {
+  const DT = dayT(), act = S.tickets.filter(t => t.status !== "cancelled"), toRecv = act.filter(t => t.status === "cashed"), pend = act.filter(t => t.change_status === "pending"), vAct = S.vouchers.filter(v => v.status === "active");
+  return `<div class="kpis">${kpi("Ventes du jour", F(sum(DT.filter(sold), t => t.total)), "", `${DT.filter(sold).length} ticket(s)`)}
     ${kpi("Payé et validé", F(sum(DT.filter(t => t.status === "paid"), t => t.total)))}
     ${kpi("À recevoir", F(sum(toRecv, cashOf)), toRecv.length ? "hl" : "", "Espèces et MoMo chez les serveuses")}
     ${kpi("En service", F(sum(act.filter(t => t.status === "sent"), t => t.total)), "", `${act.filter(t => t.status === "sent").length} commande(s) envoyée(s)`)}
     ${kpi("Reliquats à rendre", pend.length ? F(sum(pend, t => t.change_due)) : "0", pend.length ? "alert" : "", pend.length ? `${pend.length} client(s)` : "")}
-    ${kpi("Bons en circulation", F(sum(vAct, v => v.amount)), "", `${vAct.length} bon(s)`)}</div>
-    <div class="tabs" role="tablist">${tabs.map(([k, l, n]) => `<button role="tab" aria-selected="${V.tab === k}" class="${V.tab === k ? "on" : ""}" data-a="tab" data-v="${k}">${l}${n ? `<span class="dot">${n}</span>` : ""}</button>`).join("")}</div>${body}`;
+    ${kpi("Bons en circulation", F(sum(vAct, v => v.amount)), "", `${vAct.length} bon(s)`)}</div>`;
 }
+function cOps() {
+  const act = S.tickets.filter(t => t.status !== "cancelled"), toRecv = act.filter(t => t.status === "cashed"), pend = act.filter(t => t.change_status === "pending");
+  return cKpis() + cDirect(act, toRecv, pend, act.filter(t => t.cancel_requested), toRecv.filter(t => t.pay_method === "momo"));
+}
+
+/* ═══════════════ Directeur : supervision ═══════════════ */
+function salesBars(DT) {
+  const ws = S.staff.filter(x => x.role === "serveuse" && (x.active || DT.some(t => t.waitress_id === x.id))).map(x => [x, sum(DT.filter(t => sold(t) && t.waitress_id === x.id), t => t.total)]).sort((a, b) => b[1] - a[1]);
+  const mx = Math.max(1, ...ws.map(x => x[1]));
+  return `<div class="bars" style="margin-top:10px">${ws.map(([x, v], i) => `<div class="bar"><span>${esc(x.name)}</span><div class="tr"><div class="fl gx" style="width:${v / mx * 100}%;--i:${i}"></div></div><b class="num">${F(v)}</b></div>`).join("") || '<span class="mu">Aucune serveuse dans l’équipe.</span>'}</div>`;
+}
+function dSup() {
+  const td = today(), DT = dayT(), crew = crewOf();
+  const sent = S.tickets.filter(t => t.status === "sent" && !isCounter(t)).sort((a, b) => (a.sent_at || a.created_at) < (b.sent_at || b.created_at) ? -1 : 1);
+  const late = lateOrders(), planned = crew.filter(x => (shiftOf(x.id, td) || {}).kind === "travail"), here = crew.filter(x => { const a = attOf(x.id, td); return a && ["present", "retard"].includes(a.status); });
+  const pend = (S.leaves || []).filter(l => l.status === "en_attente"), low = S.products.filter(isLow);
+  const row = (t, i) => { const m = Math.round((Date.now() - new Date(t.sent_at || t.created_at)) / 60000), cls = t.served_at ? "ok" : m > 20 ? "bad" : m > 10 ? "warn" : "";
+    return `<div class="li rise" style="--i:${i}"><div class="grow"><b>${esc(t.client_label)}</b> <span class="mu">· N°${t.number || "—"} · ${esc(staffName(t.waitress_id))}</span>
+      <div class="mu">${t.items.map(x => `${x.qty} ${esc(prodName(x.product_id))}`).join(", ") || "—"} · ${F(t.total)}</div></div>
+      <div class="row"><span class="pill ${cls}">${t.served_at ? `Servie ✓ ${hm(t.served_at)}` : `Pas encore servie · ${ago(t.sent_at || t.created_at)}`}</span>${t.cancel_requested ? '<span class="pill bad">Annulation demandée</span>' : ""}</div></div>`; };
+  return `<div class="stack">${shiftBanner()}
+    <div class="kpis" style="margin:0">${kpi("Équipe présente", `${here.length} / ${planned.length}`, here.length < planned.length ? "hl" : "", "présents / planifiés aujourd’hui")}
+      ${kpi("Commandes en cours", sent.length, "", `${sent.filter(t => t.served_at).length} déjà servie(s)`)}
+      ${kpi("Service en retard", late.length, late.length ? "alert" : "", "Plus de 10 min sans être servie")}
+      ${kpi("Ventes du jour", F(sum(DT.filter(sold), t => t.total)), "", `${DT.filter(sold).length} ticket(s)`)}</div>
+    ${pend.length ? `<button class="note warn between banner-btn" data-a="go" data-v="pres"><span><b>${pend.length} demande(s) de permission</b> à traiter</span><span>Ouvrir ›</span></button>` : ""}
+    <div class="card"><div class="between"><h3>Commandes à surveiller</h3><span class="row mu" style="gap:6px"><span class="live-dot"></span>En direct</span></div>
+      <p class="mu" style="margin:4px 0 0">Vous vous assurez que chaque commande est prise et servie. La validation des paiements reste à la caisse.</p>
+      <div class="list">${sent.map(row).join("") || '<div class="empty">Aucune commande en cours.</div>'}</div></div>
+    <div class="card"><div class="between"><h3>Équipe aujourd’hui</h3><button class="btn ghost sm" data-a="go" data-v="pres">Toutes les présences</button></div><div class="list">${crew.map((x, i) => { const sh = shiftOf(x.id, td), a = attOf(x.id, td);
+      return `<div class="li rise" style="--i:${i}"><div class="grow"><b>${esc(x.name)}</b> <span class="mu">· ${ROLES[x.role]}</span><div class="mu">${shTxt(sh)}${a && a.arrived_at ? ` · arrivée ${hm(a.arrived_at)}` : ""}</div></div>
+        <div class="row">${a ? attPill(a) : sh && sh.kind === "travail" ? `<button class="btn sm" data-a="att" data-s="${x.id}" data-st="present">Présent</button><button class="btn ghost sm" data-a="att" data-s="${x.id}" data-st="retard">Retard</button><button class="btn bad sm" data-a="att" data-s="${x.id}" data-st="absent">Absent</button>` : attPill(a)}</div></div>`; }).join("") || '<div class="empty">Ajoutez votre équipe dans Équipe.</div>'}</div></div>
+    <div class="card"><h3>Ventes par serveuse aujourd’hui</h3>${salesBars(DT)}</div>
+    ${low.length ? `<div class="note warn"><b>Stock bas</b> : ${low.map(p => `${esc(p.name)} (${p.stock})`).join(", ")}. Prévenez la caisse pour l’approvisionnement.</div>` : ""}</div>`;
+}
+
+/* ═══════════════ Présences (directeur, PDG) ═══════════════ */
+const monthOpts = () => Array.from({ length: 12 }, (_, i) => { const d = new Date(Date.now() - 6 * 3600e3); d.setDate(1); d.setMonth(d.getMonth() - i); return d.toLocaleDateString("sv-SE").slice(0, 7); });
+const monthSel = () => `<select id="mo" data-k="mo" aria-label="Mois" style="width:auto;max-width:100%">${monthOpts().map(m => `<option value="${m}" ${m === (V.f.mo || curMonth()) ? "selected" : ""}>${monthName(m)}</option>`).join("")}</select>`;
+const statRows = () => { const mo = V.f.mo || curMonth(); return V.stats && V.stats.m === mo ? V.stats.rows : null; };
+function mPres() {
+  const td = today(), day = V.f.pd || td, crew = crewOf(), mo = V.f.mo || curMonth(), st = statRows();
+  const pend = (S.leaves || []).filter(l => l.status === "en_attente"), done = (S.leaves || []).filter(l => l.status !== "en_attente").slice(0, 8);
+  const STS = [["present", "Présent"], ["retard", "Retard"], ["absent", "Absent"], ["permission", "Permission"], ["repos", "Repos"]], dA = crew.map(x => attOf(x.id, day));
+  const LST = { acceptee: ["ok", "Acceptée"], refusee: ["bad", "Refusée"] };
+  const share = st ? `*Bilan de présence · ${S.bar.name} · ${monthName(mo)}*\n\n` + st.filter(r => r.role !== "pdg" && r.active).map(r => `• ${r.name} : ${r.presents} présence(s), ${r.retards} retard(s)${r.minutes_retard ? ` (${r.minutes_retard} min)` : ""}, ${r.absences} absence(s), ${r.permissions} permission(s)`).join("\n") : "";
+  return `<div class="stack">
+    <div class="card stack"><div class="wkbar"><button class="ib" data-a="pday" data-d="-1" aria-label="Jour précédent">${ico("left")}</button>
+      <div class="grow" style="text-align:center"><b>${day === td ? "Aujourd’hui" : dfr(day, { weekday: "long" })}</b><div class="mu">${dfr(day, { day: "numeric", month: "long", year: "numeric" })}</div></div>
+      <button class="ib" data-a="pday" data-d="1" aria-label="Jour suivant" ${day >= td ? "disabled" : ""}>${ico("right")}</button></div>
+      <div class="chips" style="justify-content:center">${["present", "retard", "absent", "permission"].map(k => `<span class="pill ${ATT[k][0]}">${ATT[k][1]} · ${dA.filter(a => a && a.status === k).length}</span>`).join("")}<span class="pill">Non pointé · ${dA.filter(a => !a).length}</span></div></div>
+    ${pend.length ? `<div class="card"><h3>Demandes de permission · ${pend.length}</h3><div class="list">${pend.map((l, i) => `<div class="li rise" style="--i:${i}"><div class="grow"><b>${esc(staffName(l.staff_id))}</b> · ${dfr(l.day_from)}${l.day_to !== l.day_from ? " → " + dfr(l.day_to) : ""}<div class="mu">${esc(l.reason)} · demandée il y a ${ago(l.created_at)}</div></div>
+      <div class="row"><button class="btn sm" data-a="leaveOk" data-id="${l.id}">Accepter</button><button class="btn ghost sm" data-a="leaveNo" data-id="${l.id}">Refuser</button></div></div>`).join("")}</div></div>` : ""}
+    <div class="card"><h3>Pointage du ${dfr(day, { day: "numeric", month: "long" })}</h3><div class="list">${crew.map((x, i) => { const sh = shiftOf(x.id, day), a = attOf(x.id, day);
+      return `<div class="stack rise" style="padding:12px 0;gap:8px;--i:${i}"><div class="between"><div style="min-width:0"><b>${esc(x.name)}</b> <span class="mu">· ${ROLES[x.role]}</span>
+        <div class="mu">Planning : ${shTxt(sh)}${a && a.arrived_at ? ` · arrivée ${hm(a.arrived_at)}` : ""}${a && a.left_at ? ` · départ ${hm(a.left_at)}` : ""}${a && a.note ? ` · « ${esc(a.note)} »` : ""}</div></div>${attPill(a)}</div>
+        <div class="segs" role="group" aria-label="Statut de ${esc(x.name)}">${STS.map(([k, lb]) => `<button class="${a && a.status === k ? "on " + ATT[k][0] : ""}" data-a="att" data-s="${x.id}" data-st="${k}" data-day="${day}" aria-pressed="${!!(a && a.status === k)}">${lb}</button>`).join("")}
+        ${a ? `<button data-a="att" data-s="${x.id}" data-st="aucun" data-day="${day}" aria-label="Effacer le pointage">Effacer</button>` : ""}</div></div>`; }).join("") || '<div class="empty">Aucun employé actif.</div>'}</div></div>
+    <div class="card stack"><div class="row" style="justify-content:space-between"><h3>Bilan du mois</h3>${monthSel()}</div>
+      ${st ? `<div class="scroll"><table><tr><th>Employé</th><th>Prévus</th><th>Présent</th><th>Retards</th><th>Absences</th><th>Perm.</th><th>Ventes</th></tr>
+        ${st.filter(r => r.role !== "pdg" && r.active).map(r => `<tr><td>${esc(r.name)}<br><span class="mu">${ROLES[r.role]}</span></td><td>${r.jours_prevus}</td><td>${r.presents}</td><td class="${r.retards ? "warn-t" : ""}">${r.retards}${r.minutes_retard ? ` (${r.minutes_retard} min)` : ""}</td><td class="${r.absences ? "bad-t" : ""}">${r.absences}</td><td>${r.permissions}</td><td>${r.role === "serveuse" ? F(r.ventes) : "—"}</td></tr>`).join("")}</table></div>`
+        : `<div class="empty"><span class="spin"></span> Calcul du bilan…</div>`}
+      <div class="row"><button class="btn soft sm" data-a="loadStats">Actualiser</button>${st ? `<a class="btn soft sm" href="https://wa.me/?text=${encodeURIComponent(share)}" target="_blank" rel="noopener">${ico("share")} Envoyer sur WhatsApp</a>` : ""}</div></div>
+    ${done.length ? `<div class="card"><h3>Permissions traitées</h3><div class="list">${done.map(l => `<div class="li"><div class="grow"><b>${esc(staffName(l.staff_id))}</b> · ${dfr(l.day_from)}${l.day_to !== l.day_from ? " → " + dfr(l.day_to) : ""}<div class="mu">${esc(l.reason)}</div></div><span class="pill ${LST[l.status][0]}">${LST[l.status][1]}</span></div>`).join("")}</div></div>` : ""}</div>`;
+}
+
+/* ═══════════════ Planning (visible par tous, modifiable par le directeur et le PDG) ═══════════════ */
+const planPeople = days => S.staff.filter(x => x.active && (x.role !== "pdg" || days.some(d => shiftOf(x.id, d)))).sort(roleSort);
+function vPlanning() {
+  const days = weekDays(), td = today(), mg = isMgr(), ppl = planPeople(days);
+  const label = `${dfr(days[0], { day: "numeric", month: "short" })} – ${dfr(days[6], { day: "numeric", month: "short", year: "numeric" })}`;
+  const wkName = { 0: "Cette semaine", 1: "Semaine prochaine", "-1": "Semaine dernière" }[V.wk] || (V.wk > 0 ? `Dans ${V.wk} semaines` : `Il y a ${-V.wk} semaines`);
+  const navw = `<div class="card wkbar"><button class="ib" data-a="wk" data-d="-1" aria-label="Semaine précédente">${ico("left")}</button>
+    <div class="grow" style="text-align:center"><b>${wkName}</b><div class="mu">${label}</div></div>
+    ${V.wk ? `<button class="btn ghost sm" data-a="wk" data-d="0">Aujourd’hui</button>` : ""}<button class="ib" data-a="wk" data-d="1" aria-label="Semaine suivante">${ico("right")}</button></div>`;
+  const myH = days.reduce((x, d) => x + hours(shiftOf(S.me.id, d)), 0), myN = days.filter(d => (shiftOf(S.me.id, d) || {}).kind === "travail").length;
+  const mine = isPdg() ? "" : `<div class="stack" style="gap:8px"><div class="between"><h3>Ma semaine</h3><span class="mu">${myN ? `${myN} jour(s) · ${Math.round(myH)} h` : "Aucun jour planifié"}</span></div>
+    <div class="mywk">${days.map((d, i) => { const sh = shiftOf(S.me.id, d), p = period(sh), a = attOf(S.me.id, d);
+      return `<div class="dcard ${p} ${d === td ? "today" : ""} ${d < td ? "past" : ""}" style="--i:${i}"><span class="dn">${DOW[i]}${d === td ? '<span class="live-dot"></span>' : ""}</span><span class="dd num">${+d.slice(8)}</span>
+        <span class="sh num">${sh ? (sh.kind === "repos" ? "Repos" : `${t5(sh.start_time)}<small>→ ${t5(sh.end_time)}</small>`) : "—"}</span>
+        <span class="mu">${a && a.status === "permission" ? "Permission" : sh && sh.kind === "travail" ? (d === td ? countdown(sh) : `${PERIOD[p]} · ${Math.round(hours(sh))} h`) : sh ? "Jour libre" : "Non planifié"}</span>
+        ${sh && sh.note ? `<span class="mu">« ${esc(sh.note)} »</span>` : ""}</div>`; }).join("")}</div></div>`;
+  const onNow = ppl.filter(x => (shiftOf(x.id, td) || {}).kind === "travail" && !["permission", "absent"].includes((attOf(x.id, td) || {}).status));
+  const todayCard = V.wk === 0 ? `<div class="card stack"><div class="between"><h3>En service aujourd’hui</h3><span class="row mu" style="gap:6px"><span class="live-dot"></span>${dfr(td, { weekday: "long", day: "numeric", month: "long" })}</span></div>
+    <div class="chips">${onNow.map((x, i) => { const sh = shiftOf(x.id, td); return `<span class="chip pchip ${period(sh)}" style="--i:${i}"><b>${esc(x.name)}</b> ${shTxt(sh)}</span>`; }).join("") || '<span class="mu">Personne n’est planifié aujourd’hui.</span>'}</div></div>` : "";
+  const empty = ppl.length * 7 - ppl.reduce((x, p) => x + days.filter(d => shiftOf(p.id, d)).length, 0), totH = ppl.reduce((x, p) => x + days.reduce((y, d) => y + hours(shiftOf(p.id, d)), 0), 0);
+  const grid = `<div class="card"><div class="between" style="flex-wrap:wrap;margin-bottom:10px"><h3>Planning de l’équipe</h3><div class="legend">${["morning", "afternoon", "night", "off"].map(p => `<span><i class="lg-${p}"></i>${PERIOD[p]}</span>`).join("")}</div></div>
+    <div class="scroll pgrid"><table><thead><tr><th>Employé</th>${days.map((d, i) => `<th class="${d === td ? "today" : ""}">${DOW[i]}<br><span class="num">${+d.slice(8)}</span></th>`).join("")}</tr></thead>
+    <tbody>${ppl.map((x, r) => `<tr><td><b>${esc(x.name)}</b><br><span class="mu">${ROLES[x.role]}</span></td>${days.map((d, i) => { const sh = shiftOf(x.id, d), p = period(sh), a = attOf(x.id, d);
+      const inner = `${sh ? (sh.kind === "repos" ? "Repos" : `${t5(sh.start_time)}<br>${t5(sh.end_time)}`) : mg ? "+" : "—"}${a && a.status === "permission" ? "<em>Permission</em>" : ""}`;
+      return `<td class="${d === td ? "today" : ""}">${mg ? `<button class="pc ${p}" style="--i:${r * 7 + i}" data-a="shiftEd" data-s="${x.id}" data-d="${d}" aria-label="${esc(x.name)}, ${dfr(d)} : ${shTxt(sh)}">${inner}</button>` : `<span class="pc ${p}" style="--i:${r * 7 + i}">${inner}</span>`}</td>`; }).join("")}</tr>`).join("")
+      || `<tr><td colspan="8" style="text-align:center">Aucun employé actif.</td></tr>`}</tbody></table></div>
+    ${mg ? `<p class="mu" style="margin:10px 0 0">Touchez une case pour fixer l’horaire ou le jour de repos. ${empty ? `<b class="warn-t">${empty} case(s) vide(s)</b> · ` : ""}${Math.round(totH)} h planifiées cette semaine.</p>` : ""}</div>`;
+  const tools = mg ? `<div class="card stack"><h3>Publier et partager</h3><div class="row">
+      <button class="btn soft grow" data-a="copyWeek">${ico("copy")} Copier la semaine d’avant</button>
+      <button class="btn grow" data-a="planImg">${ico("share")} Partager sur WhatsApp</button></div>
+      <p class="mu" style="margin:0">Chaque modification apparaît tout de suite dans l’application de chaque employé.</p></div>` : "";
+  return `<div class="stack">${isPdg() ? "" : shiftBanner()}${navw}${todayCard}${mine}${grid}${tools}</div>`;
+}
+const PRESETS = [["Matin", "08:00", "16:00"], ["Journée", "10:00", "18:00"], ["Après-midi", "14:00", "22:00"], ["Soir", "17:00", "01:00"], ["Nuit", "18:00", "02:00"]];
+const rr = (x, a, b, w, h, r) => { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); };
+function planCanvas() {
+  const days = weekDays(), ppl = planPeople(days), W = 1280, nw = 210, cw = 140, rh = 72, top = 200, H = top + Math.max(1, ppl.length) * rh + 80;
+  const cv = document.createElement("canvas"), x = cv.getContext("2d"); cv.width = W; cv.height = H;
+  x.fillStyle = "#f4f7f4"; x.fillRect(0, 0, W, H);
+  const g = x.createLinearGradient(0, 0, W, 140); g.addColorStop(0, "#0f5c3c"); g.addColorStop(.6, "#1d4f6e"); g.addColorStop(1, "#3d2f73"); x.fillStyle = g; x.fillRect(0, 0, W, 140);
+  x.fillStyle = "#fff"; x.font = "800 42px 'Bricolage Grotesque', 'Trebuchet MS', sans-serif"; x.fillText("Planning · " + S.bar.name, 40, 66);
+  x.font = "500 22px Inter, sans-serif"; x.fillText(`Semaine du ${dfr(days[0], { day: "numeric", month: "long" })} au ${dfr(days[6], { day: "numeric", month: "long", year: "numeric" })}`, 40, 106);
+  x.textAlign = "center"; x.fillStyle = "#5b6a62"; x.font = "700 19px Inter, sans-serif";
+  days.forEach((d, i) => x.fillText(`${DOW[i]} ${+d.slice(8)}`, 40 + nw + i * cw + cw / 2, top - 22));
+  const COL = { morning: ["#fbf0d9", "#8a5a06"], afternoon: ["#e1eef8", "#1f6fa8"], night: ["#ece6f8", "#5b3fa0"], off: ["#e4ebe6", "#5b6a62"], none: ["#ffffff", "#9aa8a0"] };
+  ppl.forEach((s, r) => { const y = top + r * rh; x.fillStyle = r % 2 ? "#ffffff" : "#eaf0ec"; rr(x, 28, y, W - 56, rh - 4, 14); x.fill();
+    x.textAlign = "left"; x.fillStyle = "#13201a"; x.font = "700 21px Inter, sans-serif"; x.fillText(s.name, 44, y + 32); x.fillStyle = "#5b6a62"; x.font = "500 15px Inter, sans-serif"; x.fillText(ROLES[s.role], 44, y + 54);
+    days.forEach((d, i) => { const sh = shiftOf(s.id, d), p = period(sh), [bg, fg] = COL[p], cx = 40 + nw + i * cw + 6, mid = cx + (cw - 12) / 2;
+      rr(x, cx, y + 8, cw - 12, rh - 20, 12); x.fillStyle = bg; x.fill(); if (p === "none") { x.strokeStyle = "#d3ddd6"; x.lineWidth = 1.5; x.stroke(); }
+      x.textAlign = "center"; x.fillStyle = fg; x.font = "700 18px Inter, sans-serif";
+      if (!sh) x.fillText("—", mid, y + rh / 2 + 4); else if (sh.kind === "repos") x.fillText("Repos", mid, y + rh / 2 + 4);
+      else { x.fillText(t5(sh.start_time), mid, y + rh / 2 - 6); x.font = "500 16px Inter, sans-serif"; x.fillText("→ " + t5(sh.end_time), mid, y + rh / 2 + 15); } }); });
+  x.textAlign = "left"; x.fillStyle = "#5b6a62"; x.font = "500 16px Inter, sans-serif";
+  x.fillText(`Publié par ${S.me.name} le ${new Date().toLocaleDateString("fr-FR")} · GesCo Bar, un produit de BISMO Agency`, 40, H - 32);
+  return cv;
+}
+function planText() {
+  const days = weekDays(), ppl = planPeople(days);
+  return `*Planning · ${S.bar.name}*\nSemaine du ${dfr(days[0], { day: "numeric", month: "long" })} au ${dfr(days[6], { day: "numeric", month: "long" })}\n\n`
+    + days.map(d => `*${dfr(d, { weekday: "long", day: "numeric", month: "short" })}*\n` + (ppl.map(s => { const sh = shiftOf(s.id, d); return sh ? `• ${s.name} : ${sh.kind === "repos" ? "repos" : t5(sh.start_time) + " – " + t5(sh.end_time)}` : null; }).filter(Boolean).join("\n") || "• rien de planifié")).join("\n\n")
+    + `\n\nPlanning à jour dans l’application : ${APP_URL}`;
+}
+const planFile = () => `planning-${norm(S.bar.name).replace(/[^a-z0-9]+/g, "-")}-${wkStart()}.png`;
+const dataBlob = u => { const b = atob(u.split(",")[1]), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return new Blob([a], { type: "image/png" }); };
+
+/* ═══════════════ Mon espace (tous sauf PDG) ═══════════════ */
+function vMoi() {
+  const me = S.me.id, td = today(), m = curMonth(), att = (S.attendance || []).filter(a => a.staff_id === me).sort((a, b) => a.day < b.day ? 1 : -1), mA = att.filter(a => a.day.slice(0, 7) === m);
+  const lv = (S.leaves || []).filter(l => l.staff_id === me), sal = (S.salaries || []).find(x => x.staff_id === me), pays = (S.payroll || []).filter(p => p.staff_id === me);
+  const LST = { en_attente: ["warn", "En attente"], acceptee: ["ok", "Acceptée"], refusee: ["bad", "Refusée"] };
+  return `<div class="stack">${shiftBanner()}
+    <div class="kpis" style="margin:0">${kpi("Présences ce mois", mA.filter(a => ["present", "retard"].includes(a.status)).length)}
+      ${kpi("Retards", mA.filter(a => a.status === "retard").length, mA.some(a => a.status === "retard") ? "hl" : "", `${sum(mA, a => a.late_minutes)} min au total`)}
+      ${kpi("Absences", mA.filter(a => a.status === "absent").length, mA.some(a => a.status === "absent") ? "alert" : "")}${kpi("Permissions", mA.filter(a => a.status === "permission").length)}</div>
+    <div class="card stack"><h3>Demander une permission</h3>
+      <div class="row"><label class="f grow" for="lv_from">Du<input id="lv_from" type="date" data-k="lv_from" value="${esc(V.f.lv_from || td)}" min="${td}"></label>
+      <label class="f grow" for="lv_to">Au<input id="lv_to" type="date" data-k="lv_to" value="${esc(V.f.lv_to || V.f.lv_from || td)}" min="${td}"></label></div>
+      <label class="f" for="lv_r">Motif<input id="lv_r" data-k="lv_r" value="${val("lv_r")}" placeholder="Ex. rendez-vous à l’hôpital, deuil, examen…"></label>
+      <button class="btn" data-a="leaveReq">Envoyer la demande au directeur</button></div>
+    <div class="card"><h3>Mes demandes</h3><div class="list">${lv.map(l => `<div class="li"><div class="grow"><b>${dfr(l.day_from)}${l.day_to !== l.day_from ? " → " + dfr(l.day_to) : ""}</b><div class="mu">${esc(l.reason)}</div></div><span class="pill ${LST[l.status][0]}">${LST[l.status][1]}</span></div>`).join("") || '<div class="empty">Aucune demande pour le moment.</div>'}</div></div>
+    <div class="card"><h3>Mon historique de présence</h3><div class="list">${att.slice(0, 14).map(a => `<div class="between" style="padding:9px 0"><span>${dfr(a.day, { weekday: "long", day: "numeric", month: "short" })}${a.arrived_at ? `<br><span class="mu">arrivée ${hm(a.arrived_at)}${a.left_at ? ", départ " + hm(a.left_at) : ""}</span>` : ""}</span>${attPill(a)}</div>`).join("") || '<div class="empty">Aucun pointage enregistré.</div>'}</div></div>
+    <div class="card stack"><h3>Ma paie</h3>${sal ? `<div class="between"><span class="mu">Salaire de base</span><b class="num">${F(sal.salary)}</b></div>` : ""}
+      <div class="list">${pays.map(p => `<div class="li"><div class="grow"><b>${monthName(p.month)}</b><div class="mu">Payé le ${new Date(p.paid_at).toLocaleDateString("fr-FR")} · ${METH[p.method]}</div></div><b class="num">${F(p.net)}</b><button class="btn soft sm" data-a="slip" data-id="${p.id}">Fiche de paie</button></div>`).join("") || '<div class="empty">Aucun salaire enregistré pour le moment.</div>'}</div></div></div>`;
+}
+
+/* ═══════════════ PDG : accueil et paie ═══════════════ */
+function pHome() {
+  const td = today(), DT = dayT(), act = S.tickets.filter(t => t.status !== "cancelled"), toRecv = act.filter(t => t.status === "cashed"), cur = curMonth(), r = V.rev;
+  const curM = r ? (r.months.find(m => m.month === cur) || { total: 0, tickets: 0 }) : null, crew = crewOf();
+  const planned = crew.filter(x => (shiftOf(x.id, td) || {}).kind === "travail"), here = crew.filter(x => { const a = attOf(x.id, td); return a && ["present", "retard"].includes(a.status); });
+  const paidM = (S.payroll || []).filter(p => p.month === cur), unpaid = crew.filter(x => !paidM.some(p => p.staff_id === x.id) && ((S.salaries || []).find(y => y.staff_id === x.id) || {}).salary);
+  const pend = (S.leaves || []).filter(l => l.status === "en_attente"), low = S.products.filter(isLow), alerts = act.filter(t => t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo") || t.change_status === "pending");
+  const h = new Date().getHours(), hello = h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir";
+  const todo = [pend.length && ["check", `${pend.length} demande(s) de permission`, "À valider par vous ou par le directeur", "pres"],
+    alerts.length && ["orders", `${alerts.length} opération(s) de caisse en attente`, "Annulations, Mobile Money, reliquats", "direct"],
+    low.length && ["stock", `${low.length} produit(s) en stock bas`, low.slice(0, 4).map(p => p.name).join(", "), "stock"],
+    lateOrders().length && ["alert", `${lateOrders().length} commande(s) servie(s) en retard`, "Plus de 10 minutes sans service", "sales"],
+    unpaid.length && ["pay", `${unpaid.length} salaire(s) à payer`, monthName(cur), "paie"],
+    !S.bar.niu && ["gear", "Identité légale à compléter", "Raison sociale et NIU (facultatif)", "settings"]].filter(Boolean);
+  return `<div class="stack"><div class="hero-pdg"><div style="min-width:0"><span class="eyebrow">${dfr(td, { weekday: "long", day: "numeric", month: "long" })}</span><h2>${hello} ${esc(S.me.name)}</h2>
+      <p>${esc(S.bar.name)} · ${here.length} employé(s) présent(s) sur ${planned.length} prévu(s)</p></div><div class="hero-num"><span>Ventes du jour</span><b class="num">${F(sum(DT.filter(sold), t => t.total))}</b></div></div>
+    <div class="kpis" style="margin:0">${kpi("Ce mois-ci", curM ? F(curM.total) : "…", "hl", curM ? `${curM.tickets} ticket(s)` : "Calcul…")}
+      ${kpi("En service", F(sum(act.filter(t => t.status === "sent"), t => t.total)), "", `${act.filter(t => t.status === "sent").length} commande(s)`)}
+      ${kpi("Chez les serveuses", F(sum(toRecv, cashOf)), toRecv.length ? "hl" : "", "Argent encaissé, pas encore versé")}
+      ${kpi("Salaires payés ce mois", F(sum(paidM, p => p.net)), "", `${paidM.length} / ${crew.length} employé(s)`)}</div>
+    <div class="card"><h3>À votre attention</h3><div class="list">${todo.map(([ic, t, s2, k], i) => `<button class="todo rise" style="--i:${i}" data-a="go" data-v="${k}">${ico(ic)}<span class="grow"><b>${t}</b><small>${esc(s2)}</small></span>${ico("right")}</button>`).join("") || '<div class="empty">Tout est en ordre.</div>'}</div></div>
+    <div class="grid"><div class="card"><div class="between"><h3>Équipe aujourd’hui</h3><button class="btn ghost sm" data-a="go" data-v="pres">Détails</button></div>
+      <div class="list">${crew.map(x => `<div class="between" style="padding:8px 0"><span><b>${esc(x.name)}</b> <span class="mu">· ${ROLES[x.role]} · ${shTxt(shiftOf(x.id, td))}</span></span>${attPill(attOf(x.id, td))}</div>`).join("") || '<div class="empty">Ajoutez votre équipe dans Équipe.</div>'}</div></div>
+      <div class="card"><h3>Ventes par serveuse aujourd’hui</h3>${salesBars(DT)}</div></div>
+    <div class="card"><h3>Accès rapide</h3><div class="quick">${["paie", "acc", "rev", "planning", "team", "stock", "day", "settings"].map((k, i) => `<button data-a="go" data-v="${k}" style="--i:${i}">${ico(SEC[k][1])}<span>${SEC[k][0]}</span></button>`).join("")}</div></div></div>`;
+}
+function pPaie() {
+  const mo = V.f.mo || curMonth(), st = statRows(), paid = id => (S.payroll || []).find(p => p.staff_id === id && p.month === mo), salOf = id => ((S.salaries || []).find(x => x.staff_id === id) || {}).salary || 0;
+  const crew = S.staff.filter(x => x.role !== "pdg" && (x.active || paid(x.id))).sort(roleSort);
+  const mass = sum(crew.filter(x => x.active), x => salOf(x.id)), done = sum(crew, x => (paid(x.id) || {}).net || 0), rest = sum(crew.filter(x => x.active && !paid(x.id)), x => salOf(x.id));
+  const kv = (l, v) => `<div class="between" style="padding:6px 0"><span class="mu">${l}</span><span class="num">${v}</span></div>`;
+  return `<div class="stack"><div class="card stack"><div class="row" style="justify-content:space-between"><h3>Paie du mois</h3>${monthSel()}</div>
+      <p class="mu" style="margin:0">Fixez le salaire de base, ajoutez une prime ou une retenue, puis payez. Chaque paiement entre dans la comptabilité (Salaires) et l’employé retrouve sa fiche de paie dans son application.</p></div>
+    <div class="kpis" style="margin:0">${kpi("Masse salariale", F(mass), "", `${crew.filter(x => x.active).length} employé(s)`)}${kpi("Déjà payé", F(done), "", `${crew.filter(x => paid(x.id)).length} / ${crew.length}`)}${kpi("Reste à payer", F(rest), rest ? "hl" : "")}</div>
+    ${crew.map((x, i) => { const p = paid(x.id), base = salOf(x.id), r = st && st.find(y => y.id === x.id), daily = Math.round(base / 26), sug = r && r.absences ? r.absences * daily : 0;
+      const net = base + (num("pb_" + x.id) || 0) - (num("pd_" + x.id) || 0);
+      return `<div class="card stack rise" style="--i:${i}"><div class="between"><div style="min-width:0"><b style="font-size:17px">${esc(x.name)}</b> <span class="mu">· ${ROLES[x.role]}${x.active ? "" : " · désactivé"}</span></div>
+        ${p ? `<span class="pill ok">Payé · ${F(p.net)}</span>` : base ? `<span class="pill warn">À payer</span>` : `<span class="pill">Salaire à fixer</span>`}</div>
+        ${r ? `<div class="chips"><span class="chip">${r.presents} présence(s) / ${r.jours_prevus} prévue(s)</span>${r.retards ? `<span class="chip">${r.retards} retard(s) · ${r.minutes_retard} min</span>` : ""}${r.absences ? `<span class="chip owe">${r.absences} absence(s)</span>` : ""}${r.permissions ? `<span class="chip">${r.permissions} permission(s)</span>` : ""}${x.role === "serveuse" ? `<span class="chip">Ventes ${F(r.ventes)}</span>` : ""}</div>` : ""}
+        ${p ? `<div class="list">${kv("Salaire de base", F(p.base))}${kv("Prime", "+ " + F(p.bonus))}${kv("Retenue", "− " + F(p.deduction))}${kv("Net payé", `<b>${F(p.net)}</b>`)}${kv("Payé le", `${new Date(p.paid_at).toLocaleDateString("fr-FR")} · ${METH[p.method]}`)}</div>
+          <div class="row"><button class="btn soft sm grow" data-a="slip" data-id="${p.id}">Fiche de paie</button><button class="btn bad sm" data-a="payCancel" data-id="${p.id}">Annuler le paiement</button></div>`
+        : `<div class="row" style="align-items:flex-end"><label class="f grow" for="sal_${x.id}">Salaire de base mensuel (FCFA)<input id="sal_${x.id}" type="number" inputmode="numeric" data-k="sal_${x.id}" value="${esc(V.f["sal_" + x.id] ?? (base || ""))}" placeholder="Ex. 60000"></label><button class="btn soft" data-a="salSet" data-s="${x.id}">Enregistrer</button></div>
+          ${base && x.active ? `<div class="row"><label class="f grow" for="pb_${x.id}">Prime<input id="pb_${x.id}" type="number" inputmode="numeric" data-k="pb_${x.id}" value="${val("pb_" + x.id)}" placeholder="0"></label>
+            <label class="f grow" for="pd_${x.id}">Retenue<input id="pd_${x.id}" type="number" inputmode="numeric" data-k="pd_${x.id}" value="${val("pd_" + x.id)}" placeholder="0"></label>
+            <label class="f grow" for="pm_${x.id}">Payé par<select id="pm_${x.id}" data-k="pm_${x.id}">${Object.entries(METH).map(([k, l]) => `<option value="${k}" ${(V.f["pm_" + x.id] || "cash") === k ? "selected" : ""}>${l[0].toUpperCase() + l.slice(1)}</option>`).join("")}</select></label></div>
+            ${sug ? `<div class="note info between" style="flex-wrap:wrap"><span>Retenue suggérée : ${r.absences} absence(s) × ${F(daily)} (salaire ÷ 26 jours)</span><button class="btn soft sm" data-a="setF" data-k2="pd_${x.id}" data-v="${sug}">Appliquer ${F(sug)}</button></div>` : ""}
+            <div class="between"><span class="mu">Net à payer</span><b class="num" style="font:800 22px var(--display)">${F(net)}</b></div>
+            <button class="btn" data-a="pay" data-s="${x.id}" ${net > 0 ? "" : "disabled"}>Payer ${esc(x.name)} · ${F(net)}</button>` : ""}`}</div>`; }).join("") || '<div class="card empty">Ajoutez votre équipe dans Équipe.</div>'}</div>`;
+}
+
 function cDirect(act, toRecv, pend, cancels, momo) {
   const ws = S.staff.filter(s => s.active && s.role === "serveuse");
   const todo = [
@@ -1081,12 +1695,12 @@ function cDirect(act, toRecv, pend, cancels, momo) {
         ${c.map(t => `<div class="mu">N°${t.number} ${esc(t.client_label)} · total ${F(t.total)}${t.change_due ? ` · perçu ${F(t.received)}, reliquat ${F(t.change_due)}` : ""}</div>`).join("")}
         ${owe.length ? `<div class="warn-t" style="font-size:13px;margin-top:4px">À remettre : ${owe.map(h => `${-h.qty} × ${esc(prodName(h.product_id))}`).join(", ")}</div>` : ""}</div>
         <div class="stack" style="min-width:min(100%,250px)">${c.length ? `<div class="row"><input class="grow" id="rem_${w.id}" type="number" inputmode="numeric" data-k="rem_${w.id}" value="${val("rem_" + w.id)}" placeholder="Reçu : ${Fs(amt)}" aria-label="Montant reçu de ${esc(w.name)}"><button class="btn sm" data-a="remit" data-w="${w.id}">Valider</button></div>` : ""}
-        ${owe.length ? `<button class="btn soft sm" data-a="fill" data-w="${w.id}">Remettre les bouteilles</button>` : ""}</div></div>`; }).join("") || '<div class="empty">Ajoutez des serveuses dans l’onglet Équipe.</div>'}</div></div>
+        ${owe.length ? `<button class="btn soft sm" data-a="fill" data-w="${w.id}">Remettre les bouteilles</button>` : ""}</div></div>`; }).join("") || '<div class="empty">Le directeur ajoute les serveuses dans Équipe.</div>'}</div></div>
     <div class="card"><div class="between"><h3>Commandes en cours · ${sent.length}</h3><span class="mu">Mise à jour en direct</span></div>
       <div class="stack" style="margin-top:10px">${sent.map(t => ticket(t, { who: 1 })).join("") || '<div class="empty">Aucune commande envoyée pour le moment.</div>'}</div></div>
-    <div class="card stack"><h3>Vente au comptoir</h3><p class="mu" style="margin:0">Pour un client servi directement par la caisse : le stock général et la caisse sont mis à jour tout de suite.</p>
+    ${ROLE() !== "caisse" ? "" : `<div class="card stack"><h3>Vente au comptoir</h3><p class="mu" style="margin:0">Pour un client servi directement par la caisse : le stock général et la caisse sont mis à jour tout de suite.</p>
       <div class="row"><input class="grow" id="cclient" data-k="cclient" value="${val("cclient")}" placeholder="Nom du client (facultatif)" data-enter="newC" autocomplete="off"><button class="btn" data-a="newC">Nouvelle vente</button></div>
-      ${mineC.map(t => ticket(t)).join("")}</div>
+      ${mineC.map(t => ticket(t)).join("")}</div>`}
     <div class="card stack"><h3>Dotation de bouteilles</h3>
       <div class="row"><select class="grow" id="dw" data-k="dw" aria-label="Serveuse">${opt(ws, 0, V.f.dw)}</select><select class="grow" id="dp" data-k="dp" aria-label="Boisson">${opt(S.products.filter(p => p.active), 1, V.f.dp)}</select></div>
       <div class="row"><input class="grow" id="dq" type="number" inputmode="numeric" data-k="dq" value="${val("dq")}" placeholder="Quantité (−3 pour reprendre 3 bouteilles)"><button class="btn" data-a="dot">Remettre</button></div></div></div>`;
@@ -1150,7 +1764,7 @@ function cStock(low) {
     <label class="f" style="flex:1 1 130px" for="${dzId}">Verres par bouteille<input id="${dzId}" type="number" inputmode="numeric" data-k="${dzId}" value="${esc(dz ?? "")}" placeholder="Ex. 15"></label></div>`;
   const row = p => { const inh = sum(S.holdings.filter(h => h.product_id === p.id), h => Math.max(0, h.qty)), ed = !!V.open["p_" + p.id], par = p.parent_id && S.products.find(x => x.id === p.parent_id), u = unitOf(p);
     const unit = V.f[k("u", p.id)] ?? (p.unit || "bouteille");
-    return `<div class="stack" style="padding:12px 0;${p.active ? "" : "opacity:.6"}">
+    return `<div class="stack" id="prod_${p.id}" style="padding:12px 0;${p.active ? "" : "opacity:.6"}">
       <div class="between"><div style="min-width:0"><b>${esc(p.name)}</b><div class="mu num">${F(p.price)}${u ? " / " + esc(u) : ""}${p.cost ? ` · achat ${F(p.cost)}` : ` · <span class="warn-t">prix d’achat à saisir</span>`} · stock <b class="${isLow(p) ? "warn-t" : ""}">${p.stock}</b>${inh ? ` · ${inh} chez les serveuses` : ""}${p.active ? "" : " · masqué"}</div>
       ${par ? `<div class="mu">1 bouteille de ${esc(par.name)} = ${p.doses} verres (reste ${par.stock} bouteille(s))</div>` : ""}</div>
       <button class="btn ghost sm" data-a="togPe" data-p="${p.id}">${ed ? "Fermer" : "Modifier"}</button></div>
@@ -1172,10 +1786,10 @@ function cStock(low) {
       ${V.inv ? `<div class="list">${S.products.filter(p => p.active).map(p => `<div class="between" style="padding:6px 0"><span>${esc(p.name)} <span class="mu">· prévu ${p.stock}</span></span>
         <input style="width:110px" id="inv_${p.id}" type="number" inputmode="numeric" min="0" data-k="inv_${p.id}" value="${val("inv_" + p.id)}" placeholder="${p.stock}" aria-label="Quantité comptée ${esc(p.name)}"></div>`).join("")}</div>
         <button class="btn amber" data-a="invGo">Valider l’inventaire</button>` : ""}</div>
-    <div class="card stack"><h3>Approvisionnement (livraison reçue)</h3><p class="mu" style="margin:0">Quand le fournisseur livre, ajoutez les bouteilles au stock général. Pour remplir le frigo d’une serveuse, utilisez « Dotation » dans En direct.</p><div class="row"><select class="grow" id="ap" data-k="ap" aria-label="Produit">${S.products.filter(p => !p.parent_id).map(p => `<option value="${p.id}" ${V.f.ap === p.id ? "selected" : ""}>${esc(p.name)} (stock ${p.stock})</option>`).join("")}</select>
+    <div class="card stack"><h3>Approvisionnement (livraison reçue)</h3><p class="mu" style="margin:0">Quand le fournisseur livre, ajoutez les bouteilles au stock général. Pour remplir le frigo d’une serveuse, utilisez « Dotation » dans Commandes.</p><div class="row"><select class="grow" id="ap" data-k="ap" aria-label="Produit">${S.products.filter(p => !p.parent_id).map(p => `<option value="${p.id}" ${V.f.ap === p.id ? "selected" : ""}>${esc(p.name)} (stock ${p.stock})</option>`).join("")}</select>
       <input class="grow" id="aq" type="number" inputmode="numeric" data-k="aq" value="${val("aq")}" placeholder="Quantité reçue">
       <input class="grow" id="auc" type="number" inputmode="numeric" data-k="auc" value="${val("auc")}" placeholder="Prix d’achat unitaire (${Fs((S.products.find(p => p.id === (V.f.ap || (S.products.find(x => !x.parent_id) || {}).id)) || {}).cost || 0)} FCFA)" aria-label="Prix d’achat unitaire">
-      <button class="btn" data-a="appro">Ajouter au stock</button></div><p class="mu" style="margin:0">Le prix d’achat sert à calculer automatiquement votre comptabilité (onglet Compta).</p></div>
+      <button class="btn" data-a="appro">Ajouter au stock</button></div><p class="mu" style="margin:0">Le prix d’achat sert à calculer automatiquement la comptabilité du PDG.</p></div>
     <div class="card stack"><h3>Ajouter un produit à la carte</h3><p class="mu" style="margin:0">Bières, vins, whisky, sucreries, cuisine : chaque bar crée sa propre carte. Pour vendre au verre, créez d’abord la bouteille, puis le verre rattaché.</p>
       <div class="row"><label class="f grow" for="np_n">Nom<input id="np_n" data-k="np_n" value="${val("np_n")}" placeholder="Ex. Vin rouge Bordeaux, Whisky Chivas 12 ans"></label>
       <label class="f" style="flex:1 1 150px" for="np_c">Catégorie<input id="np_c" data-k="np_c" value="${val("np_c")}" list="gb-cats" placeholder="Bières"></label></div>
@@ -1187,26 +1801,33 @@ function cStock(low) {
     ${cats.map(c => `<div class="card"><h3>${esc(c)}</h3><div class="list">${S.products.filter(p => p.category === c).map(row).join("")}</div></div>`).join("")}</div>`;
 }
 function cTeam() {
-  const b = S.bar;
-  const url = joinUrl(), msg = `Bonjour, voici l’application de caisse de ${b.name}. Ouvrez ce lien sur votre téléphone, touchez votre nom et tapez votre PIN : ${url}`;
-  const kyc = { non_renseigne: ["", "Non renseignée"], a_verifier: ["warn", "En attente de vérification"], verifie: ["ok", "Vérifiée"], refuse: ["bad", "Refusée"] }[b.kyc_status || "non_renseigne"];
-  return `<div class="stack"><div class="card stack"><h3>Installer l’application sur les téléphones des serveuses</h3>
-      <div class="qr" style="max-width:220px;margin:0 auto">${qrSvg(url, 5)}</div>
-      <div class="code-big num">${esc(b.code)}</div>
-      <p class="mu" style="margin:0;text-align:center">La serveuse scanne ce QR code avec l’appareil photo de son téléphone : l’application s’ouvre avec le bar déjà choisi. Elle touche son nom, tape son PIN, puis « Ajouter à l’écran d’accueil ».</p>
+  const b = S.bar, me = ROLE(), url = joinUrl(), msg = `Bonjour, voici l’application de ${b.name}. Ouvrez ce lien sur votre téléphone, touchez votre nom et tapez votre PIN : ${url}`;
+  const roleOpts = me === "pdg" ? ["directeur", "caisse", "serveuse"] : ["caisse", "serveuse"];
+  const canEdit = x => x.id === S.me.id || (me === "pdg" && x.role !== "pdg") || (me === "directeur" && ["caisse", "serveuse"].includes(x.role));
+  const ns = V.f.ns_r || "serveuse";
+  const row = (x, i) => !canEdit(x) ? `<div class="li rise" style="--i:${i};${x.active ? "" : "opacity:.6"}"><div class="grow"><b>${esc(x.name)}</b><div class="mu">${ROLES[x.role]}</div></div><span class="pill">${x.active ? "Actif" : "Désactivé"}</span></div>`
+    : `<div class="stack rise" style="padding:12px 0;--i:${i};${x.active ? "" : "opacity:.6"}">
+      <div class="row"><input class="grow" id="s_n_${x.id}" data-k="s_n_${x.id}" value="${esc(V.f["s_n_" + x.id] ?? x.name)}" aria-label="Nom">
+      ${x.id === S.me.id || x.role === "pdg" ? `<span class="pill brand" style="flex:none">${ROLES[x.role]}</span>` : `<select style="flex:1 1 130px" id="s_r_${x.id}" data-k="s_r_${x.id}" aria-label="Rôle">${[...new Set([...roleOpts, x.role])].map(r => `<option value="${r}" ${(V.f["s_r_" + x.id] ?? x.role) === r ? "selected" : ""}>${ROLES[r]}</option>`).join("")}</select>`}
+      <input style="flex:1 1 130px" id="s_pin_${x.id}" type="tel" inputmode="numeric" maxlength="6" data-k="s_pin_${x.id}" value="${val("s_pin_" + x.id)}" placeholder="Nouveau PIN" aria-label="Nouveau PIN"></div>
+      <div class="row"><span class="mu grow">${x.id === S.me.id ? "Vous" : x.active ? "Actif" : "Désactivé"}</span>${x.id === S.me.id || x.role === "pdg" ? "" : `<button class="btn ghost sm" data-a="togS" data-s="${x.id}">${x.active ? "Désactiver" : "Réactiver"}</button>`}<button class="btn sm" data-a="saveS" data-s="${x.id}">Enregistrer</button></div></div>`;
+  return `<div class="stack">
+    <div class="card stack"><h3>Ajouter un membre</h3><p class="mu" style="margin:0">${me === "pdg" ? "Vous pouvez ajouter un directeur, une caissière ou une serveuse." : "Vous ajoutez les caissières et les serveuses. Le PDG garde le contrôle sur toute l’équipe."}</p>
+      <div class="row"><input class="grow" id="ns_n" data-k="ns_n" value="${val("ns_n")}" placeholder="Prénom" aria-label="Prénom">
+      <select style="flex:1 1 130px" id="ns_r" data-k="ns_r" aria-label="Rôle">${roleOpts.map(r => `<option value="${r}" ${ns === r ? "selected" : ""}>${ROLES[r]}</option>`).join("")}</select>
+      <input style="flex:1 1 130px" id="ns_pin" type="tel" inputmode="numeric" maxlength="6" data-k="ns_pin" value="${val("ns_pin")}" placeholder="PIN (4 à 6 chiffres)" aria-label="PIN"></div><button class="btn" data-a="addS">Ajouter à l’équipe</button></div>
+    <div class="card"><h3>Équipe · ${S.staff.filter(x => x.active).length} membre(s) actif(s)</h3><div class="list">${[...S.staff].sort(roleSort).map(row).join("")}</div></div>
+    <div class="card stack"><h3>Installer l’application sur les téléphones</h3>
+      <div class="qr" style="max-width:220px;margin:0 auto">${qrSvg(url, 5)}</div><div class="code-big num">${esc(b.code)}</div>
+      <p class="mu" style="margin:0;text-align:center">Chaque employé scanne ce QR code avec l’appareil photo de son téléphone : l’application s’ouvre avec le bar déjà choisi. Il touche son nom, tape son PIN, puis « Ajouter à l’écran d’accueil ».</p>
       <div class="row"><button class="btn soft grow" data-a="copy" data-txt="${esc(url)}">Copier le lien</button>
       <a class="btn soft grow" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Envoyer par WhatsApp</a>
-      ${CFG.mode === "live" ? `<button class="btn grow" data-a="poster">Imprimer l’affiche</button>` : ""}</div></div>
-    <div class="card"><h3>Équipe</h3><div class="list">${S.staff.map(s => `<div class="stack" style="padding:12px 0;${s.active ? "" : "opacity:.6"}">
-      <div class="row"><input class="grow" id="s_n_${s.id}" data-k="s_n_${s.id}" value="${esc(V.f["s_n_" + s.id] ?? s.name)}" aria-label="Nom">
-      <select style="flex:1 1 130px" id="s_r_${s.id}" data-k="s_r_${s.id}" aria-label="Rôle">${["serveuse", "caisse"].map(r => `<option value="${r}" ${(V.f["s_r_" + s.id] ?? s.role) === r ? "selected" : ""}>${r === "caisse" ? "Caisse" : "Serveuse"}</option>`).join("")}</select>
-      <input style="flex:1 1 130px" id="s_pin_${s.id}" type="tel" inputmode="numeric" maxlength="6" data-k="s_pin_${s.id}" value="${val("s_pin_" + s.id)}" placeholder="Nouveau PIN" aria-label="Nouveau PIN"></div>
-      <div class="row"><span class="mu grow">${s.id === S.me.id ? "Vous" : s.active ? "Actif" : "Désactivé"}</span>${s.id === S.me.id ? "" : `<button class="btn ghost sm" data-a="togS" data-s="${s.id}">${s.active ? "Désactiver" : "Réactiver"}</button>`}<button class="btn sm" data-a="saveS" data-s="${s.id}">Enregistrer</button></div></div>`).join("")}</div></div>
-    <div class="card stack"><h3>Ajouter un membre</h3><div class="row"><input class="grow" id="ns_n" data-k="ns_n" value="${val("ns_n")}" placeholder="Prénom">
-      <select style="flex:1 1 130px" id="ns_r" data-k="ns_r" aria-label="Rôle"><option value="serveuse" ${V.f.ns_r !== "caisse" ? "selected" : ""}>Serveuse</option><option value="caisse" ${V.f.ns_r === "caisse" ? "selected" : ""}>Caisse</option></select>
-      <input style="flex:1 1 130px" id="ns_pin" type="tel" inputmode="numeric" maxlength="6" data-k="ns_pin" value="${val("ns_pin")}" placeholder="PIN (4 à 6 chiffres)"></div><button class="btn" data-a="addS">Ajouter à l’équipe</button></div>
-    <div class="card stack"><div class="between"><h3>Identité légale du bar</h3><span class="pill ${kyc[0]}">${kyc[1]}</span></div>
-      <p class="mu" style="margin:0">Facultatif. Sert à établir vos factures d’abonnement et à vérifier que le compte appartient bien à l’entreprise. La pièce d’identité est stockée dans un espace privé, visible uniquement par la caisse de ce bar et l’éditeur du logiciel.</p>
+      ${CFG.mode === "live" ? `<button class="btn grow" data-a="poster">Imprimer l’affiche</button>` : ""}</div></div></div>`;
+}
+function cSettings() {
+  const b = S.bar, kyc = { non_renseigne: ["", "Non renseignée"], a_verifier: ["warn", "En attente de vérification"], verifie: ["ok", "Vérifiée"], refuse: ["bad", "Refusée"] }[b.kyc_status || "non_renseigne"];
+  return `<div class="stack"><div class="card stack"><div class="between"><h3>Identité légale du bar</h3><span class="pill ${kyc[0]}">${kyc[1]}</span></div>
+      <p class="mu" style="margin:0">Facultatif. Sert à établir vos factures d’abonnement et à vérifier que le compte appartient bien à l’entreprise. La pièce d’identité est stockée dans un espace privé, visible uniquement par le PDG de ce bar et l’éditeur du logiciel.</p>
       <div class="row"><label class="f grow" for="id_legal">Raison sociale<input id="id_legal" data-k="id_legal" value="${esc(V.f.id_legal ?? (b.legal_name || ""))}" placeholder="Ex. SNACK LE MANGUIER SARL"></label>
       <label class="f grow" for="id_niu">NIU (DGI)<input id="id_niu" data-k="id_niu" value="${esc(V.f.id_niu ?? (b.niu || ""))}" placeholder="Ex. M012345678901A" autocapitalize="characters" maxlength="16"></label></div>
       <label class="f" for="id_file">Pièce d’identité du responsable (photo ou PDF, 5 Mo max.)<input id="id_file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label>
@@ -1214,8 +1835,61 @@ function cTeam() {
       <button class="btn" data-a="saveId">Enregistrer l’identité</button></div>
     <div class="card stack"><h3>Réglages du bar</h3><div class="row"><label class="f grow" for="b_n">Nom<input id="b_n" data-k="b_n" value="${esc(V.f.b_n ?? b.name)}"></label><label class="f grow" for="b_c">Ville et quartier<input id="b_c" data-k="b_c" value="${esc(V.f.b_c ?? (b.city || ""))}"></label></div>
       <div class="row"><label class="f grow" for="b_cap">Plafond d’espèces par serveuse (FCFA)<input id="b_cap" type="number" inputmode="numeric" data-k="b_cap" value="${esc(V.f.b_cap ?? b.cash_cap)}"></label>
-      <label class="f grow" for="b_low">Seuil de stock bas par défaut<input id="b_low" type="number" inputmode="numeric" data-k="b_low" value="${esc(V.f.b_low ?? b.low_stock)}"></label></div><button class="btn" data-a="saveBar">Enregistrer les réglages</button></div></div>`;
+      <label class="f grow" for="b_low">Seuil de stock bas par défaut<input id="b_low" type="number" inputmode="numeric" data-k="b_low" value="${esc(V.f.b_low ?? b.low_stock)}"></label></div><button class="btn" data-a="saveBar">Enregistrer les réglages</button></div>
+    <div class="card stack"><h3>Code du bar</h3><div class="code-big num">${esc(b.code)}</div><button class="btn soft" data-a="go" data-v="team">Installer l’application sur les téléphones</button></div></div>`;
 }
+
+/* ═══════════════ Actions : menu, recherche, planning, présences, paie ═══════════════ */
+A.menu = () => { V.menu = !V.menu; if (V.menu) V.menuT = Date.now(); render(); };
+A.menuClose = () => { V.menu = false; V.f.gq = ""; render(); };
+A.search = () => { V.menu = true; V.menuT = Date.now(); render(); setTimeout(() => { const i = document.getElementById("gq"); if (i) i.focus(); }, 40); };
+A.openTk = d => { V.menu = false; V.open[d.t] = true; V.modal = { type: "tk", t: d.t }; render(); };
+A.openP = d => { A.go({ v: "stock" }); V.open["p_" + d.p] = true; render(); setTimeout(() => { const e = document.getElementById("prod_" + d.p); if (e) e.scrollIntoView({ block: "center", behavior: "smooth" }); }, 60); };
+A.staffCard = d => { V.menu = false; V.modal = { type: "staff", s: d.s }; render(); };
+A.setF = d => { V.f[d.k2] = d.v; render(); };
+A.wk = d => { V.wk = +d.d === 0 ? 0 : (V.wk || 0) + (+d.d); V.secT = Date.now(); render(); };
+A.pday = d => { const n = dAdd(V.f.pd || today(), +d.d); if (n > today()) return; V.f.pd = n; render(); };
+A.clockIn = () => run(async () => { const r = await call("gb_clock_in", {}); await refresh();
+  toast(r.deja ? "Arrivée déjà pointée aujourd’hui." : r.status === "retard" ? `Arrivée pointée avec ${r.late} min de retard.` : "Arrivée pointée. Bon service !", r.status === "retard" && !r.deja ? "err" : ""); });
+A.clockOut = () => run(async () => { await call("gb_clock_out", {}); toast("Départ pointé. Bonne fin de journée !"); await refresh(); });
+const attGo = (sid, day, st, late) => run(async () => { await call("gb_attendance_set", { p_staff: sid, p_day: day, p_status: st, p_late: late || 0, p_note: V.f.att_note || "" });
+  V.f.att_note = ""; V.modal = null; toast(st === "aucun" ? "Pointage effacé." : `${staffName(sid)} : ${ATT[st][1].toLowerCase()}${st === "retard" ? ` de ${late} min` : ""}.`); await refresh(); });
+A.att = d => { const day = d.day || today(); if (d.st === "retard") { V.f.late_min = ""; V.f.att_note = ""; V.modal = { type: "late", s: d.s, day }; render(); return; } attGo(d.s, day, d.st, 0); };
+A.lateGo = () => { const m = V.modal, n = num("late_min"); if (!n || n < 1) return toast("Indiquez les minutes de retard.", "err"); attGo(m.s, m.day, "retard", n); };
+A.leaveReq = () => run(async () => { const f = V.f.lv_from || today(), t = V.f.lv_to || f; await call("gb_leave_request", { p_from: f, p_to: t, p_reason: V.f.lv_r || "" });
+  ["lv_from", "lv_to", "lv_r"].forEach(k => delete V.f[k]); toast("Demande envoyée. Le directeur va la traiter."); await refresh(); });
+A.leaveOk = d => run(async () => { await call("gb_leave_decide", { p_id: d.id, p_accept: true }); toast("Permission accordée. Les jours sont marqués « Permission »."); await refresh(); if (statRows()) A.loadStats(); });
+A.leaveNo = d => run(async () => { await call("gb_leave_decide", { p_id: d.id, p_accept: false }); toast("Permission refusée."); await refresh(); });
+A.loadStats = () => run(async () => { const m = V.f.mo || curMonth(); V.stats = { m, rows: await call("gb_staff_stats", { p_month: m }) }; });
+A.shiftEd = d => { const sh = shiftOf(d.s, d.d); V.f.sh_s = (sh && sh.kind === "travail" && t5(sh.start_time)) || "18:00"; V.f.sh_e = (sh && sh.kind === "travail" && t5(sh.end_time)) || "02:00";
+  V.f.sh_n = (sh && sh.note) || ""; V.f.sh_all = ""; V.modal = { type: "shift", s: d.s, d: d.d }; render(); };
+A.preset = d => { V.f.sh_s = d.s; V.f.sh_e = d.e; render(); };
+A.shAll = () => { V.f.sh_all = V.f.sh_all ? "" : "1"; render(); };
+A.shiftSave = d => run(async () => { const m = V.modal, kind = d.k, days = kind === "travail" && V.f.sh_all ? [...Array(7)].map((_, i) => dAdd(monday(m.d), i)) : [m.d];
+  if (kind === "travail" && (!V.f.sh_s || !V.f.sh_e)) throw bizErr("Indiquez l’heure de début et de fin.");
+  for (const day of days) await call("gb_shift_set", { p_staff: m.s, p_day: day, p_kind: kind, p_start: kind === "travail" ? V.f.sh_s : null, p_end: kind === "travail" ? V.f.sh_e : null, p_note: V.f.sh_n || "" });
+  V.modal = null; toast(kind === "aucun" ? "Case effacée." : kind === "repos" ? "Jour de repos enregistré." : `Horaire enregistré${days.length > 1 ? " pour toute la semaine" : ""}.`); await refresh(); });
+A.copyWeek = () => ask("Copier la semaine précédente ?", `Les horaires de la semaine précédente remplaceront ceux de la semaine du ${dfr(wkStart(), { day: "numeric", month: "long" })}.`, "Copier", "copyWeekGo", {});
+A.copyWeekGo = () => run(async () => { const to = wkStart(), n = await call("gb_shift_copy_week", { p_from: dAdd(to, -7), p_to: to }); V.secT = Date.now();
+  toast(n ? `${n} créneau(x) copiés sur cette semaine.` : "La semaine précédente est vide : rien à copier.", n ? "" : "err"); await refresh(); });
+A.planImg = () => { let url = ""; try { url = planCanvas().toDataURL("image/png"); } catch (e) {} V.modal = { type: "plan", url }; render(); };
+A.planDl = () => { if (CFG.mode !== "live") return toast("Dans la démo, le téléchargement est bloqué : appuyez longuement sur l’image pour l’enregistrer.", "err");
+  const a = document.createElement("a"); a.href = V.modal.url; a.download = planFile(); document.body.appendChild(a); a.click(); a.remove(); toast("Image du planning téléchargée."); };
+A.planShare = async () => { try { const file = new File([dataBlob(V.modal.url)], planFile(), { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Planning " + S.bar.name, text: "Planning de la semaine" }); return; } }
+  catch (e) { if (e && e.name === "AbortError") return; }
+  toast("Partage d’image indisponible sur cet appareil : téléchargez l’image puis envoyez-la dans WhatsApp, ou envoyez le planning en texte.", "err"); };
+A.salSet = d => run(async () => { const v = num("sal_" + d.s); if (v == null || v < 0) throw bizErr("Indiquez un salaire valide.");
+  await call("gb_salary_set", { p_staff: d.s, p_salary: v }); delete V.f["sal_" + d.s]; toast(`Salaire de ${staffName(d.s)} enregistré.`); await refresh(); });
+A.pay = d => { const mo = V.f.mo || curMonth(), base = ((S.salaries || []).find(x => x.staff_id === d.s) || {}).salary || 0, net = base + (num("pb_" + d.s) || 0) - (num("pd_" + d.s) || 0);
+  ask(`Payer ${staffName(d.s)} ?`, `${F(net)} pour ${monthName(mo)}, payé par ${METH[V.f["pm_" + d.s] || "cash"]}. Le paiement sera enregistré dans la comptabilité (Salaires).`, "Confirmer le paiement", "payGo", d); };
+A.payGo = d => run(async () => { const r = await call("gb_pay", { p_staff: d.s, p_month: V.f.mo || curMonth(), p_bonus: num("pb_" + d.s) || 0, p_deduction: num("pd_" + d.s) || 0, p_method: V.f["pm_" + d.s] || "cash", p_note: "" });
+  ["pb_", "pd_", "pm_"].forEach(k => delete V.f[k + d.s]); await refresh(); V.modal = { type: "slip", id: r.id }; toast(`Salaire payé : ${F(r.net)}.`); });
+A.payCancel = d => ask("Annuler ce paiement ?", "Le salaire repassera « à payer » et la dépense sera retirée de la comptabilité. L’action reste dans le journal.", "Annuler le paiement", "payCancelGo", d, true);
+A.payCancelGo = d => run(async () => { await call("gb_pay_cancel", { p_id: d.id }); toast("Paiement annulé."); await refresh(); });
+A.slip = d => { V.modal = { type: "slip", id: d.id }; render(); };
+function slipText(p, x) { return `${S.bar.legal_name || S.bar.name}\nFICHE DE PAIE · ${monthName(p.month)}\nEmployé : ${x.name} (${ROLES[x.role] || ""})\nSalaire de base : ${F(p.base)}\nPrime : ${F(p.bonus)}\nRetenue : ${F(p.deduction)}\nNET PAYÉ : ${F(p.net)}\nPayé le ${new Date(p.paid_at).toLocaleDateString("fr-FR")} par ${METH[p.method]}`; }
+
 function cDay(DT) {
   const d = S.day, cashIn = sum(S.remits, r => r.received), out = sum(DT.filter(t => t.change_status === "given"), t => t.change_due), exp = cashIn - out, cnt = num("cnt");
   const pending = DT.filter(t => ["draft", "sent", "cashed"].includes(t.status)).length;
@@ -1233,10 +1907,11 @@ function cDay(DT) {
 const ACT = { ticket_supprime: "Ticket supprimé", ticket_modifie: "Ticket modifié après envoi", annulation_demandee: "Annulation demandée", annulation_refusee: "Annulation refusée", ticket_rouvert: "Ticket rouvert",
   versement: "Versement reçu", momo_confirme: "Mobile Money confirmé", monnaie_remise: "Monnaie remise", bon_emis: "Bon émis", bon_verifie: "Bon vérifié", bon_utilise: "Bon utilisé",
   approvisionnement: "Approvisionnement", produit_ajoute: "Boisson ajoutée", produit_modifie: "Boisson modifiée", equipe_modifiee: "Équipe modifiée", pin_change: "PIN modifié",
-  reglages_modifies: "Réglages modifiés", journee_cloturee: "Journée clôturée", bar_cree: "Bar créé", membre_ajoute: "Membre ajouté", pin_bloque: "PIN bloqué après 5 essais", bouteille_ouverte: "Bouteille ouverte au verre", depense_ajoutee: "Dépense ajoutée", depense_supprimee: "Dépense supprimée", inventaire: "Inventaire du stock", identite_bar: "Identité légale mise à jour" };
+  reglages_modifies: "Réglages modifiés", journee_cloturee: "Journée clôturée", bar_cree: "Bar créé", membre_ajoute: "Membre ajouté", pin_bloque: "PIN bloqué après 5 essais", bouteille_ouverte: "Bouteille ouverte au verre", depense_ajoutee: "Dépense ajoutée", depense_supprimee: "Dépense supprimée", inventaire: "Inventaire du stock", identite_bar: "Identité légale mise à jour", presence: "Présence pointée", permission_demandee: "Permission demandée",
+  permission_acceptee: "Permission acceptée", permission_refusee: "Permission refusée", planning_copie: "Planning copié", salaire_paye: "Salaire payé", salaire_annule: "Paiement de salaire annulé" };
 const KEYS = { ticket: "N°", client: "client", total: "total", produit: "boisson", variation: "variation", serveuse: "serveuse", attendu: "attendu", recu: "reçu", ecart: "écart", tickets: "tickets",
   montant: "montant", bon: "bon", code: "code", trouve: "trouvé", quantite: "quantité", prix: "prix", prix_avant: "prix avant", stock: "stock", stock_avant: "stock avant", membre: "membre", categorie: "catégorie", verres: "verres", unite: "unité", ecarts: "écarts", manquant_valeur: "manquant", raison_sociale: "raison sociale", niu: "NIU", piece: "pièce transmise",
-  nom: "nom", role: "rôle", actif: "actif", date: "date", ventes: "ventes", compte: "compté", statut_avant: "statut avant", plafond_especes: "plafond", seuil_stock: "seuil" };
+  nom: "nom", role: "rôle", actif: "actif", du: "du", au: "au", statut: "statut", retard_min: "retard (min)", mois: "mois", de: "de", vers: "vers", creneaux: "créneaux", date: "date", ventes: "ventes", compte: "compté", statut_avant: "statut avant", plafond_especes: "plafond", seuil_stock: "seuil" };
 const MONEY = new Set(["manquant_valeur", "total", "attendu", "recu", "ecart", "montant", "prix", "prix_avant", "ventes", "compte", "plafond_especes"]);
 function cLog() {
   const fmt = (k, v) => `${KEYS[k] || k} : ${MONEY.has(k) ? F(v) : typeof v === "boolean" ? (v ? "oui" : "non") : esc(v)}`;
@@ -1355,7 +2030,42 @@ function vModal() {
       <div class="qr" style="max-width:300px;margin:0 auto">${qrSvg(joinUrl(), 8)}</div><div class="code-big num">${esc(S.bar.code)}</div><p class="mu">${esc(APP_URL)}</p></div>
       <div class="row"><button class="btn grow" data-a="print">Imprimer</button><button class="btn ghost grow" data-a="close">Fermer</button></div>`;
   if (m.type === "welcome") c = `<h2>Votre bar est créé</h2><p style="margin:0">Donnez ce code à vos serveuses pour qu’elles se connectent :</p><div class="code-big num">${esc(m.code)}</div>
-    <p class="mu" style="margin:0">Étapes suivantes : ajustez les prix dans l’onglet Stock, ajoutez vos serveuses dans l’onglet Équipe, puis remettez-leur leurs bouteilles.</p><button class="btn" data-a="close">Commencer</button>`;
+    <p class="mu" style="margin:0">Étapes suivantes : ajoutez votre directeur, votre caissière et vos serveuses dans Équipe, ajustez les prix dans Stock, puis faites publier le planning de la semaine.</p><button class="btn" data-a="close">Commencer</button>`;
+  if (m.type === "tk") { const t = S.tickets.find(x => x.id === m.t); V.open[m.t] = true;
+    c = t ? `<h2>Ticket ${t.number ? "N°" + t.number : ""} · ${esc(staffName(t.waitress_id))}</h2>${ticket(t, { who: 1 })}<button class="btn ghost" data-a="close">Fermer</button>` : `<h2>Ticket introuvable</h2><button class="btn" data-a="close">Fermer</button>`; }
+  if (m.type === "staff") { const x = S.staff.find(y => y.id === m.s) || { name: "—", role: "serveuse" }, days = weekDays(), td = today(), a = attOf(x.id, td);
+    c = `<div class="who"><div class="avatar">${esc(x.name[0])}</div><div><b style="font-size:18px">${esc(x.name)}</b><span class="mu" style="display:block">${ROLES[x.role]}${x.active ? "" : " · désactivé"}</span></div></div>
+      ${isMgr() || x.id === S.me.id ? `<div class="between"><span class="mu">Aujourd’hui</span>${attPill(a)}</div>` : ""}
+      <h3>Semaine du ${dfr(days[0], { day: "numeric", month: "long" })}</h3>
+      <div class="list">${days.map((d, i) => { const sh = shiftOf(x.id, d); return `<div class="between" style="padding:7px 0"><span class="${d === td ? "ok-t" : ""}"><b>${DOW[i]}</b> ${+d.slice(8)}</span><span class="pill ${{ morning: "amber", afternoon: "sky", night: "night", off: "", none: "" }[period(sh)]}">${shTxt(sh)}</span></div>`; }).join("")}</div>
+      <div class="row">${isMgr() ? `<button class="btn soft grow" data-a="go" data-v="pres">Présences</button>` : ""}${isPdg() && x.role !== "pdg" ? `<button class="btn soft grow" data-a="go" data-v="paie">Paie</button>` : ""}<button class="btn ghost grow" data-a="close">Fermer</button></div>`; }
+  if (m.type === "late") { const x = S.staff.find(y => y.id === m.s) || {};
+    c = `<h2>Retard de ${esc(x.name)}</h2><p class="mu" style="margin:0">${dfr(m.day, { weekday: "long", day: "numeric", month: "long" })} · planning : ${shTxt(shiftOf(m.s, m.day))}</p>
+      <div class="bills">${[5, 10, 15, 30, 45, 60].map(n => `<button data-a="setF" data-k2="late_min" data-v="${n}" class="${String(V.f.late_min) === String(n) ? "on" : ""}">${n} min</button>`).join("")}</div>
+      <label class="f" for="late_min">Minutes de retard<input id="late_min" type="number" inputmode="numeric" data-k="late_min" value="${val("late_min")}" data-enter="lateGo"></label>
+      <label class="f" for="att_note">Note (facultatif)<input id="att_note" data-k="att_note" value="${val("att_note")}" placeholder="Ex. problème de transport"></label>
+      <div class="row"><button class="btn ghost grow" data-a="close">Annuler</button><button class="btn amber grow" data-a="lateGo">Enregistrer le retard</button></div>`; }
+  if (m.type === "shift") { const x = S.staff.find(y => y.id === m.s) || {}, sh = shiftOf(m.s, m.d);
+    c = `<h2>${esc(x.name)} · ${dfr(m.d, { weekday: "long", day: "numeric", month: "long" })}</h2><div class="mu">Actuellement : ${shTxt(sh)}</div>
+      <div class="bills">${PRESETS.map(([l, a, b]) => `<button data-a="preset" data-s="${a}" data-e="${b}" class="${V.f.sh_s === a && V.f.sh_e === b ? "on" : ""}">${l}<br><small class="num">${a} – ${b}</small></button>`).join("")}</div>
+      <div class="row"><label class="f grow" for="sh_s">Début<input id="sh_s" type="time" data-k="sh_s" value="${val("sh_s")}"></label><label class="f grow" for="sh_e">Fin<input id="sh_e" type="time" data-k="sh_e" value="${val("sh_e")}"></label></div>
+      <label class="f" for="sh_n">Note visible par l’employé (facultatif)<input id="sh_n" data-k="sh_n" value="${val("sh_n")}" placeholder="Ex. inventaire à 17 h"></label>
+      <button class="tgl ${V.f.sh_all ? "on" : ""}" data-a="shAll" role="switch" aria-checked="${!!V.f.sh_all}"><i></i><span>Appliquer cet horaire du lundi au dimanche</span></button>
+      <div class="row"><button class="btn grow" data-a="shiftSave" data-k="travail">Enregistrer l’horaire</button><button class="btn soft grow" data-a="shiftSave" data-k="repos">Jour de repos</button></div>
+      <div class="row">${sh ? `<button class="btn bad sm" data-a="shiftSave" data-k="aucun">Effacer la case</button>` : ""}<span class="grow"></span><button class="btn ghost sm" data-a="close">Fermer</button></div>`; }
+  if (m.type === "plan") c = `<h2>Planning de la semaine</h2>${m.url ? `<img class="planimg" src="${m.url}" alt="Planning de la semaine du ${dfr(wkStart(), { day: "numeric", month: "long" })}">` : `<div class="note bad">Image indisponible sur cet appareil.</div>`}
+      <div class="row">${m.url ? `<button class="btn grow" data-a="planShare">${ico("share")} Partager l’image</button><button class="btn soft grow" data-a="planDl">${ico("dl")} Télécharger</button>` : ""}</div>
+      <a class="btn soft wide" href="https://wa.me/?text=${encodeURIComponent(planText())}" target="_blank" rel="noopener">Envoyer le planning en texte sur WhatsApp</a>
+      <p class="mu" style="margin:0">Sur téléphone, « Partager l’image » ouvre la liste des applications : choisissez WhatsApp puis le groupe de l’équipe.</p><button class="btn ghost" data-a="close">Fermer</button>`;
+  if (m.type === "slip") { const p = (S.payroll || []).find(x => x.id === m.id);
+    if (!p) c = `<h2>Fiche introuvable</h2><button class="btn" data-a="close">Fermer</button>`;
+    else { const x = S.staff.find(y => y.id === p.staff_id) || { name: "—", role: "" }, kv = (l, v, b) => `<div class="kv"><span>${b ? `<b>${l}</b>` : l}</span>${b ? `<b>${v}</b>` : `<span>${v}</span>`}</div>`;
+      c = `<div class="slip printable"><div class="between" style="align-items:flex-start"><div><b style="font-size:16px">${esc(S.bar.legal_name || S.bar.name)}</b>${S.bar.city ? `<div>${esc(S.bar.city)}</div>` : ""}${S.bar.niu ? `<div>NIU ${esc(S.bar.niu)}</div>` : ""}</div><img src="${LOGO}" alt="BISMO Agency" style="width:84px"></div>
+        <h2 style="margin:14px 0 2px">Fiche de paie · ${monthName(p.month)}</h2><div>${esc(x.name)} · ${ROLES[x.role] || ""}</div><hr>
+        ${kv("Salaire de base", F(p.base))}${kv("Prime", "+ " + F(p.bonus))}${kv("Retenue", "− " + F(p.deduction))}<hr>${kv("Net payé", F(p.net), 1)}
+        ${kv("Mode de paiement", METH[p.method])}${kv("Date du paiement", new Date(p.paid_at).toLocaleDateString("fr-FR"))}${p.note ? kv("Note", esc(p.note)) : ""}
+        <p style="font-size:11px;margin:12px 0 0;color:#555">Document généré par GesCo Bar. Signature de l’employé : ______________</p></div>
+        <div class="row">${CFG.mode === "live" ? `<button class="btn grow" data-a="print">Imprimer</button>` : ""}<a class="btn soft grow" href="https://wa.me/?text=${encodeURIComponent(slipText(p, x))}" target="_blank" rel="noopener">Envoyer par WhatsApp</a></div><button class="btn ghost" data-a="close">Fermer</button>`; } }
   return `<div class="scrim" data-a="${m.type === "confirm" ? "close" : ""}" data-self="1"><div class="sheet" role="dialog" aria-modal="true">${c}</div></div>`;
 }
 
@@ -1366,7 +2076,7 @@ function render() {
   if (V.screen === "boot") html = `<div class="empty"><span class="spin"></span></div>`;
   else if (V.screen === "login") html = vLogin();
   else if (!S) html = `<div class="empty"><span class="spin"></span> Chargement…</div>`;
-  else html = (isCaisse() ? vCaisse() : vWaitress()) + bismo(true);
+  else html = vApp() + bismo(true);
   $app.innerHTML = html + vModal() + (V.toast ? `<div class="toast ${V.toast.kind || ""}" role="status">${esc(V.toast.msg)}</div>` : "");
   if (fid) { const el = document.getElementById(fid); if (el && el !== document.activeElement) { el.focus({ preventScroll: true }); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) {} } }
 }
@@ -1377,14 +2087,16 @@ document.addEventListener("click", e => {
   e.preventDefault(); A[a]({ ...el.dataset }, el);
 });
 document.addEventListener("input", e => { const k = e.target.dataset && e.target.dataset.k; if (!k) return; V.f[k] = e.target.value;
-  if (/^(rcv_|cnt$|q_)/.test(k)) { clearTimeout(window.__r); window.__r = setTimeout(render, k.startsWith("q_") ? 120 : 250); } });
+  if (/^(rcv_|cnt$|q_|gq$|pb_|pd_)/.test(k)) { clearTimeout(window.__r); window.__r = setTimeout(render, /^(q_|gq)/.test(k) ? 120 : 250); } });
 document.addEventListener("change", e => { const t = e.target;
   if (t.id === "id_file") { window.__idFile = t.files && t.files[0] || null; render(); return; }
   if (t.id === "accm") { V.accMonth = t.value; V.acc = null; render(); A.loadAcc(); return; }
+  if (t.id === "mo") { V.f.mo = t.value; V.stats = null; render(); A.loadStats(); return; }
+  if (t.id === "pd") { V.f.pd = t.value > today() ? today() : t.value; render(); return; }
   if (t.dataset && t.dataset.k && t.tagName === "SELECT") { V.f[t.dataset.k] = t.value; render(); }
   if (t.dataset && t.dataset.qty) call("gb_ticket_set_qty", { p_ticket: t.dataset.t, p_product: t.dataset.p, p_qty: Math.max(0, Math.trunc(+t.value || 0)) }); });
 document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.dataset && e.target.dataset.enter) { e.preventDefault(); const a = e.target.dataset.enter; A[a] && A[a]({}); }
-  if (e.key === "Escape" && V.modal) A.close(); });
+  if (e.key === "Escape") { if (V.modal) A.close(); else if (V.menu) A.menuClose(); } });
 
 addEventListener("beforeinstallprompt", e => { e.preventDefault(); window.__install = e; render(); });
 addEventListener("appinstalled", () => { window.__install = null; toast("Application installée sur l’écran d’accueil."); });

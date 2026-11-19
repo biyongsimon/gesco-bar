@@ -36,7 +36,7 @@ Aucune variable d'environnement : l'URL Supabase et la clé publique sont dans `
 ## Structure
 
 ```
-supabase/migrations/001_gesco_bar.sql   Schéma, règles de sécurité, fonctions métier (déjà appliqué)
+supabase/migrations/001…006            Schéma, règles de sécurité, fonctions métier (toutes appliquées ; 006 = rôles, planning, présences, paie)
 supabase/functions/gesco-admin/index.ts Fonction serveur (déjà déployée, verify_jwt = false, contrôle interne)
 app/src/app.html                        Code source unique de l'application
 app/public/                             Manifeste PWA, service worker, icône
@@ -44,6 +44,19 @@ app/build.py                            Génère dist/web (en ligne) et dist/dem
 ```
 
 Modifier l'application : éditez `app/src/app.html`, puis `python3 app/build.py`, puis redéployez `dist/web/`.
+
+## Rôles (v3)
+
+| Rôle | Ce qu'il fait |
+|---|---|
+| **PDG** (créateur du bar) | Accueil d'ensemble, paie (salaires, primes, retenues, fiches de paie), compta, revenus, réglages et identité légale ; contrôle toute l'équipe, nomme le directeur |
+| **Directeur** | Supervision des commandes (prises et servies, retards de service), présences, retards, absences, permissions, planning (téléchargeable en image et partageable sur WhatsApp), ajout des caissières et serveuses. Ne valide aucun paiement |
+| **Caisse** | Commandes en direct, versements, Mobile Money, reliquats, bons, stock, inventaire, approvisionnement, vente au comptoir, clôture de journée |
+| **Serveuse** | Ses tickets, « commande servie », son planning, pointage, demandes de permission, ses fiches de paie |
+
+Chaque espace a une barre de navigation en bas, un menu complet et une recherche (clients, tickets, boissons, employés, bons). Le planning est visible par tout le monde.
+
+Démo : code DEMO ; PIN serveuses 1111 / 2222 / 3333, caisse 0000, directeur 5555, PDG 9999.
 
 ## Carte des produits
 

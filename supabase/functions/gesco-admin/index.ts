@@ -98,10 +98,11 @@ Deno.serve(async (req) => {
         const { data: me, error: e0 } = await admin.auth.getUser(jwt);
         if (e0 || !me?.user) return fail("Session expirée. Reconnectez-vous.", 401);
         const { data: caller } = await admin.rpc("gb_admin_caller", { p_user: me.user.id });
-        if (!caller || caller.role !== "caisse") return fail("Action réservée à la caisse.", 403);
+        if (!caller || !["pdg", "directeur"].includes(caller.role)) return fail("Seuls le directeur et le PDG ajoutent des membres.", 403);
         const { name, role, pin } = body as Record<string, string>;
         if (!name?.trim()) return fail("Indiquez un nom.");
-        if (!["caisse", "serveuse"].includes(role)) return fail("Rôle inconnu.");
+        if (!["directeur", "caisse", "serveuse"].includes(role)) return fail("Rôle inconnu.");
+        if (role === "directeur" && caller.role !== "pdg") return fail("Seul le PDG peut ajouter un directeur.", 403);
         if (!pinOk(pin)) return fail("Le PIN doit contenir 4 à 6 chiffres.");
         const { data: u, error } = await admin.auth.admin.createUser({
           email: staffEmail(), password: randomSecret(), email_confirm: true,
