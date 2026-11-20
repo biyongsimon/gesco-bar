@@ -434,7 +434,7 @@ const bizErr = m => { const e = new Error(m); e.biz = true; return e; };
 const hm = iso => iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "";
 const dfr = (d, o) => new Date(String(d).length <= 10 ? d + "T12:00:00" : d).toLocaleDateString("fr-FR", o || { weekday: "short", day: "numeric", month: "short" });
 const ago = iso => { const m = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000)); return m < 1 ? "à l’instant" : m < 60 ? m + " min" : Math.floor(m / 60) + " h " + (m % 60) + " min"; };
-const APP_URL = "https://gescobar-cm.netlify.app/";
+const APP_URL = "https://gescobar-cm.pages.dev/"; // adresse officielle (Cloudflare Pages)
 const LOGO = "data:image/png;base64,__LOGO_B64__";
 document.documentElement.style.setProperty("--logo-mask", `url("${LOGO}")`);
 const THEMES = { system: "Thème automatique", light: "Thème clair", dark: "Thème sombre" };
@@ -2426,7 +2426,7 @@ function vModal() {
       <div class="c">Code de vérification</div><div class="k">${esc(v.code)}</div><div class="qr">${qrSvg("GESCOBAR:" + S.bar.code + ":" + v.code, 3)}</div>
       <div class="c" style="font-size:12px">À présenter en caisse avec ce code. Valable une seule fois.</div></div>
       ${v.status !== "active" ? `<div class="note bad">Ce bon est ${v.status === "used" ? "déjà utilisé" : "annulé"}.</div>` : ""}
-      ${CFG.mode === "live" ? "" : `<p class="mu" style="margin:0">L’impression est disponible sur l’application en ligne (gescobar-cm.netlify.app), pas dans cette démo.</p>`}
+      ${CFG.mode === "live" ? "" : `<p class="mu" style="margin:0">L’impression est disponible sur l’application en ligne (gescobar-cm.pages.dev), pas dans cette démo.</p>`}
       <div class="row">${CFG.mode === "live" ? `<button class="btn grow" data-a="print">Imprimer le bon</button>` : ""}<button class="btn soft grow" data-a="copyV">Copier le texte</button>
       <a class="btn soft grow" href="https://wa.me/?text=${encodeURIComponent(voucherText(v))}" target="_blank" rel="noopener">Envoyer par WhatsApp</a></div><button class="btn ghost" data-a="close">Fermer</button>`; }
   if (m.type === "summary") { const s = m.s || {};
