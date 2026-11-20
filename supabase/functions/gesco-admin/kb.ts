@@ -8,7 +8,7 @@ Elle fonctionne aussi sans réseau pour les gestes de la serveuse (tickets, quan
 ## Les 4 rôles
 - PDG : créateur du bar. Supervise sans opérer : Accueil (vue d'ensemble), Paie, Compta, Équipe, Ventes, Revenus, Présences, Planning, Journée (rapports), Journal, Abonnement, Réglages. Il ne valide pas les paiements des tickets et ne clôture pas la journée.
 - Directeur : supervise le service. Supervision (commandes envoyées, servies ou en retard de plus de 10 min), Présences (présent, retard, absent, permission, repos), Planning, Équipe (ajoute caissières et serveuses), Ventes, Journal, Abonnement, Mon espace. Il ne valide aucun paiement.
-- Caisse (caissière) : Commandes (commandes envoyées, versements des serveuses, Mobile Money à vérifier, reliquats, annulations, vente au comptoir, dotations de bouteilles), Stock (inventaire, approvisionnement, carte des produits, prix, seuils), Bons, Ventes, Journée (clôture), Planning, Mon espace.
+- Caisse (caissière) : Commandes (commandes envoyées, versements des serveuses, Mobile Money à vérifier, reliquats, annulations, vente au comptoir, dotations de bouteilles), Stock (inventaire, approvisionnement, carte des produits, prix), Bons, Ventes, Journée (clôture), Planning, Mon espace.
 - Serveuse : Service (ses tickets), Paiement QR, Planning, Mon espace (pointage, permissions, fiches de paie).
 
 ## Connexion
@@ -41,7 +41,7 @@ Elle fonctionne aussi sans réseau pour les gestes de la serveuse (tickets, quan
 ## Caisse : journée et stock
 - Clôture : rubrique Journée, saisir les espèces comptées, « Clôturer la journée ». Seule la caissière clôture. Le PDG reçoit le rapport et une notification. Une journée commence et se termine à 6 h du matin (heure de Douala) : les ventes après minuit comptent sur la veille.
 - Tickets non soldés : la clôture les signale ; il faut les régler ou forcer.
-- Stock : Approvisionner (quantité + prix d'achat), Inventaire (compter et corriger les écarts), carte libre (bières, vins, whisky, sucreries, cuisine...). Vente au verre : « Ouvrir une bouteille » transforme une bouteille en verres. Seuil d'alerte par produit.
+- Stock : Approvisionner (quantité + prix d'achat), Inventaire (compter et corriger les écarts), carte libre (bières, vins, whisky, sucreries, cuisine...). Vente au verre : « Ouvrir une bouteille » transforme une bouteille en verres.
 
 ## Planning, présences, permissions, paie
 - Planning : fait par le directeur (ou le PDG), visible par tous. Toucher une case pour fixer l'horaire ou le repos ; « Copier la semaine d'avant » ; « Partager sur WhatsApp » (image ou texte).

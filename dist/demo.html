@@ -1112,8 +1112,6 @@ const isCaisse = () => ROLE() === "caisse"; // gestes de caisse : la caissière 
 const isMgr = () => ["directeur", "pdg"].includes(ROLE());
 const isPdg = () => ROLE() === "pdg";
 const isCounter = t => (S.staff.find(s => s.id === t.waitress_id) || {}).role === "caisse"; // vente au comptoir par la caisse
-const lowAt = p => p.low_at ?? S.bar.low_stock;
-const isLow = p => p.active && p.stock <= lowAt(p);
 const unitOf = p => p && p.unit && p.unit !== "bouteille" ? p.unit : "";
 const sold = t => t.status === "cashed" || t.status === "paid";
 const cashOf = t => t.received ?? t.total;
@@ -1335,7 +1333,6 @@ A.saveP = d => run(async () => { const p = S.products.find(x => x.id === d.p), k
   await call("gb_product_save", { p_id: p.id, p_name: V.f[k("n")] ?? p.name, p_category: V.f[k("c")] ?? p.category, p_price: num(k("pr")) ?? p.price, p_stock: num(k("st")) ?? p.stock, p_active: p.active,
     p_unit: unit, p_parent: parent || null, p_doses: parent ? (num(k("dz")) ?? p.doses) : null });
   if (k("co") in V.f) { const co = num(k("co")); if (co != null && co !== (p.cost || 0)) await call("gb_product_set_cost", { p_product: p.id, p_cost: co }); }
-  if (k("lo") in V.f) { const lo = num(k("lo")); if (lo !== (p.low_at ?? null)) await call("gb_product_set_alert", { p_product: p.id, p_low: lo }); }
   ["n", "c", "pr", "st", "u", "par", "dz", "lo", "co"].forEach(s => delete V.f[k(s)]); V.open["p_" + d.p] = false; toast("Produit enregistré."); await refresh(); });
 A.togP = d => run(async () => { const p = S.products.find(x => x.id === d.p);
   await call("gb_product_save", { p_id: p.id, p_name: p.name, p_category: p.category, p_price: p.price, p_stock: null, p_active: !p.active, ...PFIELDS(p) }); toast(p.active ? "Produit masqué de la carte." : "Produit remis sur la carte."); await refresh(); });
@@ -1380,7 +1377,7 @@ A.saveS = d => run(async () => { const s = S.staff.find(x => x.id === d.s);
 A.togS = d => { const s = S.staff.find(x => x.id === d.s); if (s.active) ask(`Désactiver ${s.name} ?`, "Ce membre ne pourra plus se connecter. Son historique reste conservé.", "Désactiver", "togSGo", d, true); else A.togSGo(d); };
 A.togSGo = d => run(async () => { const s = S.staff.find(x => x.id === d.s); await call("gb_staff_update", { p_staff: s.id, p_name: s.name, p_role: s.role, p_active: !s.active });
   toast(s.active ? `${s.name} est désactivé(e).` : `${s.name} est réactivé(e).`); await refresh(); });
-A.saveBar = () => run(async () => { await call("gb_bar_update", { p_name: V.f.b_n ?? S.bar.name, p_city: V.f.b_c ?? (S.bar.city || ""), p_cash_cap: num("b_cap") ?? S.bar.cash_cap, p_low_stock: num("b_low") ?? S.bar.low_stock });
+A.saveBar = () => run(async () => { await call("gb_bar_update", { p_name: V.f.b_n ?? S.bar.name, p_city: V.f.b_c ?? (S.bar.city || ""), p_cash_cap: null, p_low_stock: null });
   ["b_n", "b_c", "b_cap", "b_low"].forEach(k => delete V.f[k]); toast("Réglages enregistrés."); await refresh(); });
 A.copy = d => { const t = d.txt; try { navigator.clipboard.writeText(t).then(() => toast("Copié."), () => toast("Copie impossible : sélectionnez le texte.", "err")); } catch (e) { toast("Copie impossible : sélectionnez le texte.", "err"); } };
 A.copyV = d => { const v = (V.modal && V.modal.v) || {}; A.copy({ txt: voucherText(v) }); };
@@ -1524,11 +1521,10 @@ function wService() {
   const hold = S.holdings.filter(h => h.waitress_id === S.me.id && h.qty !== 0);
   const inHand = sum(hold, h => Math.max(0, h.qty)), owe = sum(hold, h => Math.max(0, -h.qty));
   const lists = { open: mine.filter(t => ["draft", "sent"].includes(t.status)), cash: mine.filter(t => t.status === "cashed" || (t.status === "paid" && t.change_status === "pending")), done: mine.filter(t => t.status === "paid" && t.change_status !== "pending") };
-  const over = cashHand > S.bar.cash_cap;
   const L = lists[V.wf] || lists.open;
   return shiftBanner() +
     `<div class="kpis">${kpi("Mes ventes du jour", F(sum(today.filter(sold), t => t.total)), "", `${today.filter(sold).length} ticket(s)`)}
-    ${kpi("Espèces à remettre", F(cashHand), over ? "alert" : cashHand ? "hl" : "", over ? "Plafond dépassé : versez à la caisse" : `Plafond ${F(S.bar.cash_cap)}`)}
+    ${kpi("Espèces à remettre", F(cashHand), cashHand ? "hl" : "", cashHand ? "À verser à la caisse" : "Rien à verser")}
     ${kpi("Tickets en cours", lists.open.length)}${kpi("Bouteilles en main", inHand, owe ? "hl" : "", owe ? `${owe} à prendre à la caisse` : "")}</div>
     ${hold.length ? `<div class="card stack" style="margin-bottom:14px"><h3>Bouteilles en main</h3><div class="chips">${hold.map(h => h.qty > 0 ? `<span class="chip"><b class="num">${h.qty}</b> ${esc(prodName(h.product_id))}</span>`
       : `<span class="chip owe">À prendre à la caisse : <b class="num">${-h.qty}</b> ${esc(prodName(h.product_id))}</span>`).join("")}</div></div>` : ""}
@@ -1703,7 +1699,7 @@ function badges() {
   const act = S.tickets.filter(t => t.status !== "cancelled"), b = {};
   const alerts = act.filter(t => t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo") || t.change_status === "pending").length;
   const pend = leavesToDecide().length;
-  b.direct = ROLE() === "caisse" ? alerts : 0; b.stock = S.products.filter(isLow).length; b.pres = isMgr() ? pend : 0;
+  b.direct = ROLE() === "caisse" ? alerts : 0; b.pres = isMgr() ? pend : 0;
   b.sup = lateOrders().length + pend; b.home = pend;
   if (isMgr() && typeof planState === "function") { const ps = planState(); b.abo = ps.expired || (ps.days != null && ps.days <= 7) ? 1 : 0; }
   const sh = shiftOf(S.me.id, today()), a = attOf(S.me.id, today());
@@ -1763,7 +1759,7 @@ function vApp() {
   const b = badges(), [l, , d] = SEC[V.tab];
   const VIEW = {
     service: () => wService(), direct: () => (ROLE() === "caisse" ? shiftBanner() : "") + cOps(), sup: dSup, home: pHome,
-    stock: () => cStock(S.products.filter(isLow)), vouch: () => cVouch(S.vouchers.filter(v => v.status === "active")), sales: () => cSales(dayT()),
+    stock: () => cStock(), vouch: () => cVouch(S.vouchers.filter(v => v.status === "active")), sales: () => cSales(dayT()),
     rev: cRev, acc: cAcc, paie: pPaie, qr: vQr, abo: vAbo, pres: mPres, planning: vPlanning, team: cTeam, day: () => cDay(dayT()), log: cLog, settings: cSettings, moi: vMoi };
   const ask = "Notification" in window && Notification.permission === "default" && !LS.get("gesco-ntf-ask", 0) ? `<div class="note info between" style="flex-wrap:wrap;margin-bottom:12px"><span>${ico("alert")} Activez les notifications pour être prévenu(e) même quand le téléphone est en veille.</span><span class="row"><button class="btn sm" data-a="notifOn">Activer</button><button class="btn ghost sm" data-a="notifLater">Plus tard</button></span></div>` : "";
   return header(b) + `<main class="sec" style="--el:${elapsed(V.secT)}ms"><div class="ptitle"><h1>${l}</h1><p class="mu">${d}</p></div>${ask}${VIEW[V.tab]()}</main>`
@@ -1813,7 +1809,7 @@ function dSup() {
   const td = today(), DT = dayT(), crew = crewOf();
   const sent = S.tickets.filter(t => t.status === "sent" && !isCounter(t)).sort((a, b) => (a.sent_at || a.created_at) < (b.sent_at || b.created_at) ? -1 : 1);
   const late = lateOrders(), planned = crew.filter(x => (shiftOf(x.id, td) || {}).kind === "travail"), here = crew.filter(x => { const a = attOf(x.id, td); return a && ["present", "retard"].includes(a.status); });
-  const pend = leavesToDecide(), low = S.products.filter(isLow);
+  const pend = leavesToDecide();
   const row = (t, i) => { const m = Math.round((Date.now() - new Date(t.sent_at || t.created_at)) / 60000), cls = t.served_at ? "ok" : m > 20 ? "bad" : m > 10 ? "warn" : "";
     return `<div class="li rise" style="--i:${i}"><div class="grow"><b>${esc(t.client_label)}</b> <span class="mu">· N°${t.number || "—"} · ${esc(staffName(t.waitress_id))}</span>
       <div class="mu">${t.items.map(x => `${x.qty} ${esc(prodName(x.product_id))}`).join(", ") || "—"} · ${F(t.total)}</div></div>
@@ -1831,7 +1827,7 @@ function dSup() {
       return `<div class="li rise" style="--i:${i}"><div class="grow"><b>${esc(x.name)}</b> <span class="mu">· ${ROLES[x.role]}</span><div class="mu">${shTxt(sh)}${a && a.arrived_at ? ` · arrivée ${hm(a.arrived_at)}` : ""}</div></div>
         <div class="row">${a ? attPill(a) : sh && sh.kind === "travail" ? `<button class="btn sm" data-a="att" data-s="${x.id}" data-st="present">Présent</button><button class="btn ghost sm" data-a="att" data-s="${x.id}" data-st="retard">Retard</button><button class="btn bad sm" data-a="att" data-s="${x.id}" data-st="absent">Absent</button>` : attPill(a)}</div></div>`; }).join("") || '<div class="empty">Ajoutez votre équipe dans Équipe.</div>'}</div></div>
     <div class="card"><h3>Ventes par serveuse aujourd’hui</h3>${salesBars(DT)}</div>
-    ${low.length ? `<div class="note warn"><b>Stock bas</b> : ${low.map(p => `${esc(p.name)} (${p.stock})`).join(", ")}. Prévenez la caisse pour l’approvisionnement.</div>` : ""}</div>`;
+    </div>`;
 }
 
 /* ═══════════════ Présences (directeur, PDG) ═══════════════ */
@@ -1955,11 +1951,10 @@ function pHome() {
   const curM = r ? (r.months.find(m => m.month === cur) || { total: 0, tickets: 0 }) : null, crew = crewOf();
   const planned = crew.filter(x => (shiftOf(x.id, td) || {}).kind === "travail"), here = crew.filter(x => { const a = attOf(x.id, td); return a && ["present", "retard"].includes(a.status); });
   const paidM = (S.payroll || []).filter(p => p.month === cur), unpaid = crew.filter(x => !paidM.some(p => p.staff_id === x.id) && ((S.salaries || []).find(y => y.staff_id === x.id) || {}).salary);
-  const pend = leavesToDecide(), low = S.products.filter(isLow), alerts = act.filter(t => t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo") || t.change_status === "pending");
+  const pend = leavesToDecide(), alerts = act.filter(t => t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo") || t.change_status === "pending");
   const h = new Date().getHours(), hello = h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir";
   const todo = [pend.length && ["check", `${pend.length} demande(s) de permission`, pend.some(l => (S.staff.find(x => x.id === l.staff_id) || {}).role === "directeur") ? "Dont une demande du directeur, à valider par vous" : "Le directeur s’en occupe, vous pouvez aussi décider", "pres"],
     alerts.length && ["orders", `${alerts.length} opération(s) de caisse en cours`, "Annulations, Mobile Money, reliquats : la caissière s’en occupe", null],
-    low.length && ["stock", `${low.length} produit(s) en stock bas`, low.slice(0, 4).map(p => p.name).join(", ") + " · à faire approvisionner par la caissière", null],
     lateOrders().length && ["alert", `${lateOrders().length} commande(s) servie(s) en retard`, "Plus de 10 minutes sans service", "sales"],
     unpaid.length && ["pay", `${unpaid.length} salaire(s) à payer`, monthName(cur), "paie"],
     (() => { const ps = planState(); return ps.essai ? (ps.expired ? ["star", "Essai gratuit terminé", "Choisissez votre formule", "abo"] : ["star", `Essai gratuit : ${ps.days} jour(s) restant(s)`, "Choisissez votre formule quand vous êtes prêt", "abo"]) : ps.expired ? ["star", "Abonnement expiré", "Renouvelez en un geste", "abo"] : ps.days != null && ps.days <= 7 ? ["star", `Abonnement : ${ps.days} jour(s) restant(s)`, "Renouvelez en un geste", "abo"] : null; })(),
@@ -2018,7 +2013,7 @@ function cDirect(act, toRecv, pend, cancels, momo) {
     ${todo.length ? `<div class="card"><h3>À traiter maintenant</h3><div class="list">${todo.join("")}</div></div>` : ""}
     <div class="card"><h3>Versements des serveuses</h3><div class="list">${ws.map(w => {
       const c = toRecv.filter(t => t.waitress_id === w.id && t.pay_method === "cash"), amt = sum(c, cashOf), owe = S.holdings.filter(h => h.waitress_id === w.id && h.qty < 0);
-      return `<div class="li" style="align-items:flex-start"><div class="grow"><b>${esc(w.name)}</b> <span class="mu">· espèces en main</span> <b class="num ${amt > S.bar.cash_cap ? "bad-t" : ""}">${F(amt)}</b>
+      return `<div class="li" style="align-items:flex-start"><div class="grow"><b>${esc(w.name)}</b> <span class="mu">· espèces en main</span> <b class="num">${F(amt)}</b>
         ${c.map(t => `<div class="mu">N°${t.number} ${esc(t.client_label)} · total ${F(t.total)}${t.change_due ? ` · perçu ${F(t.received)}, reliquat ${F(t.change_due)}` : ""}</div>`).join("")}
         ${owe.length ? `<div class="warn-t" style="font-size:13px;margin-top:4px">À remettre : ${owe.map(h => `${-h.qty} × ${esc(prodName(h.product_id))}`).join(", ")}</div>` : ""}</div>
         <div class="stack" style="min-width:min(100%,250px)">${c.length ? `<div class="row"><input class="grow" id="rem_${w.id}" type="number" inputmode="numeric" data-k="rem_${w.id}" value="${val("rem_" + w.id)}" placeholder="Reçu : ${Fs(amt)}" aria-label="Montant reçu de ${esc(w.name)}"><button class="btn sm" data-a="remit" data-w="${w.id}">Valider</button></div>` : ""}
@@ -2083,7 +2078,7 @@ function cVouch(vAct) {
 }
 const CATS = ["Bières", "Vins rouges", "Vins blancs", "Vins rosés", "Champagnes", "Spiritueux", "Liqueurs", "Sucreries", "Jus", "Eaux", "Cuisine", "Autres"];
 const UNITS = ["bouteille", "verre", "canette", "demi-bouteille", "carafe", "plat", "portion", "pièce"];
-function cStock(low) {
+function cStock() {
   const k = (s, id) => "p_" + s + "_" + id, fv = (s, p, d) => esc(V.f[k(s, p.id)] ?? d ?? "");
   const bottles = S.products.filter(p => !p.parent_id), cats = [...new Set([...S.products.map(p => p.category)])];
   const sel = (id, opts, cur, label) => `<select id="${id}" data-k="${id}" aria-label="${label}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${cur === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
@@ -2092,7 +2087,7 @@ function cStock(low) {
   const row = p => { const inh = sum(S.holdings.filter(h => h.product_id === p.id), h => Math.max(0, h.qty)), ed = !!V.open["p_" + p.id], par = p.parent_id && S.products.find(x => x.id === p.parent_id), u = unitOf(p);
     const unit = V.f[k("u", p.id)] ?? (p.unit || "bouteille");
     return `<div class="stack" id="prod_${p.id}" style="padding:12px 0;${p.active ? "" : "opacity:.6"}">
-      <div class="between"><div style="min-width:0"><b>${esc(p.name)}</b><div class="mu num">${F(p.price)}${u ? " / " + esc(u) : ""}${p.cost ? ` · achat ${F(p.cost)}` : ` · <span class="warn-t">prix d’achat à saisir</span>`} · stock <b class="${isLow(p) ? "warn-t" : ""}">${p.stock}</b>${inh ? ` · ${inh} chez les serveuses` : ""}${p.active ? "" : " · masqué"}</div>
+      <div class="between"><div style="min-width:0"><b>${esc(p.name)}</b><div class="mu num">${F(p.price)}${u ? " / " + esc(u) : ""}${p.cost ? ` · achat ${F(p.cost)}` : ` · <span class="warn-t">prix d’achat à saisir</span>`} · stock <b>${p.stock}</b>${inh ? ` · ${inh} chez les serveuses` : ""}${p.active ? "" : " · masqué"}</div>
       ${par ? `<div class="mu">1 bouteille de ${esc(par.name)} = ${p.doses} verres (reste ${par.stock} bouteille(s))</div>` : ""}</div>
       <button class="btn ghost sm" data-a="togPe" data-p="${p.id}">${ed ? "Fermer" : "Modifier"}</button></div>
       ${par ? `<div class="row"><input style="flex:0 1 110px" id="ob_${p.id}" type="number" inputmode="numeric" data-k="ob_${p.id}" value="${val("ob_" + p.id)}" placeholder="1" aria-label="Nombre de bouteilles à ouvrir"><button class="btn soft sm grow" data-a="openB" data-p="${p.id}">Ouvrir une bouteille (+${p.doses} verres)</button></div>` : ""}
@@ -2102,12 +2097,11 @@ function cStock(low) {
         <label class="f grow" for="${k("pr", p.id)}">Prix de vente (FCFA)<input id="${k("pr", p.id)}" type="number" inputmode="numeric" data-k="${k("pr", p.id)}" value="${fv("pr", p, p.price)}"></label>
         <label class="f grow" for="${k("u", p.id)}">Vendu à la${sel(k("u", p.id), UNITS.map(x => [x, x]), unit, "Unité de vente")}</label>
         <label class="f grow" for="${k("st", p.id)}">Stock général<input id="${k("st", p.id)}" type="number" inputmode="numeric" data-k="${k("st", p.id)}" value="${fv("st", p, p.stock)}"></label>
-        <label class="f grow" for="${k("lo", p.id)}">Alerte stock bas à<input id="${k("lo", p.id)}" type="number" inputmode="numeric" data-k="${k("lo", p.id)}" value="${fv("lo", p, p.low_at ?? "")}" placeholder="${S.bar.low_stock} (réglage du bar)"></label></div>
+</div>
         ${glassFields(k("par", p.id), k("dz", p.id), p.id, unit, V.f[k("par", p.id)] ?? p.parent_id ?? "", V.f[k("dz", p.id)] ?? p.doses)}
         <div class="row"><button class="btn ghost sm" data-a="togP" data-p="${p.id}">${p.active ? "Masquer de la carte" : "Remettre sur la carte"}</button><span class="grow"></span><button class="btn sm" data-a="saveP" data-p="${p.id}">Enregistrer</button></div></div>` : ""}</div>`; };
   const npUnit = V.f.np_u || "bouteille";
   return `<div class="stack"><datalist id="gb-cats">${[...new Set([...CATS, ...cats])].map(c => `<option value="${esc(c)}"></option>`).join("")}</datalist>
-    ${low.length ? `<div class="note warn"><b>Stock bas</b> : ${low.map(p => `${esc(p.name)} (${p.stock})`).join(", ")}</div>` : ""}
     <div class="card stack"><div class="between"><h3>Inventaire (frigo et réserve)</h3><button class="btn ${V.inv ? "ghost" : "soft"} sm" data-a="invToggle">${V.inv ? "Fermer" : "Faire l’inventaire"}</button></div>
       <p class="mu" style="margin:0">Comptez ce qu’il reste réellement (hors bouteilles chez les serveuses) et saisissez-le. Les écarts sont corrigés et tracés dans le journal.</p>
       ${V.inv ? `<div class="list">${S.products.filter(p => p.active).map(p => `<div class="between" style="padding:6px 0"><span>${esc(p.name)} <span class="mu">· prévu ${p.stock}</span></span>
@@ -2319,8 +2313,7 @@ function cSettings() {
       <button class="btn" data-a="saveId">Enregistrer l’identité</button></div>
     ${payCfgCard()}
     <div class="card stack"><h3>Réglages du bar</h3><div class="row"><label class="f grow" for="b_n">Nom<input id="b_n" data-k="b_n" value="${esc(V.f.b_n ?? b.name)}"></label><label class="f grow" for="b_c">Ville et quartier<input id="b_c" data-k="b_c" value="${esc(V.f.b_c ?? (b.city || ""))}"></label></div>
-      <div class="row"><label class="f grow" for="b_cap">Plafond d’espèces par serveuse (FCFA)<input id="b_cap" type="number" inputmode="numeric" data-k="b_cap" value="${esc(V.f.b_cap ?? b.cash_cap)}"></label>
-      <label class="f grow" for="b_low">Seuil de stock bas par défaut<input id="b_low" type="number" inputmode="numeric" data-k="b_low" value="${esc(V.f.b_low ?? b.low_stock)}"></label></div><button class="btn" data-a="saveBar">Enregistrer les réglages</button></div>
+      <button class="btn" data-a="saveBar">Enregistrer les réglages</button></div>
     <div class="card stack"><h3>Code du bar</h3><div class="code-big num">${esc(b.code)}</div><button class="btn soft" data-a="go" data-v="team">Installer l’application sur les téléphones</button></div></div>`;
 }
 
