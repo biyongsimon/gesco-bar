@@ -119,3 +119,8 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Rubrique Abonnement → « Sur mon téléphone » : le PDG saisit son numéro, reçoit la demande Mobile Money, tape son code secret ; la formule s'active automatiquement (vérification du statut et du montant chez Notch Pay). Le transfert avec preuve reste disponible.
 - Activation : secret Supabase `NOTCHPAY_SUB_KEY` (clé publique Notch Pay, sandbox pour tester puis production) + console → Réglages → « Paiement direct des abonnements ».
 - Migration `013_abonnement_notchpay.sql`. Une demande non validée expire après 15 minutes.
+
+## v4.5 · QR de paiement vivant
+- Paiement QR : anneau animé et « En attente de validation » tant que le paiement n'est pas confirmé ; à la confirmation, feux d'artifice et « Commande payée ! » clignotant, vibration et son.
+- Bar avec clé Notch Pay : le QR encode un lien de paiement Notch Pay (action `momo_link`), le statut est vérifié toutes les 3,5 s et le ticket passe payé tout seul (montant contrôlé). Sans clé : QR USSD marchand, la célébration s'affiche quand la caisse confirme.
+- Migration `014_qr_paiement_automatique.sql`.

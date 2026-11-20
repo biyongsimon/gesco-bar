@@ -34,6 +34,7 @@ Elle fonctionne aussi sans réseau pour les gestes de la serveuse (tickets, quan
 
 ## Paiement Mobile Money
 - QR code (rubrique Paiement QR de la serveuse) : le PDG saisit d'abord ses codes marchands Orange Money / MTN MoMo dans Réglages → Paiements. Le QR contient le code de paiement avec le montant du ticket ; le client le scanne avec l'appareil photo, son téléphone compose le code, il valide avec son code secret. Puis la serveuse touche « Le client a payé : prévenir la caisse » et la caisse confirme.
+- QR automatique (quand le PDG a collé la clé Notch Pay du bar) : le QR ouvre une page de paiement ; le client choisit Orange Money ou MTN MoMo et valide avec son code secret ; l'écran de la serveuse affiche « En attente de validation » puis « Commande payée ! » avec des feux d'artifice, et le ticket passe payé tout seul, sans intervention de la caisse.
 - Sur iPhone, le scan d'un code USSD peut ne pas composer automatiquement : le client tape le code affiché sous le QR.
 - Paiement par numéro : la serveuse saisit le numéro du client ; il reçoit une demande sur son téléphone et la valide avec son code secret ; le ticket passe payé automatiquement. Nécessite que le PDG ait un compte marchand Notch Pay et colle sa clé dans Réglages → Paiements. La serveuse ne voit jamais le code secret du client.
 - Les codes USSD marchands par défaut sont modifiables dans Réglages : vérifier auprès de l'opérateur.

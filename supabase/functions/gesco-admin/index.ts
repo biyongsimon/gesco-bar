@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
         return json({ ok: true, staff_id: sid });
       }
 
-      case "momo_push": case "momo_status": {
+      case "momo_push": case "momo_status": case "momo_link": {
         const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
         const { data: me, error: e0 } = await admin.auth.getUser(jwt);
         if (e0 || !me?.user) return fail("Session expirée. Reconnectez-vous.", 401);
@@ -128,6 +128,17 @@ Deno.serve(async (req) => {
           const r = await fetch(NP + path, { method, headers: { Authorization: key, Accept: "application/json", "Content-Type": "application/json" }, body: payload ? JSON.stringify(payload) : undefined });
           const j = await r.json().catch(() => ({})); return { ok: r.ok, j };
         };
+        if (body.action === "momo_link") {
+          // QR automatique : lien de paiement Notch Pay du bar ; le client scanne, paie, et le ticket passe payé tout seul.
+          const { data: st, error: e1 } = await admin.rpc("gb_admin_momo_link_start", { p_user: me.user.id, p_ticket: String(body.ticket ?? "") });
+          if (e1) return fail(e1.message);
+          if (st.reuse) return json({ id: st.id, url: st.url });
+          const init = await np("POST", "", st.key, { amount: st.amount, currency: "XAF", reference: "gbqr-" + st.id, description: st.label, customer: { name: st.client || "Client" } });
+          const ref = init.j?.transaction?.reference, url = init.j?.authorization_url ?? init.j?.transaction?.authorization_url;
+          if (!init.ok || !ref || !url) { await admin.rpc("gb_admin_momo_update", { p_req: st.id, p_status: "echoue", p_ref: ref ?? null, p_msg: init.j?.message ?? "lien" }); console.error("notchpay_link", JSON.stringify(init.j)); return fail("Lien de paiement indisponible : " + (init.j?.message ?? "vérifiez la clé Notch Pay du bar.")); }
+          await admin.rpc("gb_admin_momo_link_set", { p_req: st.id, p_ref: ref, p_url: url });
+          return json({ id: st.id, url });
+        }
         if (body.action === "momo_push") {
           const { ticket, phone, operator } = body as Record<string, string>;
           const { data: st, error: e1 } = await admin.rpc("gb_admin_momo_start", { p_user: me.user.id, p_ticket: ticket, p_phone: phone, p_operator: operator });
@@ -147,8 +158,9 @@ Deno.serve(async (req) => {
         if (!g.ref || !g.key) return json({ status: "en_cours" });
         const v = await np("GET", "/" + encodeURIComponent(g.ref), g.key);
         const s = String(v.j?.transaction?.status ?? "pending");
-        const old = Date.now() - new Date(g.created).getTime() > 5 * 60000;
-        const done = s === "complete" ? "reussi" : ["failed", "rejected", "canceled", "abandoned", "expired"].includes(s) || old ? "echoue" : null;
+        const old = Date.now() - new Date(g.created).getTime() > (g.kind === "lien" ? 15 : 5) * 60000;
+        const paid = Number(v.j?.transaction?.amount ?? 0), short = s === "complete" && paid > 0 && g.amount && paid < Number(g.amount);
+        const done = s === "complete" && !short ? "reussi" : short || ["failed", "rejected", "canceled", "cancelled", "abandoned", "expired"].includes(s) || old ? "echoue" : null;
         if (done) await admin.rpc("gb_admin_momo_update", { p_req: id, p_status: done, p_ref: g.ref, p_msg: s });
         return json({ status: done ?? "en_cours", provider: s });
       }

@@ -355,6 +355,18 @@ textarea{resize:vertical;min-height:84px;line-height:1.4}
 @keyframes avpop{0%{transform:scale(0) rotate(-40deg);opacity:0}70%{transform:scale(1.2)}100%{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.av-ask svg{animation:none}}
 .paywait{text-align:center;align-items:center;border-color:color-mix(in srgb,var(--brand) 45%,var(--line))}.pw-ic{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--sunk)}.pw-ic .spin{width:26px;height:26px}
+.qwrap{position:relative;display:block;width:fit-content;max-width:100%;margin:0 auto}.qwrap.qload{min-height:220px;display:grid;place-items:center;gap:10px;align-content:center}
+.qring{position:absolute;inset:-6px;border-radius:22px;pointer-events:none;background:conic-gradient(from var(--qa,0deg),transparent 0 70%,var(--brand) 85%,#f5b301 92%,transparent);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;padding:3px;animation:qspin 1.6s linear infinite}
+@property --qa{syntax:"<angle>";inherits:false;initial-value:0deg}@keyframes qspin{to{--qa:360deg}}
+.qwait{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;padding:10px;border-radius:12px;background:var(--sunk)}.qwait b{font-size:16px}
+.qw-dots{display:flex;gap:6px}.qw-dots i{width:9px;height:9px;border-radius:50%;background:var(--brand);animation:qdot 1.1s ease-in-out infinite}.qw-dots i:nth-child(2){animation-delay:.18s}.qw-dots i:nth-child(3){animation-delay:.36s}
+@keyframes qdot{0%,80%,100%{transform:scale(.55);opacity:.4}40%{transform:scale(1);opacity:1}}
+.paidcel{position:relative;overflow:hidden;min-height:230px;display:grid;place-items:center;text-align:center;background:radial-gradient(circle at 50% 40%,#123a2a,#08130e);color:#fff;border:0}
+.paidcel canvas{position:absolute;inset:0;width:100%;height:100%}.pc-in{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px}
+.pc-t{font:800 30px/1.1 var(--display);background:linear-gradient(90deg,#ffd84d,#ff7ab6,#7ad7ff,#9dff8a,#ffd84d);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:pcblink .8s steps(2,jump-none) infinite,pcflow 2.4s linear infinite;filter:drop-shadow(0 0 10px rgba(255,216,77,.55))}
+@keyframes pcblink{50%{opacity:.35}}@keyframes pcflow{to{background-position:300% 0}}
+.pc-a{font:800 24px var(--display)}.paidcel .mu{color:#cfe8dc}.paidcel .btn{margin-top:6px}
+@media (prefers-reduced-motion:reduce){.pc-t{animation:none}.qring{animation:none}}
 .av-lbl{text-align:center;margin:-4px 0 0;font-weight:800;min-height:1.4em}
 .chip.pick.on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
 .av-ok{width:64px;height:64px;border-radius:50%;margin:0 auto;display:grid;place-items:center;background:var(--ok-soft,#dff3e8);color:var(--ok,#0f8a5f)}.av-ok .ico{width:32px;height:32px}.hhead .ib{flex:none}.hin{flex-wrap:nowrap}.hin input{flex:1;min-width:0}.hin .btn{flex:none;padding:0 14px}.hin .btn .ico{margin:0}
@@ -492,6 +504,8 @@ function notifyNew() { // chacun est prévenu de ce qui le concerne, avec un gé
     if (a.arrived_at) K.set("a:" + a.staff_id, ["staff", "Pointage d’arrivée", `${staffName(a.staff_id)} est arrivé(e) à ${hm(a.arrived_at)}${a.status === "retard" ? ` · retard de ${a.late_minutes} min` : ""}`]);
     if (a.left_at) K.set("d:" + a.staff_id, ["staff", "Pointage de départ", `${staffName(a.staff_id)} est parti(e) à ${hm(a.left_at)}`]); });
   if (r === "pdg") (S.days || []).slice(0, 5).forEach(d => K.set("j:" + d.id, ["ok", "Journée clôturée par la caisse", `${dfr(d.business_date)} · ventes ${F(d.summary && d.summary.ventes)} · écart ${F((d.counted_cash || 0) - (d.expected_cash || 0))}`]));
+  if (SEEN && r === "serveuse" && V.tab === "qr" && typeof qrPaid === "function") { const np = [...K.keys()].find(k => k.startsWith("p:") && !SEEN.has(k)); const tk = np && S.tickets.find(t => t.id === np.slice(2));
+    if (tk && tk.pay_method === "momo" && !(V.qrPaid && V.qrPaid.t === tk.id)) setTimeout(() => qrPaid(tk.id), 0); }
   if (SEEN) { const fresh = [...K.keys()].filter(k => !SEEN.has(k)); if (fresh.length) { const [kind, title, body] = K.get(fresh[fresh.length - 1]); notify(kind, fresh.length > 1 ? `${title} (+${fresh.length - 1})` : title, body); } }
   SEEN = new Set(K.keys()); }
 const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
@@ -976,6 +990,11 @@ function DemoBackend() {
         const base = Math.max(Date.now(), db.bar.plan_until ? new Date(db.bar.plan_until + "T12:00:00").getTime() : 0), d = new Date(base); d.setMonth(d.getMonth() + x.months);
         Object.assign(db.bar, { plan: x.plan, plan_until: d.toLocaleDateString("sv-SE"), plan_trial_until: null, trial_plan: null }); save(); }
       return { status: x.status }; },
+    async momoLink(ticket) { // démo : le client « scanne et valide » au bout de 9 secondes
+      const c = ctx(), t = tk(ticket); if (t.waitress_id !== c.id) E("Ce ticket appartient à une autre serveuse."); if (t.status !== "sent") E("Ce ticket n’est plus à encaisser.");
+      if (!db.bar.push_enabled) E("Le paiement automatique n’est pas activé par le PDG.");
+      const ex = db.momo.find(x => x.ticket_id === t.id && x.kind === "lien" && x.status === "en_cours"); if (ex) return { id: ex.id, url: ex.url };
+      const id = uuid(), url = "https://pay.notchpay.co/demo-" + id.slice(0, 8); db.momo.push({ id, ticket_id: t.id, status: "en_cours", at: Date.now() + 3000, kind: "lien", url }); save(); return { id, url }; },
     async momoStatus(id) { db = LS.get(KEY) || db; const m = db.momo.find(x => x.id === id); if (!m) E("Demande introuvable.");
       if (m.status === "en_cours" && Date.now() - m.at > 6000) { m.status = "reussi"; const t = db.tickets.find(x => x.id === m.ticket_id);
         if (t && ["sent", "cashed"].includes(t.status)) Object.assign(t, { status: "paid", pay_method: "momo", received: t.total, change_due: 0, change_status: "none", cashed_at: now(), paid_at: now(), updated_at: now() });
@@ -1074,6 +1093,7 @@ function LiveBackend() {
     staffCreate: (name, role, pin) => fn("staff_create", { name, role, pin }, true),
     momoPush: (ticket, phone, operator) => fn("momo_push", { ticket, phone, operator }, true),
     momoStatus: id => fn("momo_status", { id }, true),
+    momoLink: ticket => fn("momo_link", { ticket }, true),
     subPush: (plan, months, operator, phone) => fn("sub_push", { plan, months, operator, phone }, true),
     subStatus: id => fn("sub_status", { id }, true),
     assist: (message, thread, token) => fn("assist", { message, thread, token }, true),
@@ -2159,19 +2179,26 @@ const opOf = ph => { const p = String(ph || "").replace(/\D/g, "").replace(/^237
 const ussdFor = (op, amount) => { const b = S.bar, [, ck, tk] = OPS[op]; return b[ck] ? (b[tk] || "").replace("{code}", b[ck]).replace("{montant}", String(amount)) : ""; };
 function vQr() {
   const b = S.bar, ops = Object.keys(OPS).filter(k => b[OPS[k][1]]), open = S.tickets.filter(t => t.waitress_id === S.me.id && t.status === "sent" && !t.cancel_requested && t.total > 0);
-  if (!ops.length) return `<div class="card stack"><h3>QR de paiement non configuré</h3><p class="mu" style="margin:0">Le PDG doit d’abord saisir le code marchand Orange Money ou MTN MoMo du bar dans Réglages → Paiements.</p></div>`;
+  if (!ops.length && !b.push_enabled) return `<div class="card stack"><h3>QR de paiement non configuré</h3><p class="mu" style="margin:0">Le PDG doit d’abord saisir le code marchand Orange Money ou MTN MoMo du bar, ou sa clé Notch Pay, dans Réglages → Paiements.</p></div>`;
   if (!ops.includes(V.qrOp)) V.qrOp = ops[0];
   if (V.qrT !== "libre" && !open.some(t => t.id === V.qrT)) V.qrT = open[0] ? open[0].id : "libre";
-  const t = open.find(x => x.id === V.qrT), amount = t ? t.total : (num("qr_amt") || 0), ussd = amount > 0 ? ussdFor(V.qrOp, amount) : "", p = V.push && V.push.t === V.qrT ? V.push : null;
-  return `<div class="stack">
+  const t = open.find(x => x.id === V.qrT), amount = t ? t.total : (num("qr_amt") || 0), ussd = amount > 0 && ops.length ? ussdFor(V.qrOp, amount) : "", p = V.push && V.push.t === V.qrT ? V.push : null;
+  const auto = !!(t && b.push_enabled), L = auto ? (V.qrl || {})[t.id] : null;
+  if (auto && (!L || L.amount !== t.total) && !V.qrBusy) setTimeout(() => qrLink(t), 0);
+  if (t) qrWatch(t.id, auto);
+  const waitBox = `<div class="qwait" role="status"><span class="qw-dots"><i></i><i></i><i></i></span><b>En attente de validation</b><span class="mu">${auto ? "Le ticket passe « payé » tout seul dès que le client valide sur son téléphone." : "Dès que la caisse confirme la réception, la commande s’affiche payée."}</span></div>`;
+  const qrBlock = auto ? (L && L.url ? `<div class="qwrap">${qrFancy(L.url)}<i class="qring" aria-hidden="true"></i></div><div class="qrsum"><span class="mu">${esc(t.client_label)} · Orange Money ou MTN MoMo</span><b class="num">${F(t.total)}</b></div>${waitBox}
+      <p class="mu" style="margin:0;text-align:center">Le client scanne avec l’appareil photo, choisit Orange Money ou MTN MoMo, puis valide avec son code secret sur son téléphone.</p>`
+      : `<div class="qwrap qload"><span class="spin"></span><span class="mu">Préparation du QR de paiement…</span></div>`) : "";
+  return `<div class="stack">${V.qrPaid ? qrCelebration() : ""}
     <div class="card stack"><h3>Quel ticket encaisser ?</h3><div class="chips">${open.map(x => `<button class="chip pick ${V.qrT === x.id ? "on" : ""}" data-a="qrPick" data-t="${x.id}"><b>${esc(x.client_label)}</b> ${F(x.total)}</button>`).join("")}
       <button class="chip pick ${V.qrT === "libre" ? "on" : ""}" data-a="qrPick" data-t="libre">Montant libre</button></div>
       ${V.qrT === "libre" ? `<label class="f" for="qr_amt">Montant à payer (FCFA)<input id="qr_amt" type="number" inputmode="numeric" data-k="qr_amt" value="${val("qr_amt")}" placeholder="Ex. 3500"></label>` : ""}
       ${!open.length ? `<p class="mu" style="margin:0">Aucun ticket envoyé à la caisse en attente de paiement.</p>` : ""}</div>
-    <div class="card stack qrcard"><div class="segs" role="group" aria-label="Opérateur">${ops.map(k => `<button class="${V.qrOp === k ? "on " + (k === "orange" ? "warn" : "sky") : ""}" data-a="qrOp" data-v="${k}">${OPS[k][0]}</button>`).join("")}</div>
-      ${ussd ? `${qrFancy("tel:" + ussd.replace(/#/g, "%23"))}<div class="qrsum"><span class="mu">${t ? esc(t.client_label) + " · " : ""}${OPS[V.qrOp][0]}</span><b class="num">${F(amount)}</b><code>${esc(ussd)}</code></div>
+    <div class="card stack qrcard">${auto ? "" : `<div class="segs" role="group" aria-label="Opérateur">${ops.map(k => `<button class="${V.qrOp === k ? "on " + (k === "orange" ? "warn" : "sky") : ""}" data-a="qrOp" data-v="${k}">${OPS[k][0]}</button>`).join("")}</div>`}
+      ${auto ? qrBlock : ussd ? `<div class="qwrap">${qrFancy("tel:" + ussd.replace(/#/g, "%23"))}${t ? `<i class="qring" aria-hidden="true"></i>` : ""}</div><div class="qrsum"><span class="mu">${t ? esc(t.client_label) + " · " : ""}${OPS[V.qrOp][0]}</span><b class="num">${F(amount)}</b><code>${esc(ussd)}</code></div>
         <p class="mu" style="margin:0;text-align:center">Le client scanne avec l’appareil photo : son téléphone compose le code, il valide avec son code secret. Il peut aussi taper le code ci-dessus.</p>
-        ${t ? `<button class="btn soft" data-a="momo" data-t="${t.id}">Le client a payé : prévenir la caisse</button>` : ""}`
+        ${t ? waitBox + `<button class="btn soft" data-a="momo" data-t="${t.id}">Le client a payé : prévenir la caisse</button>` : ""}`
         : `<div class="empty">Choisissez un ticket ou saisissez un montant.</div>`}</div>
     ${t ? `<div class="card stack"><h3>Le client ne peut pas scanner ?</h3>
       <p class="mu" style="margin:0">Saisissez son numéro : il reçoit sur son téléphone une demande de paiement de ${F(t.total)} et la valide avec son code secret Orange Money ou MTN MoMo. La serveuse ne voit jamais ce code.</p>
@@ -2181,6 +2208,43 @@ function vQr() {
         <button class="btn" data-a="pushGo" data-t="${t.id}">Envoyer la demande de paiement au client</button>`}</div>` : ""}</div>`;
 }
 A.qrFor = d => { V.qrT = d.t; A.go({ v: "qr" }); };
+/* QR automatique (lien Notch Pay du bar) et surveillance du paiement */
+async function qrLink(t) { if (V.qrBusy) return; V.qrBusy = true;
+  try { const r = await B.momoLink(t.id); V.qrl = V.qrl || {}; V.qrl[t.id] = { id: r.id, url: r.url, amount: t.total, status: "en_cours" }; }
+  catch (e) { V.qrl = V.qrl || {}; V.qrl[t.id] = { amount: t.total, err: e.message }; toast(e.message, "err"); }
+  V.qrBusy = false; if (V.tab === "qr") render(); }
+function qrWatch(tid, auto) { if (V.qrW && V.qrW.t === tid) return; clearInterval(window.__qrw); V.qrW = { t: tid, at: Date.now() };
+  window.__qrw = setInterval(async () => { const w = V.qrW; if (!w || !S || V.screen !== "app") return clearInterval(window.__qrw);
+    if (Date.now() - w.at > 20 * 60000) { clearInterval(window.__qrw); V.qrW = null; return; }
+    try { const L = (V.qrl || {})[w.t];
+      if (L && L.id && L.status === "en_cours") { const s = await B.momoStatus(L.id);
+        if (s.status === "reussi") { L.status = "reussi"; await refresh(); return qrPaid(w.t); }
+        if (s.status === "echoue") { delete V.qrl[w.t]; if (V.tab === "qr") render(); } }
+      else if (V.tab === "qr" && document.visibilityState === "visible") { await refresh(); }
+      const tk = S.tickets.find(x => x.id === w.t); if (tk && tk.status === "paid") qrPaid(w.t);
+    } catch (e) {} }, auto ? 3500 : 6000); }
+function qrPaid(tid) { clearInterval(window.__qrw); const tk = S.tickets.find(x => x.id === tid) || {}; V.qrW = null;
+  V.qrPaid = { t: tid, total: tk.total || 0, label: tk.client_label || "", at: Date.now() }; if (V.qrT === tid) V.qrT = null;
+  try { navigator.vibrate && navigator.vibrate([70, 50, 70, 50, 140]); } catch (e) {} try { chime("ok"); } catch (e) {}
+  if (V.tab !== "qr") notify("ok", "Commande payée !", `${tk.client_label || ""} · ${F(tk.total || 0)}`);
+  render(); setTimeout(fireworks, 30); setTimeout(() => { if (V.qrPaid && Date.now() - V.qrPaid.at >= 9000) { V.qrPaid = null; if (V.tab === "qr") render(); } }, 9200); }
+A.qrPaidOk = () => { V.qrPaid = null; render(); };
+function qrCelebration() { const p = V.qrPaid;
+  return `<div class="card paidcel" role="alert"><canvas id="fw" aria-hidden="true"></canvas><div class="pc-in"><b class="pc-t">Commande payée !</b>
+    <span class="num pc-a">${F(p.total)}</span><span class="mu">${esc(p.label)} · validé sur le téléphone du client</span>
+    <button class="btn soft sm" data-a="qrPaidOk">Encaisser un autre ticket</button></div></div>`; }
+function fireworks() { const c = document.getElementById("fw"); if (!c) return; const box = c.parentElement.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+  c.width = box.width * dpr; c.height = box.height * dpr; const x = c.getContext("2d"); x.scale(dpr, dpr);
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches, P = [], W = box.width, H = box.height; let bursts = calm ? 2 : 7, t0 = performance.now();
+  const boom = () => { const cx = W * (.2 + Math.random() * .6), cy = H * (.2 + Math.random() * .4), h = Math.random() * 360, n = calm ? 26 : 60;
+    for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2, v = 1.6 + Math.random() * 2.6; P.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, l: 1, h: (h + Math.random() * 60) % 360, s: 1.6 + Math.random() * 1.8 }); } };
+  boom(); const iv = setInterval(() => { if (--bursts <= 0 || !document.getElementById("fw")) return clearInterval(iv); boom(); }, 380);
+  const step = now => { if (!document.getElementById("fw")) return; x.globalCompositeOperation = "source-over"; x.clearRect(0, 0, W, H); x.globalCompositeOperation = "lighter";
+    for (const p of P) { p.x += p.vx; p.y += p.vy; p.vy += .045; p.vx *= .985; p.vy *= .985; p.l -= .012;
+      if (p.l > 0) { x.fillStyle = `hsla(${p.h},100%,62%,${p.l})`; x.beginPath(); x.arc(p.x, p.y, p.s, 0, 7); x.fill(); } }
+    for (let i = P.length - 1; i >= 0; i--) if (P[i].l <= 0) P.splice(i, 1);
+    if (now - t0 < 4200 || P.length) requestAnimationFrame(step); else x.clearRect(0, 0, W, H); };
+  requestAnimationFrame(step); }
 A.qrPick = d => { V.qrT = d.t; render(); };
 A.qrOp = d => { V.qrOp = d.v; render(); };
 A.pushStop = () => { clearInterval(window.__push); V.push = null; render(); };
