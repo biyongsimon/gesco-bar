@@ -1,7 +1,7 @@
 // Base de connaissances de l'assistant GesCo Bar. À enrichir avec les questions réelles des clients.
 export const KB = `# GesCo Bar : guide complet (référence de l'assistant)
 
-GesCo Bar est une application de gestion de bars et snacks au Cameroun, éditée par BISMO Agency (Bastos, Yaoundé).
+GesCo Bar est une application de gestion de bars et snacks au Cameroun, éditée par BISMO Agency (Ngousso, Yaoundé).
 Adresse : https://gescobar-cm.pages.dev (l'ancienne adresse gescobar-cm.netlify.app redirige vers elle). Elle s'utilise dans le navigateur du téléphone et s'installe comme une application (« Ajouter à l'écran d'accueil »).
 Elle fonctionne aussi sans réseau pour les gestes de la serveuse (tickets, quantités, envoi, encaissement) : tout est envoyé au retour du réseau.
 
