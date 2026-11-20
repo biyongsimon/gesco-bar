@@ -163,7 +163,12 @@ th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05
 .pin-dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--muted)}
 .pin-dots i.f{background:var(--ink);border-color:var(--ink)}
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.pad button{min-height:60px;border-radius:14px;border:1px solid var(--line);background:var(--surface);font:700 24px var(--display);cursor:pointer}
+.pad button{position:relative;min-height:60px;border-radius:14px;border:1px solid var(--line);background:var(--surface);font:700 24px var(--display);cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;transition:none!important;transform:none!important;animation:none!important}
+.pad button::after{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;opacity:0;background:conic-gradient(from 0deg,#ff3b3b,#ff9f1a,#ffe53b,#3bd16f,#3bb4ff,#7a5cff,#e04bff,#ff3b3b);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;padding:2px}
+.pad button.zap::after{animation:padglow .55s ease-out}
+@keyframes padglow{0%{opacity:1;filter:blur(0)}100%{opacity:0;filter:blur(3px)}}
+.pad{touch-action:manipulation}.pin-dots,.dots{min-height:22px}
+#fxl{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}#fxl i{position:absolute;border-radius:50%;will-change:transform,opacity}#fxl i.st{border-radius:1px;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)}
 .pad button.k2{font:600 15px var(--body);color:var(--muted)}
 .demo{border:1px dashed color-mix(in srgb,var(--amber) 70%,transparent);background:var(--amber-soft);border-radius:var(--r);padding:12px;font-size:14px}
 .code-big{font:800 34px var(--display);letter-spacing:.12em;text-align:center;color:var(--brand)}
@@ -1223,7 +1228,31 @@ A.loadStaff = () => run(async () => { const code = (V.f.code ?? V.code ?? "").tr
 A.changeBar = () => { V.list = null; V.pick = null; V.pin = ""; V.f.code = V.code; render(); };
 A.pick = d => { V.pick = V.list.staff.find(s => s.id === d.id); V.pin = ""; render(); };
 A.unpick = () => { V.pick = null; V.pin = ""; render(); };
-A.pinKey = d => { if (d.k === "del") V.pin = V.pin.slice(0, -1); else if (V.pin.length < 6) V.pin += d.k; render(); };
+/* Clavier PIN : vibration + poussière magique arc-en-ciel, sans redessiner l'écran (le clavier ne bouge plus) */
+function padFx(el) {
+  try { navigator.vibrate && navigator.vibrate(14); } catch (e) {}
+  if (!el || !el.getBoundingClientRect) return;
+  el.classList.remove("zap"); void el.offsetWidth; el.classList.add("zap");
+  const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  let L = document.getElementById("fxl"); if (!L) { L = document.createElement("div"); L.id = "fxl"; document.body.appendChild(L); }
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches, n = calm ? 6 : 18, h0 = Math.random() * 360;
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement("i"), a = Math.random() * Math.PI * 2, dist = (calm ? 18 : 28) + Math.random() * (calm ? 14 : 46), sz = 3 + Math.random() * 5, hue = (h0 + i * (360 / n)) % 360;
+    p.style.cssText = `left:${cx}px;top:${cy}px;width:${sz}px;height:${sz}px;background:hsl(${hue} 95% 62%);box-shadow:0 0 ${sz * 2}px hsl(${hue} 95% 60%)`;
+    if (i % 3 === 0) p.className = "st";
+    L.appendChild(p);
+    const dx = Math.cos(a) * dist, dy = Math.sin(a) * dist - (calm ? 0 : 14);
+    const an = p.animate([{ transform: "translate(-50%,-50%) scale(.4)", opacity: 1 }, { transform: `translate(calc(-50% + ${dx * .6}px), calc(-50% + ${dy * .6}px)) scale(1.15) rotate(90deg)`, opacity: 1, offset: .45 },
+      { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy + 18}px)) scale(.2) rotate(200deg)`, opacity: 0 }], { duration: 650 + Math.random() * 350, easing: "cubic-bezier(.2,.7,.3,1)" });
+    an.onfinish = () => p.remove();
+  }
+}
+function pinDots(cls, len, err) { const d = document.querySelector(cls); if (!d) return false;
+  const n = Math.max(4, len), on = cls === ".dots" ? "on" : "f";
+  d.innerHTML = Array.from({ length: n }, (_, i) => `<i class="${i < len ? on : ""}"></i>`).join(""); d.classList.toggle("shake", !!err);
+  d.setAttribute("aria-label", `PIN saisi : ${len} chiffre(s)`); return true; }
+const padBtn = (a, k) => document.querySelector(`.pad [data-a="${a}"][data-k="${k}"]`);
+A.pinKey = (d, el) => { if (d.k === "del") V.pin = V.pin.slice(0, -1); else if (V.pin.length < 6) V.pin += d.k; padFx(el || padBtn("pinKey", d.k)); if (!pinDots(".pin-dots", V.pin.length)) render(); };
 A.pinGo = () => run(async () => { if (V.pin.length < 4) throw bizErr("Le PIN contient au moins 4 chiffres.");
   const id = V.pick.id, pin = V.pin; try { await B.pinLogin(V.code, id, pin); } catch (e) { V.pin = ""; throw e; } LS.set(LKH, await pinHash(id, pin)); await enterApp(); });
 /* ── Verrouillage après 1 minute d'inactivité : chacun retape son PIN ── */
@@ -1246,7 +1275,7 @@ function vLock() {
       <button class="k2 go" data-a="lkGo" ${V.busy ? "disabled" : ""}>${V.busy ? '<span class="spin"></span>' : "OK"}</button></div>
     <button class="btn ghost sm" data-a="lkOut">Ce n’est pas moi · se déconnecter</button></div>`;
 }
-A.lkKey = d => { V.lerr = false; if (d.k === "del") V.lpin = V.lpin.slice(0, -1); else if (V.lpin.length < 6) V.lpin += d.k; render(); if (V.lpin.length === 6) A.lkGo(); };
+A.lkKey = (d, el) => { V.lerr = false; if (d.k === "del") V.lpin = V.lpin.slice(0, -1); else if (V.lpin.length < 6) V.lpin += d.k; padFx(el || padBtn("lkKey", d.k)); if (!pinDots(".dots", V.lpin.length)) render(); if (V.lpin.length === 6) A.lkGo(); };
 A.lkOut = () => { V.locked = false; logout(); };
 A.lkGo = async () => { if (V.busy || V.lpin.length < 4) return; const pin = V.lpin, h = LS.get(LKH, null); let ok = false;
   if (h) ok = (await pinHash(S.me.id, pin)) === h;
