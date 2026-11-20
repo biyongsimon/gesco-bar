@@ -4,90 +4,240 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#0b1f17">
+<meta name="theme-color" content="#060b09">
 <title>Console GesCo Bar</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="console.webmanifest">
+<link rel="apple-touch-icon" href="console-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GesCo Console">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
-:root{--bg:#f3f6f4;--surface:#fff;--sunk:#eaf0ec;--ink:#13201a;--muted:#5b6a62;--line:#dbe3dd;--brand:#0f5c3c;--brand-ink:#fff;--ok:#1b7f4b;--ok-soft:#dff3e7;--warn:#8a5a06;--warn-soft:#fbf0d9;--bad:#b3261e;--bad-soft:#fbe4e2;--sky:#1f6fa8;--sky-soft:#e1eef8;--night:#5b3fa0;--night-soft:#ece6f8;
-  --display:"Bricolage Grotesque","Trebuchet MS",sans-serif;--body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b120e;--surface:#121c17;--sunk:#18241e;--ink:#e6efe9;--muted:#93a69b;--line:#24342c;--brand:#38b87a;--brand-ink:#06150e;--ok:#4fd08c;--ok-soft:#123222;--warn:#f0b54a;--warn-soft:#33270d;--bad:#ff7b72;--bad-soft:#3a1715;--sky:#6cb6ec;--sky-soft:#12283a;--night:#b9a2f5;--night-soft:#251b3d;color-scheme:dark}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
-h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.02em}h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-family:var(--body);font-weight:700}
+/* Console GesCo — sombre par défaut (ambiance bar de nuit), thème clair au choix */
+:root{--bg:#060b09;--glow1:rgba(47,211,138,.12);--glow2:rgba(20,184,200,.09);--surface:#0c1511;--surface-2:#101b16;--glass:rgba(9,16,13,.78);--sunk:#14211b;--ink:#ebf4ef;--muted:#8aa096;--line:#1a2a22;--line-2:#25382f;
+  --brand:#2fd38a;--brand-2:#16b9c9;--brand-ink:#03140b;--gold:#f6b94a;--av-l:72%;--on-ok:#03140b;--on-bad:#2a0605;
+  --ok:#4fd890;--ok-soft:rgba(79,216,144,.13);--warn:#f4b64e;--warn-soft:rgba(244,182,78,.13);--bad:#ff7a72;--bad-soft:rgba(255,122,114,.13);--sky:#6cbcf0;--sky-soft:rgba(108,188,240,.13);--night:#b9a2f5;--night-soft:rgba(185,162,245,.14);
+  --shadow:0 18px 40px -24px rgba(0,0,0,.85);--display:"Bricolage Grotesque","Trebuchet MS",sans-serif;--body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark}
+:root[data-theme="light"]{--bg:#f2f6f4;--glow1:rgba(15,122,79,.09);--glow2:rgba(14,127,154,.07);--surface:#fff;--surface-2:#f8fbf9;--glass:rgba(255,255,255,.82);--sunk:#edf3f0;--ink:#0e1913;--muted:#5b6d64;--line:#e0e8e3;--line-2:#cfdad4;
+  --brand:#0f7a4f;--brand-2:#0e7f9a;--brand-ink:#fff;--gold:#b7791f;--av-l:36%;--on-ok:#fff;--on-bad:#fff;
+  --ok:#15803d;--ok-soft:#dcf4e5;--warn:#9a5b00;--warn-soft:#fdf0d5;--bad:#c0262d;--bad-soft:#fde4e3;--sky:#1d6fa8;--sky-soft:#e1eef8;--night:#5b3fa0;--night-soft:#ece6f8;--shadow:0 16px 36px -24px rgba(15,40,28,.4);color-scheme:light}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background:radial-gradient(900px 520px at 100% -8%,var(--glow1),transparent 62%),radial-gradient(760px 480px at -12% 108%,var(--glow2),transparent 60%)}
+h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.02em;text-wrap:balance}
+h3{font:700 12px/1.3 var(--body);text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
 button,input,select,textarea{font:inherit;color:inherit}
-input,select,textarea{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
-input:focus,select:focus,textarea:focus{outline:3px solid color-mix(in srgb,var(--brand) 40%,transparent);border-color:var(--brand)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:8px 16px;border-radius:10px;border:1px solid transparent;background:var(--brand);color:var(--brand-ink);font-weight:700;cursor:pointer}
-.btn.soft{background:var(--sunk);color:var(--ink);border-color:var(--line)}.btn.bad{background:var(--bad);color:#fff}.btn.ok{background:var(--ok);color:#fff}.btn.sm{min-height:34px;padding:5px 12px;font-size:13px}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+input,select,textarea{width:100%;min-height:46px;padding:11px 13px;border:1px solid var(--line-2);border-radius:12px;background:var(--surface-2);transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in srgb,var(--brand) 22%,transparent)}
+textarea{resize:vertical;min-height:80px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:10px 18px;border-radius:14px;border:1px solid transparent;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:var(--brand-ink);font-weight:700;cursor:pointer;box-shadow:0 10px 24px -14px var(--brand);transition:transform .12s,filter .15s;text-decoration:none}
+.btn:hover{filter:brightness(1.06)}.btn:active{transform:scale(.98)}
+.btn.soft{background:var(--sunk);color:var(--ink);border-color:var(--line-2);box-shadow:none}
+.btn.bad{background:var(--bad);color:var(--on-bad);box-shadow:none}.btn.ok{background:var(--ok);color:var(--on-ok);box-shadow:none}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:13px;border-radius:11px}
 .btn[disabled]{opacity:.5;cursor:default}
+.lnk{border:0;background:none;color:var(--brand);font-weight:600;cursor:pointer;padding:6px 4px}
+.ib{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;flex:none;padding:0}
 .mu{color:var(--muted)}.num{font-variant-numeric:tabular-nums}
-.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.cur{font-size:.5em;font-weight:700;margin-left:.3em;opacity:.7;letter-spacing:.04em}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;background:var(--sunk);color:var(--muted);white-space:nowrap}
 .pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.bad{background:var(--bad-soft);color:var(--bad)}.pill.sky{background:var(--sky-soft);color:var(--sky)}.pill.night{background:var(--night-soft);color:var(--night)}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.grow{flex:1 1 auto;min-width:0}.stack{display:flex;flex-direction:column;gap:12px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
-.f{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
-/* connexion */
-.auth{min-height:100vh;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
-.auth .card{width:min(420px,100%);padding:28px;display:flex;flex-direction:column;gap:14px}
-.auth .logo{width:150px;margin:0 auto}
-.err{padding:10px 12px;border-radius:10px;background:var(--bad-soft);color:var(--bad);font-weight:600}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;min-width:0;box-shadow:var(--shadow)}
+.ch{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.f{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:var(--muted)}
+code{font-size:.9em;padding:1px 6px;border-radius:6px;background:var(--sunk)}
+hr{border:0;border-top:1px solid var(--line);margin:6px 0}
+.badge{display:inline-block;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:#ef4444;color:#fff;font:700 11px/20px var(--body);text-align:center;font-style:normal;margin-left:auto;box-shadow:0 0 0 2px var(--surface)}
+.av{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font:800 16px var(--display);flex:none;background:hsl(var(--h,150) 60% 50% / .16);color:hsl(var(--h,150) 62% var(--av-l))}
+.tic{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;flex:none;background:var(--c-soft,var(--sunk));color:var(--c,var(--muted))}
+.mk{width:44px;height:44px;border-radius:14px;flex:none}
+/* connexion et verrouillage */
+.auth{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.auth .card{width:min(420px,100%);padding:28px 24px;display:flex;flex-direction:column;gap:14px;background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.auth .mk{width:68px;height:68px;border-radius:20px;margin:0 auto;box-shadow:0 18px 40px -16px var(--brand)}
+.auth .bismo{width:96px;margin:4px auto 0;opacity:.85}
+.err{padding:10px 12px;border-radius:12px;background:var(--bad-soft);color:var(--bad);font-weight:600}
+.lock{align-items:center;text-align:center}
+.lock .av{width:72px;height:72px;border-radius:24px;font-size:30px;margin:0 auto 6px}
+.dots{display:flex;justify-content:center;gap:16px;margin:8px 0 6px}
+.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--line-2);transition:background .15s,border-color .15s,transform .15s,box-shadow .15s}
+.dots i.on{background:var(--brand);border-color:var(--brand);box-shadow:0 0 14px var(--brand);transform:scale(1.12)}
+.dots.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-9px)}40%,80%{transform:translateX(9px)}}
+.kp{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:300px;margin:4px auto}
+.kp button{position:relative;height:64px;border-radius:20px;border:1px solid var(--line);background:var(--surface-2);font:700 24px var(--display);cursor:pointer;touch-action:manipulation;overflow:hidden;color:var(--ink)}
+.kp button:active{background:var(--sunk)}
+.kp button.ghost{border:0;background:none;color:var(--muted);display:grid;place-items:center}.kp button.ghost svg{width:26px;height:26px}
+.kp button::after{content:"";position:absolute;inset:-30%;background:conic-gradient(from 0deg,#ff4d4d,#ffb84d,#fff04d,#4dff88,#4dd2ff,#9b6bff,#ff4dd2,#ff4d4d);opacity:0;pointer-events:none;border-radius:50%}
+.kp button.zap::after{animation:zap .5s ease-out}
+@keyframes zap{0%{opacity:.6;transform:scale(.3) rotate(0)}100%{opacity:0;transform:scale(1.2) rotate(120deg)}}
 /* coque */
-.shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}.shell>div{min-width:0}
-.side{position:sticky;top:0;height:100vh;padding:20px 14px;background:#0b1f17;color:#d9e8df;display:flex;flex-direction:column;gap:6px}
-.side .brand{display:flex;align-items:center;gap:10px;padding:0 8px 16px}.side .brand b{font:800 18px var(--display);color:#fff}.side .brand small{display:block;font-size:11px;color:#8fb3a1;letter-spacing:.08em;text-transform:uppercase}
-.side a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:#cfe0d6;text-decoration:none;font-weight:600}
-.side a:hover{background:#13301f}.side a.on{background:#1b4a32;color:#fff}.side a i{margin-left:auto;font-style:normal;background:#e5484d;color:#fff;border-radius:99px;font-size:11px;padding:1px 7px}
-.side .foot{margin-top:auto;font-size:12px;color:#8fb3a1;display:flex;flex-direction:column;gap:8px}
-.side .foot button{background:none;border:1px solid #2c5a42;color:#cfe0d6;border-radius:10px;padding:8px;cursor:pointer}
-main{padding:24px max(16px,env(safe-area-inset-right,0px)) 60px max(16px,env(safe-area-inset-left,0px));min-width:0;max-width:1200px}
-.ph{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:18px}.ph h1{font-size:30px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px}
-.kpi{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;animation:rise .45s both;animation-delay:calc(var(--i,0)*40ms)}
-.kpi span{font-size:12px;color:var(--muted);font-weight:600}.kpi b{display:block;font:800 26px/1.15 var(--display);margin-top:4px}.kpi small{color:var(--muted)}
-.kpi.hl{background:linear-gradient(135deg,#0f5c3c,#1d4f6e);color:#fff;border:0}.kpi.hl span,.kpi.hl small{color:#cfe8dc}
-.kpi.alert{border-color:var(--warn);background:var(--warn-soft)}
+.shell{display:grid;grid-template-columns:256px minmax(0,1fr);min-height:100vh}.col{min-width:0}
+.side{position:sticky;top:0;height:100vh;padding:18px 14px;border-right:1px solid var(--line);background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);display:flex;flex-direction:column;gap:2px;overflow:auto}
+.brand{display:flex;align-items:center;gap:12px;padding:4px 8px 22px}.brand b{display:block;font:800 18px/1.1 var(--display)}.brand small{font-size:11px;color:var(--muted);letter-spacing:.09em;text-transform:uppercase}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{position:relative;display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:13px;color:var(--muted);text-decoration:none;font-weight:600;transition:background .15s,color .15s}
+.nav a:hover{color:var(--ink);background:var(--sunk)}
+.nav a.on{color:var(--ink);background:linear-gradient(90deg,color-mix(in srgb,var(--brand) 20%,transparent),color-mix(in srgb,var(--brand) 4%,transparent))}
+.nav a.on::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--brand)}
+.nav a.on svg{color:var(--brand)}
+.side-inst{display:flex;align-items:center;gap:10px;margin-top:14px;padding:11px 12px;border-radius:13px;border:1px dashed color-mix(in srgb,var(--gold) 55%,var(--line));background:color-mix(in srgb,var(--gold) 8%,transparent);color:var(--gold);font-weight:700;cursor:pointer;text-align:left}
+.me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:18px;background:var(--surface)}
+.me b{display:block;font-size:14px}.me small{display:block;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.me .ib{width:36px;height:36px;border-radius:11px}
+.top{display:none}
+main{padding-block:28px 64px;padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px));max-width:1240px;min-width:0}
+.ph{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:18px}.ph h1{font-size:clamp(26px,4vw,32px)}.ph p{margin:4px 0 0;color:var(--muted);max-width:68ch}
+/* accueil */
+.hero{position:relative;overflow:hidden;border-radius:26px;padding:24px 22px 22px;color:#fff;background:linear-gradient(135deg,#0b7048 0%,#0a5a62 52%,#122f48 100%);box-shadow:0 24px 50px -28px rgba(10,112,72,.9);margin-bottom:16px;isolation:isolate}
+.hero::before{content:"";position:absolute;width:360px;height:360px;right:-110px;top:-170px;border-radius:50%;background:radial-gradient(closest-side,rgba(78,240,166,.55),transparent);z-index:-1;animation:float 9s ease-in-out infinite alternate}
+.hero::after{content:"";position:absolute;width:300px;height:300px;left:-120px;bottom:-190px;border-radius:50%;background:radial-gradient(closest-side,rgba(246,185,74,.38),transparent);z-index:-1;animation:float 11s ease-in-out infinite alternate-reverse}
+@keyframes float{to{transform:translate(-30px,24px) scale(1.1)}}
+.hre{position:absolute;top:14px;right:14px;width:40px;height:40px;border-radius:13px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.12);color:#fff;cursor:pointer}
+.hero .hi{font-size:14px;color:rgba(255,255,255,.82)}
+.hero .lab{margin-top:16px;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.7);font-weight:700}
+.hero .big{font:800 clamp(34px,8vw,52px)/1.05 var(--display);letter-spacing:-.03em;margin-top:4px}
+.hero .hsub{color:rgba(255,255,255,.85);font-size:14px;margin-top:6px}
+.gls{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.gl{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);font-size:13px;font-weight:600;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.gl svg{width:15px;height:15px}
+.hspark{position:absolute;right:0;bottom:0;width:58%;height:90px;z-index:-1;opacity:.9}
+.inst{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:22px;margin-bottom:16px;border:1px solid color-mix(in srgb,var(--gold) 40%,var(--line));background:linear-gradient(135deg,color-mix(in srgb,var(--gold) 13%,var(--surface)),var(--surface))}
+.inst .btn{flex:none;white-space:nowrap}.inst b{display:block}.inst small{display:block;color:var(--muted);font-size:13px}
+.dash{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;margin-bottom:16px}
+.todo a{display:flex;align-items:center;gap:12px;padding:11px 8px;border-radius:16px;color:inherit;text-decoration:none;transition:background .15s}
+.todo a:hover{background:var(--sunk)}.todo a b{display:block}.todo a small{display:block;color:var(--muted);font-size:13px}
+.todo .n{font:800 22px var(--display);color:var(--c)}
+.todo .chev{color:var(--muted);width:18px;height:18px}
+.allgood{display:flex;align-items:center;gap:12px;padding:6px 4px}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.kpi{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px;overflow:hidden;box-shadow:var(--shadow)}
+.fresh .kpi{animation:rise .45s both;animation-delay:calc(var(--i,0)*50ms)}
+.kpi .tic{width:38px;height:38px;border-radius:12px;margin-bottom:12px}
+.kpi .lb{display:block;font-size:13px;color:var(--muted);font-weight:600}
+.kpi b{display:block;font:800 24px/1.15 var(--display);margin-top:2px;letter-spacing:-.02em;overflow-wrap:anywhere}
+.kpi small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
-.scroll{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;font-size:12px;color:var(--muted);font-weight:700;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}tr.click{cursor:pointer}tr.click:hover td{background:var(--sunk)}
-.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 12px;font-weight:600;font-size:13px;cursor:pointer}.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.bars{display:flex;align-items:flex-end;gap:10px;height:140px;padding-top:10px}.bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
-.bars i{display:block;width:100%;max-width:44px;border-radius:8px 8px 4px 4px;background:var(--brand);min-height:4px;transform-origin:bottom;animation:grow .7s both}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:16px}
+.chart{display:flex;align-items:flex-end;gap:10px;height:180px;padding-top:12px}
+.chart div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;font-size:12px;color:var(--muted);height:100%;min-width:0}
+.chart i{display:block;width:100%;max-width:42px;border-radius:12px 12px 5px 5px;background:linear-gradient(to top,var(--brand-2),var(--brand));min-height:6px;transform-origin:bottom;box-shadow:0 10px 22px -12px var(--brand)}
+.fresh .chart i{animation:grow .8s cubic-bezier(.2,.8,.2,1) both}
+.chart div.z i{background:var(--sunk);box-shadow:none}
+.chart b{color:var(--ink);font-size:13px}
 @keyframes grow{from{transform:scaleY(0)}to{transform:none}}
-.pay{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:14px;align-items:start}
-.pay img,.pay .noimg{width:100%;border-radius:12px;border:1px solid var(--line);background:var(--sunk);aspect-ratio:3/4;object-fit:cover}
-.pay .noimg{display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center;padding:10px}
-.kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line)}.kv:last-child{border:0}
-.scrim{position:fixed;inset:0;background:rgba(5,12,9,.55);z-index:50;display:flex;justify-content:flex-end}
-.panel{width:min(520px,100%);height:100%;overflow:auto;background:var(--bg);padding:22px;display:flex;flex-direction:column;gap:14px;animation:slide .25s both}
-@keyframes slide{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:600;z-index:70;max-width:90vw}
-.toast.err{background:var(--bad);color:#fff}
-.empty{padding:24px;text-align:center;color:var(--muted)}
-.tabs-m{display:none}
+.rk{display:flex;align-items:center;gap:12px;padding:10px 6px;border-radius:16px;cursor:pointer;transition:background .15s}.rk:hover{background:var(--sunk)}
+.rk .meter{height:6px;border-radius:99px;background:var(--sunk);overflow:hidden;margin-top:7px}.rk .meter i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--brand),var(--brand-2))}
+.rk .amt{text-align:right;font-weight:700;white-space:nowrap}.rk .amt small{display:block;color:var(--muted);font-weight:500;font-size:12px}
+/* tableaux (deviennent des fiches sur téléphone) */
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--sunk)}
+.cell{display:flex;align-items:center;gap:12px;min-width:0}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line-2);background:var(--surface);border-radius:99px;padding:7px 14px;font-weight:600;font-size:13px;cursor:pointer;color:var(--muted);white-space:nowrap}
 .chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.chip b{margin-left:4px}
-.stz{color:#f5b301;letter-spacing:2px;font-size:18px}.stz i{font-style:normal;color:var(--line)}
+.search{position:relative;max-width:340px;width:100%}.search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);width:18px;height:18px}.search input{padding-left:40px}
+/* journal */
+.tl-day{font:700 12px var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:20px 4px 8px}
+.tl-day:first-child{margin-top:0}
+.tl{display:flex;gap:12px;padding:12px 4px;align-items:flex-start}
+.tl+.tl{border-top:1px solid var(--line)}
+.tl .tic{width:38px;height:38px;border-radius:12px}
+.tl .d{font-size:13px;color:var(--muted);overflow-wrap:anywhere;margin-top:2px}
+.tl time{font-size:12px;color:var(--muted);white-space:nowrap}
+/* paiements, fiche bar, assistance, avis */
+.pay{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:16px;align-items:start}
+.pay img,.pay .noimg{width:100%;border-radius:14px;border:1px solid var(--line);background:var(--sunk);aspect-ratio:3/4;object-fit:cover}
+.pay .noimg{display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center;padding:10px}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}.kv:last-child{border:0}
+.scrim{position:fixed;inset:0;background:rgba(3,8,6,.6);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:50;display:flex;justify-content:flex-end}
+.panel{width:min(540px,100%);height:100%;overflow:auto;background:var(--bg);padding:22px max(16px,env(safe-area-inset-right,0px)) calc(22px + env(safe-area-inset-bottom,0px)) 22px;display:flex;flex-direction:column;gap:14px;animation:slide .28s cubic-bezier(.2,.8,.2,1) both;border-left:1px solid var(--line)}
+@keyframes slide{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;font-weight:600;z-index:80;max-width:min(92vw,520px);box-shadow:0 18px 40px -16px rgba(0,0,0,.6);animation:pop .25s both}
+.toast.err{background:var(--bad);color:var(--on-bad)}
+@keyframes pop{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+.empty{padding:24px;text-align:center;color:var(--muted)}
+.stz{color:#f5b301;letter-spacing:2px;font-size:18px}.stz i{font-style:normal;color:var(--line-2)}
 .bar-h{flex:1;height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}.bar-h i{display:block;height:100%;background:#f5b301;border-radius:99px}
-.sup{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:14px;align-items:start}
+.sup{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px;align-items:start}
 .supl{padding:6px;display:flex;flex-direction:column;gap:4px;max-height:72vh;overflow:auto}
-.supi{display:flex;flex-direction:column;gap:3px;text-align:left;border:0;background:none;padding:10px 12px;border-radius:12px;cursor:pointer}
+.supi{display:flex;flex-direction:column;gap:3px;text-align:left;border:0;background:none;padding:11px 12px;border-radius:14px;cursor:pointer}
 .supi:hover{background:var(--sunk)}.supi.on{background:var(--sunk);box-shadow:inset 3px 0 0 var(--brand)}
 .supd{font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .slog{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow:auto;padding:4px 2px}
-.sm{max-width:85%;padding:9px 12px;border-radius:14px;font-size:14px;line-height:1.45;overflow-wrap:anywhere}.sm small{display:block;font-size:11px;font-weight:700;opacity:.75;margin-bottom:2px}
-.sm.client{align-self:flex-start;background:var(--sunk)}.sm.ia{align-self:flex-end;background:color-mix(in srgb,var(--brand) 12%,var(--surface));border:1px solid var(--line)}
-.sm.bismo{align-self:flex-end;background:var(--brand);color:#fff}
-textarea{resize:vertical;min-height:80px}
-@media (max-width:860px){.sup{grid-template-columns:minmax(0,1fr)}.supl{max-height:none}}
-@media (max-width:860px){.shell{grid-template-columns:1fr}.side{display:none}.tabs-m{display:flex;gap:6px;overflow-x:auto;position:sticky;top:0;z-index:20;background:var(--bg);padding:10px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line)}
-  .tabs-m a i{font-style:normal;margin-left:6px;background:#e5484d;color:#fff;border-radius:99px;font-size:11px;padding:1px 6px}td:first-child{min-width:130px}
-  .tabs-m a{white-space:nowrap;padding:8px 14px;border-radius:99px;border:1px solid var(--line);text-decoration:none;color:var(--ink);font-weight:600;font-size:14px}.tabs-m a.on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
-  .pay{grid-template-columns:1fr}.pay img,.pay .noimg{max-width:260px}main{padding-top:14px}}
-.spin{width:18px;height:18px;border:2.5px solid var(--line);border-top-color:var(--brand);border-radius:50%;display:inline-block;animation:sp .8s linear infinite;vertical-align:middle}@keyframes sp{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+.sm{max-width:85%;padding:10px 13px;border-radius:16px;font-size:14px;line-height:1.45;overflow-wrap:anywhere}.sm small{display:block;font-size:11px;font-weight:700;opacity:.75;margin-bottom:2px}
+.sm.client{align-self:flex-start;background:var(--sunk);border-bottom-left-radius:5px}.sm.ia{align-self:flex-end;background:color-mix(in srgb,var(--brand) 12%,var(--surface));border:1px solid var(--line);border-bottom-right-radius:5px}
+.sm.bismo{align-self:flex-end;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:var(--brand-ink);border-bottom-right-radius:5px}
+details summary{cursor:pointer}
+/* feuilles (menu Plus, installation, connexion rapide) */
+.sh-scrim{position:fixed;inset:0;z-index:60;background:rgba(3,8,6,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;animation:fade .2s both}
+@keyframes fade{from{opacity:0}}
+.sheet{width:min(480px,100%);max-height:92vh;overflow:auto;background:var(--surface);border:1px solid var(--line);border-bottom:0;border-radius:28px 28px 0 0;padding:8px max(18px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px;animation:up .32s cubic-bezier(.2,.8,.2,1) both}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+.grab{width:42px;height:5px;border-radius:5px;background:var(--line-2);margin:4px auto 4px;flex:none}
+.sh-h{display:flex;align-items:center;gap:12px;padding:4px 4px 8px}.sh-h small{display:block}
+.sh-t{display:flex;align-items:center;gap:12px}.sh-t h2{font-size:22px}.sh-t p{margin:2px 0 0;font-size:14px}
+.sheet>p{margin:0}
+.menu{display:flex;flex-direction:column;gap:2px}
+.menu a,.menu button{display:flex;align-items:center;gap:12px;width:100%;padding:10px 8px;border-radius:16px;border:0;background:none;text-align:left;font-weight:600;color:var(--ink);text-decoration:none;cursor:pointer}
+.menu a:hover,.menu button:hover{background:var(--sunk)}
+.menu small{display:block;font-weight:500;font-size:12.5px;color:var(--muted)}
+.menu .tic{width:40px;height:40px;border-radius:13px}
+.menu .danger{color:var(--bad)}.menu .danger .tic{--c:var(--bad);--c-soft:var(--bad-soft)}
+.menu .chev{width:18px;height:18px;color:var(--muted)}
+.steps{margin:0;padding:0;list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:10px}
+.steps li{counter-increment:s;display:flex;flex-direction:column;padding:12px 14px 12px 56px;position:relative;border-radius:16px;background:var(--sunk)}
+.steps li::before{content:counter(s);position:absolute;left:14px;top:12px;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font:800 15px var(--display);background:linear-gradient(135deg,var(--brand),var(--brand-2));color:var(--brand-ink)}
+.steps small{color:var(--muted)}
+@media (min-width:861px){.sh-scrim{align-items:center}.sheet{border-radius:28px;border-bottom:1px solid var(--line);padding-bottom:22px}.grab{display:none}}
+/* téléphone */
+.bnav{display:none}
+@media (max-width:1100px){.dash{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:860px){
+  .shell{grid-template-columns:minmax(0,1fr)}.side{display:none}
+  .top{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:30;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));padding-top:calc(10px + env(safe-area-inset-top,0px));background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
+  .top .mk{width:36px;height:36px;border-radius:11px}
+  .top .tt{font:800 17px/1.1 var(--display)}.top .tt small{display:block;font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .top .ib{width:40px;height:40px}.top .avb{border:0;background:none;padding:0;cursor:pointer;position:relative}
+  main{padding-top:18px;padding-bottom:calc(104px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .bnav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:40;padding:6px max(6px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px));background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--line)}
+  .bnav a{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0;font-size:11px;font-weight:600;color:var(--muted);text-decoration:none;min-width:0;white-space:nowrap}
+  .bnav .bi{display:grid;place-items:center;width:56px;height:32px;border-radius:99px;transition:background .2s,color .2s}
+  .bnav .bi svg{width:22px;height:22px}
+  .bnav a.on{color:var(--ink)}.bnav a.on .bi{background:color-mix(in srgb,var(--brand) 20%,transparent);color:var(--brand)}
+  .bnav .badge{position:absolute;top:0;left:calc(50% + 6px);margin:0}
+  .toast{bottom:calc(92px + env(safe-area-inset-bottom,0px))}
+  .chips.sc{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-16px;margin-right:-16px;padding:2px 16px}.chips.sc::-webkit-scrollbar{display:none}
+  .ph .search{max-width:none}
+  .hero{border-radius:24px;padding:20px 18px}.hre{display:none}
+  .kpi{padding:14px;border-radius:20px}.kpi b{font-size:20px}
+  .card{border-radius:20px;padding:16px}
+  .sup{grid-template-columns:minmax(0,1fr)}.supl{max-height:none}
+  .pay{grid-template-columns:minmax(0,1fr)}.pay img,.pay .noimg{max-width:260px}
+  table.rsp,table.rsp tbody{display:block}
+  table.rsp tr:has(th){display:none}
+  table.rsp tr{display:block;padding:12px 2px;border-bottom:1px solid var(--line)}
+  table.rsp tr:last-child{border-bottom:0}
+  table.rsp td{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:3px 0;border:0;text-align:right;overflow-wrap:anywhere}
+  table.rsp td::before{content:attr(data-l);color:var(--muted);font-size:13px;text-align:left;flex:none}
+  table.rsp td.t{display:block;text-align:left;padding-bottom:8px}table.rsp td.t::before{content:none}
+  table.rsp td.x{display:none}
+  table.rsp tr.click:hover td{background:none}
+  .card.scroll{overflow:visible}
+}
+@media (max-width:380px){.kpi b{font-size:18px}.bnav a{font-size:10px}}
+.spin{width:18px;height:18px;border:2.5px solid var(--line-2);border-top-color:var(--brand);border-radius:50%;display:inline-block;animation:sp .8s linear infinite;vertical-align:middle}@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -103,7 +253,8 @@ const ago = d => { if (!d) return "jamais"; const m = Math.round((Date.now() - n
 const PLANS = { beta: ["Bêta gratuite", 0, ""], essai: ["Essai gratuit", 0, "warn"], simple: ["Snack Simple", 10000, "sky"], premium: ["Snack Premium", 15000, "sky"], gold: ["Snack Gold", 20000, "warn"], lounge: ["Lounge", 30000, "night"] };
 const MONTH = m => new Date(m + "-15").toLocaleDateString("fr-FR", { month: "short" });
 const V = { view: "login", tab: (location.hash || "#apercu").slice(1), f: {}, data: {}, filter: "tous", q: "", panel: null, busy: false, toast: null, setup: false };
-const SECT = [["apercu", "Vue d’ensemble"], ["paiements", "Paiements"], ["assistance", "Assistance"], ["avis", "Avis"], ["bars", "Bars"], ["reglages", "Réglages"], ["journal", "Journal"]];
+const SECT = [["apercu", "Vue d’ensemble", "home", "Accueil"], ["paiements", "Paiements", "card"], ["assistance", "Assistance", "chat"], ["avis", "Avis", "star"], ["bars", "Bars", "store"], ["reglages", "Réglages", "sliders"], ["journal", "Journal", "list"]];
+const BNAV = ["apercu", "paiements", "assistance", "bars"];
 
 function toast(msg, kind) { V.toast = { msg, kind }; render(); clearTimeout(window.__t); window.__t = setTimeout(() => { V.toast = null; render(); }, kind === "err" ? 5000 : 2800); }
 async function rpc(n, a) { const { data, error } = await sb.rpc(n, a || {}); if (error) throw new Error(error.message); return data; }
@@ -122,24 +273,154 @@ async function loadAll() {
 }
 async function boot() {
   const { data } = await sb.auth.getSession();
-  if (data.session) { try { const w = await rpc("gb_pf_whoami"); if (w.admin) { V.me = w.email; V.view = "app"; await loadAll(); render(); return; } await sb.auth.signOut(); V.err = "Ce compte n’est pas un compte éditeur."; } catch (e) { V.err = e.message; } }
+  if (data.session) { try { const w = await rpc("gb_pf_whoami"); if (w.admin) { V.me = w.email;
+      if (qpin()) { V.loadP = loadAll().catch(() => {}); V.view = "relock"; V.lk = ""; render(); if (bio()) setTimeout(A.bio, 350); return; }
+      V.view = "app"; await loadAll(); render(); return; } await sb.auth.signOut(); V.err = "Ce compte n’est pas un compte éditeur."; } catch (e) { V.err = e.message; } }
   try { V.setup = (await fn("admin_setup_open", {})).open; } catch (e) {}
   V.view = "login"; render();
+}
+
+/* ── Icônes (traits simples, couleur du texte) ── */
+const IC = {
+  home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+  card: '<rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h19"/><path d="M6.5 15h4"/>',
+  chat: '<path d="M21 14.5a2.5 2.5 0 0 1-2.5 2.5H8l-5 4V5.5A2.5 2.5 0 0 1 5.5 3h13A2.5 2.5 0 0 1 21 5.5z"/><path d="M8 9h8M8 12.5h5"/>',
+  star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+  store: '<path d="M4 9.5V20h16V9.5"/><path d="M3 9.5 4.6 4h14.8L21 9.5a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0"/><path d="M9.5 20v-5h5v5"/>',
+  sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1.5 14h5M9.5 8h5M17.5 16h5"/>',
+  list: '<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>',
+  grid: '<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
+  more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+  logout: '<path d="M9 21H5.5A2.5 2.5 0 0 1 3 18.5v-13A2.5 2.5 0 0 1 5.5 3H9"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+  moon: '<path d="M20.5 13.2A8.5 8.5 0 1 1 10.8 3.5a6.6 6.6 0 0 0 9.7 9.7z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+  refresh: '<path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1L20.5 8"/><path d="M20.5 3v5h-5"/>',
+  lock: '<rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>',
+  finger: '<path d="M12 11.5v2.5a9 9 0 0 1-1.6 5.1"/><path d="M8.6 7.9A4.5 4.5 0 0 1 16.5 11v2"/><path d="M7.5 11a4.5 4.5 0 0 1 .3-1.6"/><path d="M7.5 14a13 13 0 0 1-1 4.6"/><path d="M16.3 16.5a17 17 0 0 1-.9 4"/><path d="M5.4 5.4A8.5 8.5 0 0 1 20.5 11v1.5"/><path d="M3.5 15a14 14 0 0 0 0-4 8.4 8.4 0 0 1 .5-2.9"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20.5a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M21.5 20.5a6.5 6.5 0 0 0-3.8-5.9"/>',
+  trend: '<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+  alert: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  chev: '<path d="m9 6 6 6-6 6"/>',
+  del: '<path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m16 9-5 6M11 9l5 6"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+  phone: '<rect x="6.5" y="2" width="11" height="20" rx="2.5"/><path d="M11 18h2"/>',
+  cash: '<rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>'
+};
+const ic = (n, c) => `<svg class="i ${c || ""}" viewBox="0 0 24 24" aria-hidden="true">${IC[n] || ""}</svg>`;
+const tone = t => ["gold", "brand"].includes(t) ? `--c:var(--${t});--c-soft:color-mix(in srgb,var(--${t}) 16%,transparent)` : `--c:var(--${t});--c-soft:var(--${t}-soft)`;
+const hue = s => [...String(s || "?")].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
+const av = (name, cls) => `<span class="av ${cls || ""}" style="--h:${hue(name)}">${esc((String(name || "?").trim()[0] || "?").toUpperCase())}</span>`;
+const hello = () => { const h = new Date().getHours(); return h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir"; };
+const Fk = n => F(n).replace(/ FCFA$/, '<span class="cur">FCFA</span>');
+const nPend = () => (V.data.subs || []).filter(s => s.status === "en_attente" && s.channel !== "notchpay").length;
+const nSup = () => (V.data.sup || []).filter(supNew).length;
+const nAvis = () => (V.data.avis || []).filter(a => !a.admin_seen_at).length;
+const isDark = () => document.documentElement.dataset.theme !== "light";
+const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+/* ── Application installable (écran d'accueil du téléphone) ── */
+let bip = null;
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); bip = e; if (!V.busy && V.view !== "relock") render(); });
+addEventListener("appinstalled", () => { bip = null; lsSet("gesco-console-inst", 1); toast("GesCo Console est installée : ouvrez-la depuis l’écran d’accueil."); });
+const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const canInstall = () => !standalone() && !lsGet("gesco-console-inst");
+function vInstall() {
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const steps = ios ? [["Ouvrez cette page dans Safari", "Sur iPhone, l’installation passe par Safari."], ["Touchez le bouton Partager", "Le carré avec une flèche vers le haut, en bas de l’écran."], ["Choisissez « Sur l’écran d’accueil »", "Puis « Ajouter » : l’icône GesCo Console apparaît."]]
+    : [["Touchez le menu ⋮ de Chrome", "En haut à droite de l’écran."], ["Choisissez « Installer l’application »", "Ou « Ajouter à l’écran d’accueil », selon votre téléphone."], ["Confirmez avec « Installer »", "L’icône GesCo Console apparaît avec vos autres applications."]];
+  return `<div class="sh-t"><img src="icon.svg" alt="" class="mk"><div><h2>Installer GesCo Console</h2><p class="mu">Ouvrez la console d’un toucher, en plein écran, sans passer par le navigateur.</p></div></div>
+    <ol class="steps">${steps.map(([t, s]) => `<li><b>${t}</b><small>${s}</small></li>`).join("")}</ol><button class="btn" data-a="shClose">J’ai compris</button>`;
+}
+
+/* ── Connexion rapide : code à 4 chiffres et empreinte, propres à ce téléphone ── */
+const QK = "gesco-console-qpin", BK = "gesco-console-bio";
+const qpin = () => { const p = lsGet(QK); return p && p.u === V.me ? p : null; };
+const bio = () => { const p = lsGet(BK); return p && p.u === V.me ? p : null; };
+const hx = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+const rnd = n => crypto.getRandomValues(new Uint8Array(n));
+const b64u = b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const ub64u = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+async function pinHash(pin, salt) {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveBits"]);
+  return hx(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: new TextEncoder().encode(salt), iterations: 150000 }, k, 256));
+}
+let BIO_OK = false;
+try { PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(v => { BIO_OK = !!v; }).catch(() => {}); } catch (e) {}
+const qpState = () => qpin() ? (bio() ? "Code et empreinte activés" : "Code à 4 chiffres activé") : "Non activée : mot de passe à chaque verrouillage";
+const dots = n => `<div class="dots">${[0, 1, 2, 3].map(i => `<i class="${i < n ? "on" : ""}"></i>`).join("")}</div>`;
+const pad = (a, left) => `<div class="kp">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button type="button" data-a="${a}" data-v="${n}">${n}</button>`).join("")}${left || "<span></span>"}<button type="button" data-a="${a}" data-v="0">0</button><button type="button" class="ghost" data-a="${a}" data-v="del" aria-label="Effacer">${ic("del")}</button></div>`;
+function padTap(el) { try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} if (!el) return; el.classList.remove("zap"); void el.offsetWidth; el.classList.add("zap"); }
+const setDots = (sel, n) => document.querySelectorAll(sel + " .dots i").forEach((d, i) => d.classList.toggle("on", i < n));
+function shakeDots(sel) { const d = document.querySelector(sel + " .dots"); if (!d) return; d.classList.remove("shake"); void d.offsetWidth; d.classList.add("shake"); try { navigator.vibrate && navigator.vibrate([60, 40, 60]); } catch (e) {} }
+function vQp() {
+  const p = qpin(), q = V.qp;
+  if (!q) return `<div class="sh-t"><span class="tic" style="${tone("brand")}">${ic("finger")}</span><div><h2>Connexion rapide</h2><p class="mu">Sur ce téléphone uniquement</p></div></div>
+    <p class="mu">Ouvrez la console avec un code à 4 chiffres${BIO_OK ? " ou votre empreinte" : ""}, sans retaper le mot de passe. Sur un nouvel appareil, le mot de passe reste demandé.</p>
+    <div><div class="kv"><span>Code à 4 chiffres</span><b>${p ? "Activé" : "Non activé"}</b></div>${BIO_OK ? `<div class="kv"><span>Empreinte ou visage</span><b>${bio() ? "Activé" : "Non activé"}</b></div>` : ""}</div>
+    <div class="stack" style="gap:8px"><button class="btn" data-a="qpNew">${p ? "Changer mon code" : "Créer mon code"}</button>
+      ${p && BIO_OK && !bio() ? `<button class="btn soft" data-a="bioOn" ${V.busy ? "disabled" : ""}>${ic("finger")} Activer l’empreinte</button>` : ""}
+      ${p ? `<button class="btn soft" data-a="qpOff">Désactiver la connexion rapide</button>` : `<button class="btn soft" data-a="qpLater">Plus tard</button>`}</div>`;
+  return `<div class="sh-t"><span class="tic" style="${tone("brand")}">${ic("lock")}</span><div><h2>${q.b == null ? "Choisissez un code" : "Confirmez le code"}</h2><p class="mu">${q.b == null ? "4 chiffres faciles pour vous, difficiles à deviner." : "Tapez le même code une seconde fois."}</p></div></div>${dots(q.a.length)}${pad("qk")}`;
+}
+function offerQp() { if (!qpin() && !(lsGet("gesco-console-qp-later") > Date.now())) { V.sheet = "qp"; V.qp = null; } }
+async function unlocked() {
+  V.view = "app"; V.lk = ""; V.lkMode = ""; V.lastTab = null; lastAct = Date.now();
+  if (V.loadP) { V.view = "loading"; render(); await V.loadP; V.loadP = null; V.view = "app"; if (!V.data.ov) await loadAll().catch(e => toast(e.message, "err")); }
+  else loadAll().then(() => { if (!V.busy && V.view === "app") render(); }).catch(() => {});
+  render();
+}
+function vRelock() {
+  const p = qpin(), b = bio();
+  if (p && V.lkMode !== "pw") return `<div class="auth"><div class="card lock">${av(V.me)}<h1 style="font-size:24px">${hello()}</h1>
+      <p class="mu" id="lkmsg" style="margin:0;min-height:1.5em">${b ? "Posez le doigt ou tapez votre code" : "Tapez votre code à 4 chiffres"}</p>${dots((V.lk || "").length)}
+      ${pad("lk", b ? `<button type="button" class="ghost" data-a="bio" aria-label="Déverrouiller avec l’empreinte">${ic("finger")}</button>` : "")}
+      <div class="row" style="justify-content:center;gap:2px"><button class="lnk" data-a="lkPw">Mot de passe</button><span class="mu">·</span><button class="lnk" data-a="logout">Changer de compte</button></div></div></div>`;
+  return `<div class="auth"><form class="card" onsubmit="return false"><img class="mk" src="icon.svg" alt="">
+    <div style="text-align:center"><h1 style="font-size:24px">Console verrouillée</h1><p class="mu" style="margin:4px 0 0">${p ? "Retapez votre mot de passe." : "Après 1 minute d’inactivité, retapez votre mot de passe."}</p></div>
+    ${V.err ? `<div class="err">${esc(V.err)}</div>` : ""}<div class="kv"><span class="mu">Compte</span><b style="overflow-wrap:anywhere">${esc(V.me || "")}</b></div>
+    <label class="f">Mot de passe<input id="pw" type="password" autocomplete="current-password" autofocus></label>
+    <button class="btn" data-a="unlock" ${V.busy ? "disabled" : ""}>${V.busy ? '<span class="spin"></span>' : "Déverrouiller"}</button>
+    <div class="row" style="justify-content:center;gap:2px">${p ? `<button class="lnk" data-a="lkPin">Utiliser mon code</button><span class="mu">·</span>` : ""}<button class="lnk" data-a="logout">Changer de compte</button></div></form></div>`;
+}
+
+/* ── Menu « Plus » et feuilles ── */
+function vSheet() {
+  let inner = "";
+  if (V.sheet === "more") inner = `<div class="sh-h">${av(V.me)}<div class="grow"><b>BISMO Agency</b><small class="mu" style="overflow-wrap:anywhere">${esc(V.me || "")}</small></div></div>
+    <div class="menu">${[["avis", "star", "Avis des utilisateurs", "gold"], ["reglages", "sliders", "Réglages", "sky"], ["journal", "list", "Journal des actions", "night"]].map(([k, i, l, t]) => `<a href="#${k}" data-a="go" data-v="${k}"><span class="tic" style="${tone(t)}">${ic(i)}</span><span class="grow">${l}</span>${k === "avis" && nAvis() ? `<i class="badge">${nAvis()}</i>` : ic("chev", "chev")}</a>`).join("")}
+      <hr>
+      ${canInstall() ? `<button data-a="install"><span class="tic" style="${tone("gold")}">${ic("download")}</span><span class="grow">Installer l’application<small>La console d’un toucher, comme une appli</small></span></button>` : ""}
+      <button data-a="qpOpen"><span class="tic" style="${tone("brand")}">${ic("finger")}</span><span class="grow">Connexion rapide<small>${qpState()}</small></span></button>
+      <button data-a="theme"><span class="tic">${ic(isDark() ? "sun" : "moon")}</span><span class="grow">${isDark() ? "Passer au thème clair" : "Passer au thème sombre"}</span></button>
+      <button data-a="lockNow"><span class="tic">${ic("lock")}</span><span class="grow">Verrouiller maintenant</span></button>
+      <button data-a="logout" class="danger"><span class="tic">${ic("logout")}</span><span class="grow">Se déconnecter</span></button></div>`;
+  else if (V.sheet === "install") inner = vInstall();
+  else if (V.sheet === "qp") inner = vQp();
+  return `<div class="sh-scrim" data-a="shClose" data-self="1"><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${inner}</div></div>`;
 }
 
 /* ── Vues ── */
 function vLogin() {
   const s = V.setup && V.f.mode !== "login";
-  return `<div class="auth"><form class="card" onsubmit="return false"><img class="logo" src="${LOGO}" alt="BISMO Agency">
-    <div style="text-align:center"><h1 style="font-size:24px">Console GesCo Bar</h1><p class="mu" style="margin:4px 0 0">${s ? "Créez votre compte éditeur avec le code d’installation reçu." : "Espace réservé à BISMO Agency."}</p></div>
+  return `<div class="auth"><form class="card" onsubmit="return false"><img class="mk" src="icon.svg" alt="">
+    <div style="text-align:center"><h1 style="font-size:26px">Console GesCo Bar</h1><p class="mu" style="margin:4px 0 0">${s ? "Créez votre compte éditeur avec le code d’installation reçu." : "Espace réservé à BISMO Agency."}</p></div>
     ${V.err ? `<div class="err">${esc(V.err)}</div>` : ""}
     <label class="f">E-mail<input id="em" type="email" autocomplete="username" value="${esc(V.f.em || "")}"></label>
     <label class="f">Mot de passe${s ? " (10 caractères minimum)" : ""}<input id="pw" type="password" autocomplete="${s ? "new-password" : "current-password"}"></label>
     ${s ? `<label class="f">Code d’installation<input id="code" autocomplete="off" placeholder="XXXX-XXXX" style="text-transform:uppercase"></label>` : ""}
     <button class="btn" data-a="${s ? "setup" : "login"}" ${V.busy ? "disabled" : ""}>${V.busy ? '<span class="spin"></span>' : s ? "Créer mon compte éditeur" : "Se connecter"}</button>
-    ${V.setup ? `<button class="btn soft sm" data-a="mode">${s ? "J’ai déjà mon compte" : "Première connexion : utiliser le code d’installation"}</button>` : ""}</form></div>`;
+    ${V.setup ? `<button class="btn soft sm" data-a="mode">${s ? "J’ai déjà mon compte" : "Première connexion : utiliser le code d’installation"}</button>` : ""}
+    ${canInstall() ? `<button class="lnk" data-a="install" style="display:flex;align-items:center;justify-content:center;gap:6px">${ic("download")} Installer l’application sur ce téléphone</button>` : ""}
+    <img class="bismo" src="${LOGO}" alt="BISMO Agency"></form></div>`;
 }
-const kpi = (l, v, s, cls, i) => `<div class="kpi ${cls || ""}" style="--i:${i || 0}"><span>${l}</span><b class="num">${v}</b>${s ? `<small>${s}</small>` : ""}</div>`;
+const kpi = (l, v, s, t, i, icon) => `<div class="kpi" style="--i:${i || 0}"><span class="tic" style="${tone(t)}">${ic(icon)}</span><span class="lb">${l}</span><b class="num">${v}</b>${s ? `<small>${s}</small>` : ""}</div>`;
 function planPill(b) { const t = b.plan_trial_until && new Date(b.plan_trial_until) > Date.now();
   if (b.suspended) return `<span class="pill bad">Suspendu</span>`;
   if (b.blocage) return `<span class="pill bad">Expiré · bloqué</span>`;
@@ -150,15 +431,26 @@ function planPill(b) { const t = b.plan_trial_until && new Date(b.plan_trial_unt
 function vApercu() {
   const o = V.data.ov, bars = V.data.bars, mx = Math.max(1, ...o.inscriptions.map(x => x.n));
   const soon = bars.filter(b => b.plan !== "beta" && b.plan_until && (new Date(b.plan_until) - Date.now()) / 864e5 <= 7).slice(0, 8);
-  const top = [...bars].sort((a, b) => b.ventes_30j - a.ventes_30j).slice(0, 6);
-  return `<div class="ph"><div><h1>Vue d’ensemble</h1><p class="mu" style="margin:4px 0 0">${new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p></div><button class="btn soft" data-a="reload">Actualiser</button></div>
-    <div class="kpis">${kpi("Revenu mensuel récurrent", F(o.mrr), `${o.payants} bar(s) payant(s)`, "hl", 0)}${kpi("Encaissé ce mois", F(o.encaisse_mois), `Total : ${F(o.encaisse_total)}`, "", 1)}
-      ${kpi("Paiements à valider", o.a_valider, o.a_valider ? "Ouvrir Paiements" : "Rien en attente", o.a_valider ? "alert" : "", 2)}${kpi("Bars inscrits", o.bars, `${o.beta} en bêta · ${o.essais || 0} en essai · ${o.bars_actifs_7j} actif(s) sur 7 j`, "", 3)}
-      ${kpi("Employés actifs", o.employes, "toutes équipes confondues", "", 4)}${kpi("Expirent sous 7 jours", o.expirent_7j, `${o.expires} expiré(s) · ${o.suspendus} suspendu(s)`, o.expirent_7j || o.expires ? "alert" : "", 5)}
-      ${kpi("Ventes des bars (30 j)", F(o.ventes_30j), `${o.tickets_30j} tickets encaissés`, "", 6)}</div>
-    <div class="grid2"><div class="card"><h3>Nouveaux bars par mois</h3><div class="bars">${o.inscriptions.map((x, i) => `<div><b class="num">${x.n}</b><i style="height:${Math.max(4, x.n / mx * 100)}px;animation-delay:${i * 60}ms"></i>${MONTH(x.mois)}</div>`).join("")}</div></div>
-      <div class="card"><h3>À relancer</h3>${soon.length ? `<table>${soon.map(b => `<tr class="click" data-a="openBar" data-id="${b.id}"><td><b>${esc(b.name)}</b><br><span class="mu">${esc(b.pdg || "")}</span></td><td>${planPill(b)}</td></tr>`).join("")}</table>` : `<div class="empty">Aucun abonnement ne se termine cette semaine.</div>`}</div>
-      <div class="card"><h3>Bars les plus actifs (30 j)</h3><table>${top.map(b => `<tr class="click" data-a="openBar" data-id="${b.id}"><td><b>${esc(b.name)}</b><br><span class="mu">${esc(b.city || "")}</span></td><td class="num" style="text-align:right">${F(b.ventes_30j)}<br><span class="mu">${b.tickets_30j} tickets</span></td></tr>`).join("") || `<tr><td class="empty">Pas encore d’activité.</td></tr>`}</table></div></div>`;
+  const top = [...bars].sort((a, b) => b.ventes_30j - a.ventes_30j).slice(0, 5), tmax = Math.max(1, ...top.map(b => +b.ventes_30j || 0));
+  let c = 0; const cum = o.inscriptions.map(x => c += x.n), cm = Math.max(1, ...cum), pts = cum.map((v, i) => [i / Math.max(1, cum.length - 1) * 200, 58 - v / cm * 46]);
+  const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  const todo = [[nPend(), "paiements", "card", "Paiements à valider", "Captures de transfert à vérifier", "warn"], [nSup(), "assistance", "chat", "Demandes d’assistance", "Transmises par l’assistant IA", "bad"],
+    [nAvis(), "avis", "star", "Nouveaux avis", "Ce que les équipes pensent de GesCo", "gold"], [o.expirent_7j, "bars", "clock", "Abonnements qui expirent", "Dans les 7 jours : à relancer", "sky"]].filter(x => x[0]);
+  const instOn = canInstall() && !(lsGet("gesco-console-inst-hide") > Date.now());
+  return `${instOn ? `<div class="inst"><span class="tic" style="${tone("gold")}">${ic("phone")}</span><div class="grow"><b>Installez la console sur ce téléphone</b><small>Icône sur l’écran d’accueil, plein écran, code rapide.</small></div><button class="btn sm" data-a="install">Installer</button><button class="ib" data-a="instHide" aria-label="Masquer" style="width:36px;height:36px;border:0;background:none">${ic("x")}</button></div>` : ""}
+    <section class="hero"><button class="hre" data-a="reload" aria-label="Actualiser">${V.busy ? '<span class="spin"></span>' : ic("refresh")}</button><div class="hi">${hello()} 👋 · ${new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</div>
+      <div class="lab">Revenu mensuel récurrent</div><div class="big num">${Fk(o.mrr)}</div>
+      <div class="hsub">Encaissé ce mois : <b>${F(o.encaisse_mois)}</b> · depuis le début : ${F(o.encaisse_total)}</div>
+      <div class="gls"><span class="gl">${ic("store")}${o.bars} bar(s)</span><span class="gl">${ic("check")}${o.payants} payant(s)</span><span class="gl">${ic("clock")}${o.essais || 0} en essai</span><span class="gl">${ic("trend")}${o.bars_actifs_7j} actif(s) sur 7 j</span></div>
+      <svg class="hspark" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path d="${line} L200 60 L0 60Z" fill="rgba(255,255,255,.10)"/><path d="${line}" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg></section>
+    <div class="dash"><div class="card todo"><div class="ch"><h3>À traiter</h3>${todo.length ? `<span class="pill warn">${todo.reduce((a, x) => a + x[0], 0)}</span>` : ""}</div>
+        ${todo.length ? todo.map(([n, k, i, l, sub, t]) => `<a href="#${k}" ${k === "bars" ? 'data-a="goBars" data-v="bientot"' : ""} style="${tone(t)}"><span class="tic">${ic(i)}</span><span class="grow"><b>${l}</b><small>${sub}</small></span><span class="n num">${n}</span>${ic("chev", "chev")}</a>`).join("")
+          : `<div class="allgood"><span class="tic" style="${tone("ok")}">${ic("check")}</span><div><b>Tout est à jour</b><div class="mu" style="font-size:13px">Aucun paiement, aucune demande ni aucun avis en attente.</div></div></div>`}</div>
+      <div class="kpis">${kpi("Ventes des bars (30 j)", Fk(o.ventes_30j), `${o.tickets_30j} tickets encaissés`, "brand", 0, "cash")}${kpi("Employés actifs", o.employes, "toutes équipes", "sky", 1, "users")}
+        ${kpi("Bars inscrits", o.bars, `${o.beta} en bêta · ${o.essais || 0} en essai`, "night", 2, "store")}${kpi("Expirés", o.expires, `${o.suspendus} suspendu(s)`, o.expires || o.suspendus ? "bad" : "ok", 3, "alert")}</div></div>
+    <div class="grid2"><div class="card"><div class="ch"><h3>Nouveaux bars par mois</h3><span class="mu" style="font-size:13px">6 derniers mois</span></div><div class="chart">${o.inscriptions.map((x, i) => `<div class="${x.n ? "" : "z"}"><b class="num">${x.n}</b><i style="height:${Math.max(6, x.n / mx * 120)}px;animation-delay:${i * 70}ms"></i>${MONTH(x.mois)}</div>`).join("")}</div></div>
+      <div class="card"><div class="ch"><h3>Bars les plus actifs</h3><span class="mu" style="font-size:13px">30 jours</span></div>${top.length ? top.map(b => `<div class="rk" data-a="openBar" data-id="${b.id}">${av(b.name)}<div class="grow"><b>${esc(b.name)}</b><div class="meter"><i style="width:${Math.max(3, (+b.ventes_30j || 0) / tmax * 100)}%"></i></div></div><div class="amt num">${F(b.ventes_30j)}<small>${b.tickets_30j} tickets</small></div></div>`).join("") : `<div class="empty">Pas encore d’activité.</div>`}</div>
+      ${soon.length ? `<div class="card"><div class="ch"><h3>À relancer</h3><span class="pill warn">${soon.length}</span></div>${soon.map(b => `<div class="rk" data-a="openBar" data-id="${b.id}">${av(b.name)}<div class="grow"><b>${esc(b.name)}</b><div class="mu" style="font-size:13px">${esc(b.pdg || "")}${b.email ? " · " + esc(b.email) : ""}</div></div>${planPill(b)}</div>`).join("")}</div>` : ""}</div>`;
 }
 function vPaiements() {
   const subs = V.data.subs, pend = subs.filter(s => s.status === "en_attente" && s.channel !== "notchpay"), done = subs.filter(s => s.status !== "en_attente" || s.channel === "notchpay");
@@ -172,19 +464,19 @@ function vPaiements() {
         <div class="kv"><span class="mu">Demandé par</span><span>${esc(s.demandeur || "—")} · ${ago(s.created_at)}</span></div>
         <label class="f" style="margin-top:6px">Note (facultatif, ex. motif du refus)<input id="note_${s.id}" placeholder="Ex. montant reçu incomplet"></label>
         <div class="row" style="margin-top:6px"><button class="btn ok grow" data-a="decide" data-id="${s.id}" data-ok="1" ${V.busy ? "disabled" : ""}>Valider le paiement</button><button class="btn bad" data-a="decide" data-id="${s.id}" data-ok="0" ${V.busy ? "disabled" : ""}>Refuser</button></div></div>
-        ${img ? `<a href="${esc(img)}" target="_blank" rel="noopener"><img src="${esc(img)}" alt="Capture du SMS de paiement"></a>` : `<div class="noimg">${s.proof_path ? "Capture en cours de chargement…" : "Pas de capture : vérifiez la référence dans vos SMS."}</div>`}</div>`; }).join("") || `<div class="card empty">Aucun paiement en attente. 🎉</div>`}
-    <div class="card"><h3>Historique</h3><div class="scroll"><table><tr><th>Date</th><th>Bar</th><th>Formule</th><th>Montant</th><th>Opérateur</th><th>Référence</th><th>Statut</th></tr>
-      ${done.map(s => `<tr><td>${D(s.created_at)}</td><td>${esc(s.bar_name)}</td><td>${PLANS[s.plan][0]} · ${s.months} m</td><td class="num">${F(s.amount)}</td><td>${s.method === "orange" ? "Orange" : "MTN"}${s.channel === "notchpay" ? ` <span class="pill ok">direct</span>` : ""}</td><td style="word-break:break-all">${esc(s.reference)}</td><td><span class="pill ${SST[s.status][0]}">${SST[s.status][1]}</span>${s.admin_note ? `<br><span class="mu">${esc(s.admin_note)}</span>` : ""}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">Aucun paiement traité.</td></tr>`}</table></div></div></div>`;
+        ${img ? `<a href="${esc(img)}" target="_blank" rel="noopener"><img src="${esc(img)}" alt="Capture du SMS de paiement"></a>` : `<div class="noimg">${s.proof_path ? "Capture en cours de chargement…" : "Pas de capture : vérifiez la référence dans vos SMS."}</div>`}</div>`; }).join("") || `<div class="card"><div class="allgood"><span class="tic" style="${tone("ok")}">${ic("check")}</span><div><b>Aucun paiement en attente</b><div class="mu" style="font-size:13px">Les paiements directs Notch Pay s’activent tout seuls.</div></div></div></div>`}
+    <div class="card"><div class="ch"><h3>Historique</h3></div><div class="scroll"><table class="rsp"><tr><th>Bar</th><th>Date</th><th>Formule</th><th>Montant</th><th>Opérateur</th><th>Référence</th><th>Statut</th></tr>
+      ${done.map(s => `<tr><td class="t"><div class="cell">${av(s.bar_name)}<div><b>${esc(s.bar_name)}</b><div class="mu" style="font-size:13px">${D(s.created_at)}</div></div></div></td><td data-l="Date">${D(s.created_at)}</td><td data-l="Formule">${PLANS[s.plan][0]} · ${s.months} m</td><td data-l="Montant" class="num"><b>${F(s.amount)}</b></td><td data-l="Opérateur"><span>${s.method === "orange" ? "Orange" : "MTN"}${s.channel === "notchpay" ? ` <span class="pill ok">direct</span>` : ""}</span></td><td data-l="Référence" style="word-break:break-all">${esc(s.reference)}</td><td data-l="Statut"><span><span class="pill ${SST[s.status][0]}">${SST[s.status][1]}</span>${s.admin_note ? `<br><span class="mu">${esc(s.admin_note)}</span>` : ""}</span></td></tr>`).join("") || `<tr><td colspan="7" class="empty t">Aucun paiement traité.</td></tr>`}</table></div></div></div>`;
 }
 function vBars() {
   const q = (V.q || "").toLowerCase(), now = Date.now();
   const FL = { tous: () => true, payants: b => !["beta", "essai"].includes(b.plan) && !b.blocage, essai: b => b.plan === "essai", beta: b => b.plan === "beta", bientot: b => b.plan !== "beta" && b.plan_until && (new Date(b.plan_until) - now) / 864e5 <= 7 && !b.blocage, bloques: b => b.blocage || b.suspended, inactifs: b => !b.derniere_activite || now - new Date(b.derniere_activite) > 7 * 864e5 };
   const list = V.data.bars.filter(FL[V.filter]).filter(b => !q || (b.name + " " + b.code + " " + (b.city || "") + " " + (b.pdg || "") + " " + (b.email || "")).toLowerCase().includes(q));
-  return `<div class="ph"><div><h1>Bars</h1><p class="mu" style="margin:4px 0 0">${V.data.bars.length} bar(s) inscrit(s)</p></div><input style="max-width:320px" id="q" placeholder="Rechercher : nom, code, ville, PDG…" value="${esc(V.q)}"></div>
-    <div class="chips" style="margin-bottom:12px">${[["tous", "Tous"], ["payants", "Payants"], ["essai", "En essai"], ["beta", "Bêta"], ["bientot", "Expirent bientôt"], ["bloques", "Bloqués"], ["inactifs", "Inactifs 7 j"]].map(([k, l]) => `<button class="chip ${V.filter === k ? "on" : ""}" data-a="filter" data-v="${k}">${l}</button>`).join("")}</div>
-    <div class="card scroll" style="padding:4px 8px"><table><tr><th>Bar</th><th>PDG</th><th>Formule</th><th>Équipe</th><th>Ventes 30 j</th><th>Dernière activité</th><th></th></tr>
-      ${list.map(b => `<tr class="click" data-a="openBar" data-id="${b.id}"><td><b>${esc(b.name)}</b><br><span class="mu">${esc(b.code)} · ${esc(b.city || "—")}</span></td><td>${esc(b.pdg || "—")}<br><span class="mu">${esc(b.email || "")}</span></td>
-        <td>${planPill(b)}${b.a_valider ? ` <span class="pill warn">Paiement à valider</span>` : ""}</td><td>${b.employes} <span class="mu">(${b.serveuses} serv.)</span></td><td class="num">${F(b.ventes_30j)}</td><td>${ago(b.derniere_activite)}</td><td>›</td></tr>`).join("") || `<tr><td colspan="7" class="empty">Aucun bar ne correspond.</td></tr>`}</table></div>`;
+  return `<div class="ph"><div><h1>Bars</h1><p class="mu" style="margin:4px 0 0">${V.data.bars.length} bar(s) inscrit(s)</p></div><label class="search">${ic("search")}<input id="q" type="search" placeholder="Nom, code, ville, PDG…" value="${esc(V.q)}" aria-label="Rechercher un bar"></label></div>
+    <div class="chips sc" style="margin-bottom:14px">${[["tous", "Tous"], ["payants", "Payants"], ["essai", "En essai"], ["beta", "Bêta"], ["bientot", "Expirent bientôt"], ["bloques", "Bloqués"], ["inactifs", "Inactifs 7 j"]].map(([k, l]) => `<button class="chip ${V.filter === k ? "on" : ""}" data-a="filter" data-v="${k}">${l}</button>`).join("")}</div>
+    <div class="card scroll" style="padding:6px 10px"><table class="rsp"><tr><th>Bar</th><th>PDG</th><th>Formule</th><th>Équipe</th><th>Ventes 30 j</th><th>Dernière activité</th><th></th></tr>
+      ${list.map(b => `<tr class="click" data-a="openBar" data-id="${b.id}"><td class="t"><div class="cell">${av(b.name)}<div style="min-width:0"><b>${esc(b.name)}</b><div class="mu" style="font-size:13px">${esc(b.code)} · ${esc(b.city || "—")}</div></div></div></td><td data-l="PDG"><span>${esc(b.pdg || "—")}<span class="mu" style="display:block;font-size:12px;overflow-wrap:anywhere">${esc(b.email || "")}</span></span></td>
+        <td data-l="Formule"><span>${planPill(b)}${b.a_valider ? ` <span class="pill warn">Paiement à valider</span>` : ""}</span></td><td data-l="Équipe"><span>${b.employes} <span class="mu">(${b.serveuses} serveuse${b.serveuses > 1 ? "s" : ""})</span></span></td><td data-l="Ventes 30 j" class="num"><b>${F(b.ventes_30j)}</b></td><td data-l="Dernière activité">${ago(b.derniere_activite)}</td><td class="x">${ic("chev", "chev")}</td></tr>`).join("") || `<tr><td colspan="7" class="empty t">Aucun bar ne correspond.</td></tr>`}</table></div>`;
 }
 function vPanel() {
   const b = V.data.bars.find(x => x.id === V.panel); if (!b) return "";
@@ -232,6 +524,9 @@ function vReglages() {
         <p class="mu" style="margin:0;font-size:13px">Si un raccourci de transfert direct fonctionne sur votre téléphone, saisissez-le avec {numero} et {montant} : le bouton « Payer » des bars préremplira le transfert. Laissez vide pour ouvrir le menu de l’opérateur.</p>
         <label class="f">Orange Money<input id="s_omt" value="${esc(p.om_tpl || "")}" placeholder="#150*1*1*{numero}*{montant}#"></label><label class="f">MTN MoMo<input id="s_mtnt" value="${esc(p.mtn_tpl || "")}" placeholder="*126*1*1*{numero}*{montant}#"></label></div></details>
       <button class="btn" data-a="saveSettings" ${V.busy ? "disabled" : ""}>Enregistrer</button></div>
+    <div class="card stack" style="max-width:640px;margin-top:14px"><h3>Connexion rapide sur cet appareil</h3>
+      <p class="mu" style="margin:0;font-size:14px">${qpState()}. Le code${BIO_OK ? " ou l’empreinte" : ""} remplace le mot de passe au déverrouillage, sur cet appareil uniquement.</p>
+      <div class="row"><button class="btn soft" data-a="qpOpen">${ic("finger")} Gérer la connexion rapide</button>${canInstall() ? `<button class="btn soft" data-a="install">${ic("download")} Installer l’application</button>` : ""}</div></div>
     <div class="card stack" style="max-width:640px;margin-top:14px"><h3>Votre compte</h3><div class="kv"><span class="mu">Connecté en tant que</span><b>${esc(V.me || "")}</b></div>
       <label class="f">Nouveau mot de passe<input id="s_pw" type="password" autocomplete="new-password" placeholder="10 caractères minimum"></label><button class="btn soft" data-a="changePw">Changer le mot de passe</button></div>`;
 }
@@ -243,7 +538,7 @@ function vAssistance() {
   const all = V.data.sup || [], f = V.supF || "transmis", list = all.filter(t => f === "tous" || t.status === f), t = all.find(x => x.id === V.thr);
   const cnt = k => all.filter(x => k === "tous" || x.status === k).length;
   return `<div class="ph"><div><h1>Assistance</h1><p class="mu" style="margin:4px 0 0">L’assistant IA répond 24 h/24. Les demandes qu’il ne peut pas régler arrivent ici, marquées « Transmis à BISMO ».</p></div><button class="btn soft" data-a="reload">Actualiser</button></div>
-    <div class="chips" style="margin-bottom:12px">${[["transmis", "À traiter"], ["ia", "Réglées par l’IA"], ["resolu", "Résolues"], ["tous", "Toutes"]].map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-a="supF" data-v="${k}">${l} <b>${cnt(k)}</b></button>`).join("")}</div>
+    <div class="chips sc" style="margin-bottom:14px">${[["transmis", "À traiter"], ["ia", "Réglées par l’IA"], ["resolu", "Résolues"], ["tous", "Toutes"]].map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-a="supF" data-v="${k}">${l} <b>${cnt(k)}</b></button>`).join("")}</div>
     <div class="sup"><div class="card supl">${list.map(x => `<button class="supi ${x.id === V.thr ? "on" : ""}" data-a="openThr" data-id="${x.id}">
         <span class="row" style="justify-content:space-between"><b>${esc(x.bar_name || "Visiteur (non connecté)")}</b>${supNew(x) ? `<span class="pill bad">Nouveau</span>` : `<span class="mu" style="font-size:12px">${ago(x.last_msg_at)}</span>`}</span>
         <span class="mu" style="font-size:13px">${esc(x.staff_name ? x.staff_name + " · " + (ROLE_L[x.staff_role] || "") : x.contact || "Sans contact")}${x.urgence === "urgente" ? ` · <b style="color:var(--bad)">urgent</b>` : ""}</span>
@@ -271,7 +566,7 @@ function vAvis() {
     <div class="grid2" style="margin-bottom:14px"><div class="card stack"><h3>Note moyenne</h3><div class="row" style="align-items:flex-end;gap:12px"><b style="font:800 44px/1 var(--display)">${n ? avg.toFixed(1).replace(".", ",") : "—"}</b><div>${stars(Math.round(avg))}<div class="mu" style="font-size:13px">${n} avis</div></div></div>
         ${dist.map(([r, c]) => `<div class="row" style="flex-wrap:nowrap;gap:8px;font-size:13px"><span style="width:28px">${r} ★</span><span class="bar-h"><i style="width:${n ? c / n * 100 : 0}%"></i></span><span class="num" style="width:24px;text-align:right">${c}</span></div>`).join("")}</div>
       <div class="card stack"><h3>Sujets les plus cités</h3>${tc.length ? tc.map(([k, c]) => `<div class="kv"><span>${AVT[k]}</span><b class="num">${c}</b></div>`).join("") : `<div class="empty">Pas encore de sujet cité.</div>`}</div></div>
-    <div class="chips" style="margin-bottom:12px">${[["tous", "Tous"], ["neg", "1 à 2 ★"], ["pos", "4 à 5 ★"], ["msg", "Avec message"]].map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-a="avF" data-v="${k}">${l}</button>`).join("")}</div>
+    <div class="chips sc" style="margin-bottom:14px">${[["tous", "Tous"], ["neg", "1 à 2 ★"], ["pos", "4 à 5 ★"], ["msg", "Avec message"]].map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-a="avF" data-v="${k}">${l}</button>`).join("")}</div>
     <div class="stack">${list.map(a => `<div class="card stack" style="gap:6px${a.admin_seen_at ? "" : ";border-color:var(--brand)"}"><div class="row" style="justify-content:space-between">${stars(a.rating)}<span class="mu" style="font-size:12px">${!a.admin_seen_at ? `<span class="pill ok">Nouveau</span> ` : ""}${new Date(a.created_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span></div>
         <div class="mu" style="font-size:13px"><b style="color:var(--ink)">${esc(a.staff_name || "Ancien membre")}</b> · ${ROL[a.role] || ""} · ${esc(a.bar_name || "")} <span class="mu">${esc(a.bar_code || "")}</span></div>
         ${(a.topics || []).length ? `<div class="chips">${a.topics.map(t => `<span class="chip" style="font-size:12px;padding:3px 9px">${AVT[t] || esc(t)}</span>`).join("")}</div>` : ""}
@@ -279,8 +574,13 @@ function vAvis() {
 }
 function vJournal() {
   const name = id => (V.data.bars.find(b => b.id === id) || {}).name || "";
-  const L = { paiement_auto: "Abonnement payé en direct (validé automatiquement)", paiement_valide: "Paiement validé", paiement_refuse: "Paiement refusé", bar_modifie: "Bar modifié", kyc: "Identité", reglages: "Réglages" };
-  return `<div class="ph"><h1>Journal</h1></div><div class="card scroll"><table><tr><th>Date</th><th>Action</th><th>Bar</th><th>Détails</th></tr>${V.data.log.map(l => `<tr><td>${new Date(l.created_at).toLocaleString("fr-FR")}</td><td>${L[l.action] || esc(l.action)}</td><td>${esc(name(l.bar_id))}</td><td class="mu">${esc(Object.entries(l.data || {}).filter(([, v]) => v != null && v !== "").map(([k, v]) => k + " : " + v).join(" · "))}</td></tr>`).join("") || `<tr><td colspan="4" class="empty">Aucune action pour le moment.</td></tr>`}</table></div>`;
+  const L = { paiement_auto: ["Abonnement payé en direct", "spark", "ok"], paiement_valide: ["Paiement validé", "check", "ok"], paiement_refuse: ["Paiement refusé", "x", "bad"], bar_modifie: ["Bar modifié", "store", "sky"], kyc: ["Identité vérifiée ou mise à jour", "user", "night"], reglages: ["Réglages modifiés", "sliders", "warn"] };
+  const day = d => { const x = new Date(d), t = new Date(), y = new Date(Date.now() - 864e5), same = (a, b) => a.toDateString() === b.toDateString(); return same(x, t) ? "Aujourd’hui" : same(x, y) ? "Hier" : x.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: x.getFullYear() === t.getFullYear() ? undefined : "numeric" }); };
+  let last = "";
+  const items = V.data.log.map(l => { const [lab, i, t] = L[l.action] || [l.action, "list", "sky"], dd = day(l.created_at), head = dd !== last ? `${last ? "</div>" : ""}<div class="tl-day">${dd}</div><div class="card" style="padding:4px 14px">` : ""; last = dd;
+    const det = Object.entries(l.data || {}).filter(([, v]) => v != null && v !== "").map(([k, v]) => k + " : " + v).join(" · ");
+    return head + `<div class="tl"><span class="tic" style="${tone(t)}">${ic(i)}</span><div class="grow"><div class="row" style="justify-content:space-between;flex-wrap:nowrap;align-items:flex-start"><b>${esc(lab)}${name(l.bar_id) ? ` <span class="mu" style="font-weight:500">· ${esc(name(l.bar_id))}</span>` : ""}</b><time>${new Date(l.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</time></div>${det ? `<div class="d">${esc(det)}</div>` : ""}</div></div>`; }).join("");
+  return `<div class="ph"><div><h1>Journal</h1><p>Chaque action faite dans la console, de la plus récente à la plus ancienne.</p></div></div>${items ? items + "</div>" : `<div class="card empty">Aucune action pour le moment.</div>`}`;
 }
 function render() {
   const ae = document.activeElement, fid = ae && ae.id, pos = ae && ae.selectionStart;
@@ -288,11 +588,20 @@ function render() {
   if (V.view === "loading") h = `<div class="auth"><span class="spin"></span></div>`;
   else if (V.view === "login") h = vLogin();
   else if (V.view === "relock") h = vRelock();
-  else { const pend = (V.data.subs || []).filter(s => s.status === "en_attente" && s.channel !== "notchpay").length, nsup = (V.data.sup || []).filter(supNew).length, nav_av = (V.data.avis || []).filter(a => !a.admin_seen_at).length, nav = (cls) => SECT.map(([k, l]) => `<a href="#${k}" class="${V.tab === k ? "on" : ""}">${l}${k === "paiements" && pend ? `<i>${pend}</i>` : ""}${k === "assistance" && nsup ? `<i>${nsup}</i>` : ""}${k === "avis" && nav_av ? `<i>${nav_av}</i>` : ""}</a>`).join("");
+  else if (!V.data.ov) h = `<div class="auth"><div class="card" style="text-align:center"><h1 style="font-size:22px">Données indisponibles</h1><p class="mu">Vérifiez la connexion internet, puis réessayez.</p><button class="btn" data-a="reload">Réessayer</button><button class="lnk" data-a="logout">Se déconnecter</button></div></div>`;
+  else { const nb = { paiements: nPend(), assistance: nSup(), avis: nAvis() }, bdg = k => nb[k] ? `<i class="badge">${nb[k]}</i>` : "";
+    const fresh = V.lastTab !== V.tab; V.lastTab = V.tab;
     const body = { apercu: vApercu, paiements: vPaiements, assistance: vAssistance, avis: vAvis, bars: vBars, reglages: vReglages, journal: vJournal }[V.tab] || vApercu;
-    h = `<div class="shell"><nav class="side"><div class="brand"><img src="${LOGO}" alt="" style="width:46px;filter:brightness(1.2)"><div><b>GesCo Bar</b><small>Console éditeur</small></div></div>${nav()}
-      <div class="foot"><span>${esc(V.me || "")}</span><button data-a="theme">Thème clair / sombre</button><button data-a="logout">Se déconnecter</button></div></nav>
-      <div><div class="tabs-m">${nav()}<a href="#" data-a="logout">Quitter</a></div><main>${body()}</main></div></div>${V.panel ? vPanel() : ""}`; }
+    h = `<div class="shell"><nav class="side" aria-label="Sections"><div class="brand"><img class="mk" src="icon.svg" alt=""><div><b>GesCo Bar</b><small>Console éditeur</small></div></div>
+      <div class="nav">${SECT.map(([k, l, i]) => `<a href="#${k}" class="${V.tab === k ? "on" : ""}">${ic(i)}<span>${l}</span>${bdg(k)}</a>`).join("")}</div>
+      ${canInstall() ? `<button class="side-inst" data-a="install">${ic("download")} Installer l’application</button>` : ""}
+      <div class="me">${av(V.me)}<div class="grow"><b>BISMO Agency</b><small>${esc(V.me || "")}</small></div><button class="ib" data-a="more" aria-label="Menu du compte">${ic("more")}</button></div></nav>
+      <div class="col"><header class="top"><img class="mk" src="icon.svg" alt=""><div class="grow tt">GesCo Bar<small>Console</small></div>
+        <button class="ib" data-a="reload" aria-label="Actualiser">${V.busy ? '<span class="spin"></span>' : ic("refresh")}</button><button class="avb" data-a="more" aria-label="Menu du compte">${av(V.me)}</button></header>
+        <main class="${fresh ? "fresh" : ""}">${body()}</main></div>
+      <nav class="bnav" aria-label="Sections">${BNAV.map(k => { const x = SECT.find(y => y[0] === k); return `<a href="#${k}" class="${V.tab === k ? "on" : ""}"><span class="bi">${ic(x[2])}</span>${x[3] || x[1]}${bdg(k)}</a>`; }).join("")}
+        <a href="#" data-a="more" class="${["avis", "reglages", "journal"].includes(V.tab) ? "on" : ""}"><span class="bi">${ic("grid")}</span>Plus${bdg("avis")}</a></nav></div>${V.panel ? vPanel() : ""}`; }
+  if (V.sheet && (V.view === "app" || V.sheet === "install")) h += vSheet();
   $.innerHTML = h + (V.toast ? `<div class="toast ${V.toast.kind || ""}" role="status">${esc(V.toast.msg)}</div>` : "");
   if (fid) { const e = document.getElementById(fid); if (e) { e.focus(); try { if (pos != null) e.setSelectionRange(pos, pos); } catch (x) {} } }
 }
@@ -301,11 +610,46 @@ const A = {
   login: () => run(async () => { V.err = ""; const em = val("em").replace(/\s+/g, "").toLowerCase(), pw = val("pw"); V.f.em = em;
     const { error } = await sb.auth.signInWithPassword({ email: em, password: pw }); if (error) throw new Error("E-mail ou mot de passe incorrect.");
     const w = await rpc("gb_pf_whoami"); if (!w.admin) { await sb.auth.signOut(); throw new Error("Ce compte n’est pas un compte éditeur."); }
-    V.me = w.email; await loadAll(); V.view = "app"; }),
+    V.me = w.email; await loadAll(); V.view = "app"; offerQp(); }),
   setup: () => run(async () => { V.err = ""; const em = val("em").replace(/\s+/g, "").toLowerCase(), pw = val("pw"), code = val("code").toUpperCase(); V.f.em = em;
     await fn("admin_setup", { email: em, password: pw, code }); const { error } = await sb.auth.signInWithPassword({ email: em, password: pw }); if (error) throw new Error(error.message);
-    V.me = em; V.setup = false; await loadAll(); V.view = "app"; toast("Bienvenue dans votre console éditeur."); }),
-  logout: async () => { await sb.auth.signOut(); V.view = "login"; V.data = {}; V.panel = null; render(); },
+    V.me = em; V.setup = false; await loadAll(); V.view = "app"; offerQp(); toast("Bienvenue dans votre console éditeur."); }),
+  logout: async () => { await sb.auth.signOut(); V.view = "login"; V.data = {}; V.panel = null; V.sheet = null; V.err = ""; render(); },
+  more: () => { V.sheet = "more"; render(); },
+  shClose: () => { V.sheet = null; V.qp = null; render(); },
+  go: d => { V.sheet = null; if (location.hash.slice(1) === d.v) render(); else location.hash = d.v; },
+  goBars: d => { V.filter = d.v; if (location.hash.slice(1) === "bars") render(); else location.hash = "bars"; },
+  install: async () => { if (bip) { const p = bip; bip = null; V.sheet = null; render(); p.prompt(); const r = await p.userChoice.catch(() => ({})); if (r.outcome === "accepted") lsSet("gesco-console-inst", 1); render(); return; } V.sheet = "install"; render(); },
+  instHide: () => { lsSet("gesco-console-inst-hide", Date.now() + 14 * 864e5); render(); },
+  qpOpen: () => { V.sheet = "qp"; V.qp = null; render(); },
+  qpNew: () => { V.qp = { a: "", b: null }; render(); },
+  qpLater: () => { lsSet("gesco-console-qp-later", Date.now() + 7 * 864e5); V.sheet = null; render(); },
+  qpOff: () => { lsSet(QK, null); lsSet(BK, null); V.sheet = null; toast("Connexion rapide désactivée : le mot de passe sera demandé."); },
+  qk: async (d, el) => { const q = V.qp; if (!q || q.wait) return; padTap(el);
+    if (d.v === "del") q.a = q.a.slice(0, -1); else if (q.a.length < 4) q.a += d.v; setDots(".sheet", q.a.length);
+    if (q.a.length < 4) return;
+    if (q.b == null) { q.wait = 1; setTimeout(() => { q.b = q.a; q.a = ""; q.wait = 0; render(); }, 200); return; }
+    if (q.a !== q.b) { shakeDots(".sheet"); q.wait = 1; setTimeout(() => { V.qp = { a: "", b: null }; toast("Les deux codes ne correspondent pas. Recommencez.", "err"); }, 450); return; }
+    q.wait = 1; const salt = hx(rnd(16)); lsSet(QK, { u: V.me, s: salt, h: await pinHash(q.a, salt), n: 0 }); V.qp = null; if (!(BIO_OK && !bio())) V.sheet = null;
+    toast(BIO_OK && !bio() ? "Code enregistré. Vous pouvez aussi activer l’empreinte." : "Code enregistré : il remplace le mot de passe sur cet appareil."); },
+  bioOn: () => run(async () => { const cred = await navigator.credentials.create({ publicKey: { challenge: rnd(32), rp: { name: "GesCo Console" }, user: { id: rnd(16), name: V.me, displayName: "BISMO Agency" },
+      pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }], authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "discouraged" }, timeout: 60000 } }).catch(() => null);
+    if (!cred) throw new Error("Empreinte non enregistrée. Réessayez, ou gardez simplement le code.");
+    lsSet(BK, { u: V.me, id: b64u(cred.rawId) }); V.sheet = null; toast("Empreinte activée : posez le doigt pour ouvrir la console."); }),
+  lk: async (d, el) => { if (V.lkBusy) return; padTap(el); V.lk = V.lk || "";
+    if (d.v === "del") V.lk = V.lk.slice(0, -1); else if (V.lk.length < 4) V.lk += d.v; setDots(".lock", V.lk.length);
+    if (V.lk.length < 4) return;
+    V.lkBusy = true; const p = qpin(), ok = p && await pinHash(V.lk, p.s) === p.h;
+    if (ok) { p.n = 0; lsSet(QK, p); V.lkBusy = false; return unlocked(); }
+    p.n = (p.n || 0) + 1; lsSet(QK, p); V.lk = ""; shakeDots(".lock"); setTimeout(() => setDots(".lock", 0), 380);
+    if (p.n >= 5) { lsSet(QK, null); lsSet(BK, null); V.lkBusy = false; await sb.auth.signOut(); V.view = "login"; V.data = {}; V.err = "Trop d’essais : reconnectez-vous avec votre mot de passe."; render(); return; }
+    const m = document.getElementById("lkmsg"); if (m) m.textContent = `Code incorrect · encore ${5 - p.n} essai(s)`; V.lkBusy = false; },
+  bio: async () => { const b = bio(); if (!b || V.bioBusy || V.view !== "relock") return; V.bioBusy = true;
+    try { await navigator.credentials.get({ publicKey: { challenge: rnd(32), allowCredentials: [{ type: "public-key", id: ub64u(b.id) }], userVerification: "required", timeout: 60000 } }); V.bioBusy = false; unlocked(); }
+    catch (e) { V.bioBusy = false; const m = document.getElementById("lkmsg"); if (m) m.textContent = "Empreinte non reconnue : tapez votre code."; } },
+  lkPw: () => { V.lkMode = "pw"; V.err = ""; render(); },
+  lkPin: () => { V.lkMode = ""; V.lk = ""; render(); },
+  lockNow: () => { V.sheet = null; lastAct = 0; lockIfIdle(); },
   reload: () => run(async () => { await loadAll(); if (V.thr) await loadMsgs(V.thr); }),
   supF: d => { V.supF = d.v; render(); },
   avF: d => { V.avF = d.v; render(); },
@@ -333,21 +677,26 @@ const A = {
   decide: d => run(async () => { await rpc("gb_pf_sub_decide", { p_id: d.id, p_ok: d.ok === "1", p_note: val("note_" + d.id) }); await loadAll(); toast(d.ok === "1" ? "Paiement validé : la formule est active." : "Paiement refusé."); }),
   saveSettings: () => run(async () => { await rpc("gb_pf_settings", { p_holder: val("s_holder"), p_om: val("s_om").replace(/\D/g, ""), p_mtn: val("s_mtn").replace(/\D/g, ""), p_om_tpl: val("s_omt"), p_mtn_tpl: val("s_mtnt") }); await loadAll(); toast("Réglages enregistrés."); }),
   changePw: () => run(async () => { const p = val("s_pw"); if (p.length < 10) throw new Error("10 caractères minimum."); const { error } = await sb.auth.updateUser({ password: p }); if (error) throw new Error(error.message); toast("Mot de passe changé."); }),
-  theme: () => { const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; r.dataset.theme = dark ? "light" : "dark"; try { localStorage.setItem("gesco-console-theme", r.dataset.theme); } catch (e) {} }
+  theme: () => { const r = document.documentElement; r.dataset.theme = isDark() ? "light" : "dark"; try { localStorage.setItem("gesco-console-theme", r.dataset.theme); } catch (e) {} themeMeta(); render(); }
 };
 const val = id => { if (V.snap && id in V.snap) return String(V.snap[id]).trim(); const e = document.getElementById(id); return e ? e.value.trim() : ""; };
 let armed = null; function confirmTwice(id) { if (armed === id) { armed = null; return true; } armed = id; toast("Touchez encore « Suspendre l’accès » pour confirmer : toute l’équipe du bar sera bloquée.", "err"); setTimeout(() => { if (armed === id) armed = null; }, 6000); return false; }
-document.addEventListener("click", e => { const el = e.target.closest("[data-a]"); if (!el) return; if (el.dataset.self && e.target !== el) return; if (el.tagName === "A" && el.dataset.a !== "logout") return; e.preventDefault(); const f = A[el.dataset.a]; if (f) f({ ...el.dataset }); });
+document.addEventListener("click", e => { const el = e.target.closest("[data-a]"); if (!el) return; if (el.dataset.self && e.target !== el) return; e.preventDefault(); const f = A[el.dataset.a]; if (f) f({ ...el.dataset }, el); });
 document.addEventListener("input", e => { if (e.target.id === "q") { V.q = e.target.value; clearTimeout(window.__q); window.__q = setTimeout(render, 150); } if (e.target.id === "p_plan" || e.target.id === "p_until" || e.target.id === "p_note" || e.target.id.startsWith("rep_")) V.f[e.target.id] = e.target.value; });
 document.addEventListener("change", e => { if (e.target.id === "p_plan") { V.f.p_plan = e.target.value; render(); } });
-document.addEventListener("keydown", e => { if (e.key === "Enter" && V.view === "relock") { e.preventDefault(); A.unlock(); return; }
+document.addEventListener("keydown", e => { const typing = /INPUT|TEXTAREA|SELECT/.test(e.target.tagName), key = k => document.querySelector(`.kp [data-v="${k}"]`);
+  const padAct = V.view === "relock" && qpin() && V.lkMode !== "pw" ? "lk" : V.sheet === "qp" && V.qp ? "qk" : null;
+  if (padAct && !typing && (/^\d$/.test(e.key) || e.key === "Backspace")) { e.preventDefault(); const v = e.key === "Backspace" ? "del" : e.key; A[padAct]({ v }, key(v)); return; }
+  if (e.key === "Escape" && V.sheet) { A.shClose(); return; }
+  if (e.key === "Enter" && V.view === "relock") { e.preventDefault(); A.unlock(); return; }
   if (e.key === "Enter" && V.view === "login") { e.preventDefault(); A[V.setup && V.f.mode !== "login" ? "setup" : "login"](); } if (e.key === "Escape" && V.panel) A.close(); });
-addEventListener("hashchange", () => { V.tab = location.hash.slice(1) || "apercu"; V.panel = null; render(); scrollTo(0, 0); });
+addEventListener("hashchange", () => { V.tab = location.hash.slice(1) || "apercu"; V.panel = null; V.sheet = null; render(); scrollTo(0, 0); });
 try { const t = localStorage.getItem("gesco-console-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+function themeMeta() { const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = isDark() ? "#060b09" : "#f2f6f4"; } themeMeta();
 /* Verrouillage après 1 minute d'inactivité : mot de passe à retaper */
 let lastAct = Date.now();
 ["pointerdown", "keydown", "touchstart", "wheel", "scroll"].forEach(ev => addEventListener(ev, () => { if (V.view === "app") lastAct = Date.now(); }, { passive: true, capture: true }));
-const lockIfIdle = () => { if (V.view === "app" && Date.now() - lastAct > 60000) { V.view = "relock"; V.panel = null; V.err = ""; render(); } };
+const lockIfIdle = auto => { if (V.view === "app" && Date.now() - lastAct > 60000) { V.view = "relock"; V.panel = null; V.sheet = null; V.qp = null; V.err = ""; V.lk = ""; V.lkMode = ""; render(); if (auto && bio() && qpin()) setTimeout(A.bio, 350); } };
 setInterval(lockIfIdle, 5000);
 async function loadMsgs(id) { const { data } = await sb.from("support_messages").select("*").eq("thread_id", id).order("id"); if (V.thr === id) V.msgs = data || []; }
 /* Nouvelles demandes d'assistance : vérification toutes les 30 s + signal sonore */
@@ -357,18 +706,12 @@ setInterval(async () => { if (V.view !== "app" || document.visibilityState !== "
     if (sig === (V.data.sup || []).map(t => t.id + t.last_msg_at).join()) return;
     V.data.sup = sup; if (V.thr) await loadMsgs(V.thr);
     if (supSeen != null && n > supSeen) { toast("Nouvelle demande d’assistance transmise par l’IA."); try { const c = new AudioContext(), o = c.createOscillator(), g = c.createGain(); o.connect(g); g.connect(c.destination); o.frequency.value = 880; g.gain.setValueAtTime(.15, c.currentTime); g.gain.exponentialRampToValueAtTime(.001, c.currentTime + .5); o.start(); o.stop(c.currentTime + .5); } catch (e) {} }
-    supSeen = n; if (!V.busy) render(); } catch (e) {} }, 30000); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") lockIfIdle(); });
-function vRelock() {
-  return `<div class="auth"><form class="card" onsubmit="return false"><img class="logo" src="${LOGO}" alt="BISMO Agency">
-    <div style="text-align:center"><h1 style="font-size:22px">Console verrouillée</h1><p class="mu" style="margin:4px 0 0">Après 1 minute d’inactivité, retapez votre mot de passe.</p></div>
-    ${V.err ? `<div class="err">${esc(V.err)}</div>` : ""}<div class="kv"><span class="mu">Compte</span><b>${esc(V.me || "")}</b></div>
-    <label class="f">Mot de passe<input id="pw" type="password" autocomplete="current-password" autofocus></label>
-    <button class="btn" data-a="unlock" ${V.busy ? "disabled" : ""}>${V.busy ? '<span class="spin"></span>' : "Déverrouiller"}</button>
-    <button class="btn soft sm" data-a="logout">Changer de compte</button></form></div>`;
-}
+    supSeen = n; if (!V.busy) render(); } catch (e) {} }, 30000); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") lockIfIdle(true); });
 A.unlock = () => run(async () => { V.err = ""; const { error } = await sb.auth.signInWithPassword({ email: V.me, password: val("pw") });
-  if (error) { V.err = "Mot de passe incorrect."; return; } V.view = "app"; lastAct = Date.now(); await loadAll(); });
+  if (error) { V.err = "Mot de passe incorrect."; return; } const p = lsGet(QK); if (p && p.u === V.me) { p.n = 0; lsSet(QK, p); }
+  V.view = "app"; V.lkMode = ""; lastAct = Date.now(); if (V.loadP) { await V.loadP; V.loadP = null; } await loadAll(); offerQp(); });
 V.view = "loading"; render(); boot();
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("/sw.js").catch(() => {});
 </script>
 </body>
 </html>

@@ -124,3 +124,9 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Paiement QR : anneau animé et « En attente de validation » tant que le paiement n'est pas confirmé ; à la confirmation, feux d'artifice et « Commande payée ! » clignotant, vibration et son.
 - Bar avec clé Notch Pay : le QR encode un lien de paiement Notch Pay (action `momo_link`), le statut est vérifié toutes les 3,5 s et le ticket passe payé tout seul (montant contrôlé). Sans clé : QR USSD marchand, la célébration s'affiche quand la caisse confirme.
 - Migration `014_qr_paiement_automatique.sql`.
+
+## v4.6 — Console éditeur modernisée et installable
+- Nouveau design sombre (thème clair au choix) : accueil avec revenu mensuel, liste « À traiter », indicateurs à icônes, graphiques, classement des bars.
+- Sur téléphone : barre d’onglets en bas (Accueil, Paiements, Assistance, Bars, Plus), tableaux affichés en fiches, journal en fil chronologique.
+- Application installable « GesCo Console » (manifeste `console.webmanifest`, icônes `console-*.png`, portée `/console`).
+- Connexion rapide propre à l’appareil : code à 4 chiffres (haché PBKDF2 en local) et empreinte (WebAuthn), demandés à l’ouverture et après 1 minute d’inactivité ; 5 erreurs → déconnexion et mot de passe obligatoire.
