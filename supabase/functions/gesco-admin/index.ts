@@ -220,7 +220,7 @@ Règles :
         const call = (msgs: unknown[]) => fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
           body: JSON.stringify({ model: Deno.env.get("ASSIST_MODEL") ?? "claude-haiku-5-5", max_tokens: 700, system: sys, tools, messages: msgs }) }).then(r => r.json());
         let r = await call(messages);
-        if (r?.error) return fail("L'assistant est momentanément indisponible. Réessayez dans un instant.", 502);
+        if (r?.error) { console.error("anthropic_error", JSON.stringify(r.error)); return fail("L'assistant est momentanément indisponible. Réessayez dans un instant.", 502); }
         let status = "ia";
         const tu = (r.content ?? []).find((c: { type: string }) => c.type === "tool_use");
         if (tu) {
