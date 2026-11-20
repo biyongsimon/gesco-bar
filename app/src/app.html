@@ -1392,7 +1392,7 @@ function vLogin() {
   }
   return `<div class="login"><div class="row" style="justify-content:flex-end"><button class="btn ghost sm" data-a="help">${ico("help")} Aide</button>${themeBtn()}</div>${bismo(false)}<div class="hero"><div class="brandmark">GesCo<span> Bar</span></div><p>Chaque boisson a son ticket. Chaque ticket a sa serveuse.</p></div>
     ${demo ? `<div class="demo"><b>Mode démo</b> : données d’exemple enregistrées dans ce navigateur. Code du bar <b>DEMO</b>. PIN : serveuses Aline <b>1111</b>, Brigitte <b>2222</b>, Carine <b>3333</b> · caisse Mireille <b>0000</b> · directeur Hervé <b>5555</b> · PDG Marcel <b>9999</b>.</div>` : ""}
-    ${tabs}${body}${installBox()}</div>`;
+    ${tabs}${body}${installBox()}<p class="mu" style="text-align:center;font-size:12px;margin:14px 0 0"><a href="/conditions" target="_blank" rel="noopener">Conditions générales</a> · <a href="/remboursement" target="_blank" rel="noopener">Remboursement</a></p></div>`;
 }
 function installBox() {
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
