@@ -179,6 +179,9 @@ Deno.serve(async (req) => {
         };
         if (body.action === "sub_push") {
           const { plan, operator, phone } = body as Record<string, string>;
+          // Clé Notch Pay de test (compte pas encore validé) : seuls les numéros fictifs du bac à sable passent.
+          const p9 = String(phone ?? "").replace(/\D/g, "").replace(/^237/, "");
+          if (/test/i.test(KEY) && !/^6[79]000000\d$/.test(p9)) return fail("Le paiement sur téléphone est en cours d'activation (validation du compte de paiement GesCo en cours). En attendant, choisissez « Par transfert » : votre formule s'active tout de suite.", 503);
           const { data: st, error: e1 } = await admin.rpc("gb_admin_sub_push_start", { p_user: me.user.id, p_plan: plan, p_months: Number(body.months), p_method: operator, p_phone: phone });
           if (e1) return fail(e1.message);
           const init = await np("POST", "", { amount: st.amount, currency: "XAF", reference: "gbsub-" + st.id, description: st.label, customer: { phone: st.phone, name: st.bar } });
@@ -186,7 +189,10 @@ Deno.serve(async (req) => {
           if (!init.ok || !ref) { await admin.rpc("gb_admin_sub_push_done", { p_id: st.id, p_ok: false, p_ref: null, p_msg: "init: " + (init.j?.message ?? "") }); console.error("notchpay_sub_init", JSON.stringify(init.j)); return fail("Le service de paiement est indisponible pour le moment. Réessayez ou payez par transfert."); }
           await admin.rpc("gb_admin_sub_push_ref", { p_id: st.id, p_ref: ref });
           const ch = await np("PUT", "/" + encodeURIComponent(ref), { channel: operator === "orange" ? "cm.orange" : "cm.mtn", data: { phone: st.phone } });
-          if (!ch.ok) { await admin.rpc("gb_admin_sub_push_done", { p_id: st.id, p_ok: false, p_ref: ref, p_msg: "charge: " + (ch.j?.message ?? "") }); console.error("notchpay_sub_charge", JSON.stringify(ch.j)); return fail("Envoi de la demande impossible : " + (ch.j?.message ?? "vérifiez le numéro et réessayez.")); }
+          if (!ch.ok) { await admin.rpc("gb_admin_sub_push_done", { p_id: st.id, p_ok: false, p_ref: ref, p_msg: "charge: " + (ch.j?.message ?? "") }); console.error("notchpay_sub_charge", JSON.stringify(ch.j)); const m = String(ch.j?.message ?? "");
+            return fail("Envoi de la demande impossible : " + (/test phone/i.test(m) ? "le paiement sur téléphone est encore en mode test. Choisissez « Par transfert » en attendant."
+              : /phone|number|numéro/i.test(m) ? "ce numéro n'est pas accepté par l'opérateur choisi. Vérifiez le numéro et l'opérateur (Orange ou MTN)."
+              : /insufficient|solde/i.test(m) ? "solde insuffisant sur ce compte Mobile Money." : "réessayez dans un instant ou payez par transfert.")); }
           return json({ ok: true, id: st.id, amount: st.amount, message: ch.j?.message ?? "Demande envoyée sur le téléphone." });
         }
         const { data: g, error: e2 } = await admin.rpc("gb_admin_sub_get", { p_user: me.user.id, p_id: String(body.id ?? "") });

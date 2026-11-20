@@ -2311,10 +2311,11 @@ function vAbo() {
       <div class="segs">${[[1, "1 mois"], [3, "3 mois"], [6, "6 mois"], [12, "12 mois · 2 offerts"]].map(([m, l]) => `<button class="${mo === m ? "on ok" : ""}" data-a="setF" data-k2="ab_m" data-v="${m}">${l}</button>`).join("")}</div>
       <div class="between"><span class="mu">${PLANS[pl][0]} · ${mo} mois</span><b class="num" style="font:800 26px var(--display)">${F(total)}</b></div>
       ${direct ? `<div class="segs">${[["direct", "Sur mon téléphone · recommandé"], ["transfert", "Par transfert"]].map(([k, l]) => `<button class="${mode === k ? "on ok" : ""}" data-a="setF" data-k2="ab_mode" data-v="${k}">${l}</button>`).join("")}</div>` : ""}
-      ${mode === "direct" ? (() => { const ph = String(V.f.ab_ph ?? LS.get("gesco-abph-" + S.me.id, "")).replace(/\D/g, ""), op = opOf(ph) || meth;
+      ${mode === "direct" ? (() => { const ph = String(V.f.ab_ph ?? LS.get("gesco-abph-" + S.me.id, "")).replace(/\D/g, ""), op = (V.f.ab_o_pick && V.f.ab_o) || opOf(ph) || meth, guess = opOf(ph);
         return `<div class="step"><i>1</i><div class="grow stack" style="gap:8px"><b>Votre numéro Mobile Money</b>
           <input id="ab_ph" data-k="ab_ph" inputmode="tel" autocomplete="tel" maxlength="13" value="${esc(V.f.ab_ph ?? LS.get("gesco-abph-" + S.me.id, ""))}" placeholder="Ex. 6XX XX XX XX">
-          <div class="segs">${[["orange", "Orange Money"], ["mtn", "MTN MoMo"]].map(([k, l]) => `<button class="${op === k ? "on " + (k === "orange" ? "warn" : "sky") : ""}" data-a="setF" data-k2="ab_o" data-v="${k}">${l}</button>`).join("")}</div></div></div>
+          <div class="segs">${[["orange", "Orange Money"], ["mtn", "MTN MoMo"]].map(([k, l]) => `<button type="button" class="${op === k ? "on " + (k === "orange" ? "warn" : "sky") : ""}" data-a="abOp" data-v="${k}" aria-pressed="${op === k}">${l}</button>`).join("")}</div>
+          ${guess && guess !== op ? `<div class="note warn">Ce numéro ressemble à un numéro ${guess === "orange" ? "Orange Money" : "MTN MoMo"}. Vérifiez l’opérateur avant d’envoyer la demande.</div>` : ""}</div></div>
         <div class="step"><i>2</i><div class="grow stack" style="gap:8px"><b>Validez avec votre code secret</b>
           <button class="btn wide" data-a="subPush" ${V.busy ? "disabled" : ""}>Recevoir la demande de ${F(total)}</button>
           <p class="mu" style="margin:0">Une demande de paiement s’affiche sur ce numéro : tapez votre code secret pour confirmer. La formule s’active aussitôt, sans capture à envoyer. Personne d’autre que vous ne voit votre code secret.</p></div></div>`; })() : `
@@ -2335,13 +2336,14 @@ function vAbo() {
         <p class="mu" style="margin:0">La formule s’active tout de suite pendant 72 h, le temps que BISMO Agency confirme la réception. Le paiement à l’année vous offre 2 mois.</p></div></div>`}</div>`}
     <div class="card"><h3>Historique et reçus</h3><div class="list">${(S.subs || []).map(x => `<div class="li"><div class="grow"><b>${PLANS[x.plan][0]} · ${x.months} mois</b><div class="mu">${new Date(x.created_at).toLocaleDateString("fr-FR")} · ${x.method === "orange" ? "Orange Money" : "MTN MoMo"}${x.channel === "notchpay" ? " direct" : ""} · réf. ${esc(x.reference)}</div></div><b class="num">${F(x.amount)}</b><span class="pill ${SST[x.status][0]}">${SST[x.status][1]}</span>${x.status === "validee" ? `<button class="btn soft sm" data-a="subRecu" data-id="${x.id}">Reçu</button>` : ""}</div>`).join("") || '<div class="empty">Aucun paiement d’abonnement pour le moment.</div>'}</div></div></div>`;
 }
+A.abOp = d => { V.f.ab_ph = (document.getElementById("ab_ph") || {}).value ?? V.f.ab_ph; V.f.ab_o = d.v; V.f.ab_o_pick = 1; render(); };
 A.subGo = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ? planState().k : "gold"); let proof = null; const f = window.__abFile;
   if (!f && (V.f.ab_ref || "").trim().length < 4) throw bizErr("Collez la référence du SMS ou ajoutez la capture du SMS.");
   if (f) { if (f.size > 5242880) throw bizErr("Capture trop lourde (5 Mo maximum)."); proof = await B.uploadProof(f); }
   const r = await call("gb_sub_request", { p_plan: pl, p_months: +(V.f.ab_m || 1), p_method: V.f.ab_o || "orange", p_reference: V.f.ab_ref || "", p_proof: proof });
   V.f.ab_ref = ""; window.__abFile = null; await refresh(); notify("ok", "Abonnement activé", `${PLANS[pl][0]} actif jusqu’à la confirmation de BISMO Agency (72 h).`); });
 A.subPush = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ? planState().k : "gold"), mo = +(V.f.ab_m || 1);
-  const ph = String(V.f.ab_ph ?? LS.get("gesco-abph-" + S.me.id, "")).replace(/\D/g, ""), op = opOf(ph) || V.f.ab_o || "orange";
+  const ph = String(V.f.ab_ph ?? LS.get("gesco-abph-" + S.me.id, "")).replace(/\D/g, ""), op = (V.f.ab_o_pick && V.f.ab_o) || opOf(ph) || V.f.ab_o || "orange";
   if (!/^(237)?6\d{8}$/.test(ph)) throw bizErr("Saisissez votre numéro Mobile Money : 9 chiffres commençant par 6.");
   const r = await B.subPush(pl, mo, op, ph); LS.set("gesco-abph-" + S.me.id, ph.slice(-9));
   toast("Demande envoyée : validez avec votre code secret sur le téléphone."); await refresh(); subWatch(r.id); });
