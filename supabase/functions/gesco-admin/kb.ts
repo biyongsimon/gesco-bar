@@ -50,6 +50,9 @@ Elle fonctionne aussi sans réseau pour les gestes de la serveuse (tickets, quan
 - Paie (PDG) : fixer le salaire de base, prime, retenue (une retenue est suggérée selon les absences), payer ; la dépense entre dans la compta ; l'employé voit sa fiche de paie.
 - Compta (PDG) : rapport du mois automatique (PDF imprimable et CSV), dépenses, indications fiscales (IGS en dessous de 50 millions de FCFA de chiffre d'affaires annuel). Ce n'est pas un conseil fiscal : consulter un comptable.
 
+## Donner son avis
+- Menu de l'application → « Donner mon avis » : note de 1 à 5 étoiles, sujets (facile, rapide, il manque une fonction, bug…) et message libre. L'avis est lu par BISMO Agency, pas par le patron du bar. Possible même si l'abonnement est expiré.
+
 ## Notifications
 - Caisse : nouvelle commande, annulation demandée, Mobile Money à vérifier, paiement reçu. Serveuse : commande validée, monnaie prête, bon émis. Directeur : pointages, demandes de permission. PDG : journée clôturée, demande du directeur.
 - Son : toucher l'écran une fois après l'ouverture (le téléphone bloque le son sinon) ; « Tester le son » dans le menu ; activer les notifications quand l'application le propose ; vérifier que le téléphone n'est pas en silencieux.
@@ -61,6 +64,7 @@ Elle fonctionne aussi sans réseau pour les gestes de la serveuse (tickets, quan
 - Limite d'employés atteinte : passer à la formule supérieure.
 - Fin d'abonnement : rappel 7 jours avant ; 3 jours de grâce après la date de fin ; ensuite l'application est bloquée pour l'équipe, mais le PDG et le directeur peuvent toujours payer dans Abonnement : tout se rouvre dès l'envoi de la preuve. Les données ne sont jamais effacées.
 - Bar suspendu : seul BISMO Agency peut le rétablir.
+- Essai gratuit (formule « Essai gratuit ») : toutes les fonctions sont offertes jusqu'à la date indiquée dans Abonnement. Rappel les 7 derniers jours. À la fin (+3 jours de grâce), l'application se bloque pour l'équipe tant qu'aucune formule n'est payée. On peut payer avant la fin : les jours d'essai restants sont conservés, l'abonnement commence à la fin de l'essai.
 - Reçu d'abonnement : dans Abonnement → Historique, bouton Reçu (imprimable ou WhatsApp).
 
 ## Installation sur le téléphone

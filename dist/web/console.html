@@ -69,6 +69,8 @@ td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}tr.cli
 .empty{padding:24px;text-align:center;color:var(--muted)}
 .tabs-m{display:none}
 .chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.chip b{margin-left:4px}
+.stz{color:#f5b301;letter-spacing:2px;font-size:18px}.stz i{font-style:normal;color:var(--line)}
+.bar-h{flex:1;height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}.bar-h i{display:block;height:100%;background:#f5b301;border-radius:99px}
 .sup{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:14px;align-items:start}
 .supl{padding:6px;display:flex;flex-direction:column;gap:4px;max-height:72vh;overflow:auto}
 .supi{display:flex;flex-direction:column;gap:3px;text-align:left;border:0;background:none;padding:10px 12px;border-radius:12px;cursor:pointer}
@@ -98,23 +100,23 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 const F = n => (Math.round(+n || 0)).toLocaleString("fr-FR").replace(/ | /g, " ") + " FCFA";
 const D = d => d ? new Date(d.length === 10 ? d + "T12:00:00" : d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "—";
 const ago = d => { if (!d) return "jamais"; const m = Math.round((Date.now() - new Date(d)) / 60000); return m < 60 ? `il y a ${m} min` : m < 1440 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
-const PLANS = { beta: ["Bêta gratuite", 0, ""], simple: ["Snack Simple", 10000, "sky"], premium: ["Snack Premium", 15000, "sky"], gold: ["Snack Gold", 20000, "warn"], lounge: ["Lounge", 30000, "night"] };
+const PLANS = { beta: ["Bêta gratuite", 0, ""], essai: ["Essai gratuit", 0, "warn"], simple: ["Snack Simple", 10000, "sky"], premium: ["Snack Premium", 15000, "sky"], gold: ["Snack Gold", 20000, "warn"], lounge: ["Lounge", 30000, "night"] };
 const MONTH = m => new Date(m + "-15").toLocaleDateString("fr-FR", { month: "short" });
 const V = { view: "login", tab: (location.hash || "#apercu").slice(1), f: {}, data: {}, filter: "tous", q: "", panel: null, busy: false, toast: null, setup: false };
-const SECT = [["apercu", "Vue d’ensemble"], ["paiements", "Paiements"], ["assistance", "Assistance"], ["bars", "Bars"], ["reglages", "Réglages"], ["journal", "Journal"]];
+const SECT = [["apercu", "Vue d’ensemble"], ["paiements", "Paiements"], ["assistance", "Assistance"], ["avis", "Avis"], ["bars", "Bars"], ["reglages", "Réglages"], ["journal", "Journal"]];
 
 function toast(msg, kind) { V.toast = { msg, kind }; render(); clearTimeout(window.__t); window.__t = setTimeout(() => { V.toast = null; render(); }, kind === "err" ? 5000 : 2800); }
 async function rpc(n, a) { const { data, error } = await sb.rpc(n, a || {}); if (error) throw new Error(error.message); return data; }
 async function fn(action, body) { const r = await fetch(CFG.url + "/functions/v1/gesco-admin", { method: "POST", headers: { "Content-Type": "application/json", apikey: CFG.key, Authorization: "Bearer " + CFG.key }, body: JSON.stringify({ action, ...body }) });
   const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || "Erreur réseau."); return j; }
 // Les champs sont relus AVANT le re-rendu (sinon le bouton « en cours » efface ce qui vient d'être tapé).
-const run = async f => { if (V.busy) return; const snap = {}; document.querySelectorAll("input,select,textarea").forEach(e => { if (e.id) snap[e.id] = e.value; }); V.snap = snap;
+const run = async f => { if (V.busy) return; const snap = {}; document.querySelectorAll("input,select,textarea").forEach(e => { if (e.id) snap[e.id] = e.type === "checkbox" ? e.checked : e.value; }); V.snap = snap;
   V.busy = true; render(); try { await f(); } catch (e) { toast(e.message, "err"); } V.snap = null; V.busy = false; render(); };
 
 async function loadAll() {
   const [ov, bars, subs, log] = await Promise.all([rpc("gb_pf_overview"), rpc("gb_pf_bars"), rpc("gb_pf_subs"), sb.from("platform_log").select("*").order("created_at", { ascending: false }).limit(100).then(r => r.data || [])]);
   const { data: pc } = await sb.from("platform_config").select("*").limit(1);
-  V.data = { ov, bars, subs, log, pc: (pc || [])[0] || {}, sup: await rpc("gb_pf_support_list").catch(() => []) };
+  V.data = { ov, bars, subs, log, pc: (pc || [])[0] || {}, sup: await rpc("gb_pf_support_list").catch(() => []), avis: await rpc("gb_pf_feedback").catch(() => []) };
   const need = subs.filter(s => s.status === "en_attente" && s.proof_path && !V.urls?.[s.proof_path]); V.urls = V.urls || {};
   await Promise.all(need.map(async s => { const { data } = await sb.storage.from("preuves").createSignedUrl(s.proof_path, 3600); if (data) V.urls[s.proof_path] = data.signedUrl; }));
 }
@@ -151,7 +153,7 @@ function vApercu() {
   const top = [...bars].sort((a, b) => b.ventes_30j - a.ventes_30j).slice(0, 6);
   return `<div class="ph"><div><h1>Vue d’ensemble</h1><p class="mu" style="margin:4px 0 0">${new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p></div><button class="btn soft" data-a="reload">Actualiser</button></div>
     <div class="kpis">${kpi("Revenu mensuel récurrent", F(o.mrr), `${o.payants} bar(s) payant(s)`, "hl", 0)}${kpi("Encaissé ce mois", F(o.encaisse_mois), `Total : ${F(o.encaisse_total)}`, "", 1)}
-      ${kpi("Paiements à valider", o.a_valider, o.a_valider ? "Ouvrir Paiements" : "Rien en attente", o.a_valider ? "alert" : "", 2)}${kpi("Bars inscrits", o.bars, `${o.beta} en bêta · ${o.bars_actifs_7j} actif(s) sur 7 j`, "", 3)}
+      ${kpi("Paiements à valider", o.a_valider, o.a_valider ? "Ouvrir Paiements" : "Rien en attente", o.a_valider ? "alert" : "", 2)}${kpi("Bars inscrits", o.bars, `${o.beta} en bêta · ${o.essais || 0} en essai · ${o.bars_actifs_7j} actif(s) sur 7 j`, "", 3)}
       ${kpi("Employés actifs", o.employes, "toutes équipes confondues", "", 4)}${kpi("Expirent sous 7 jours", o.expirent_7j, `${o.expires} expiré(s) · ${o.suspendus} suspendu(s)`, o.expirent_7j || o.expires ? "alert" : "", 5)}
       ${kpi("Ventes des bars (30 j)", F(o.ventes_30j), `${o.tickets_30j} tickets encaissés`, "", 6)}</div>
     <div class="grid2"><div class="card"><h3>Nouveaux bars par mois</h3><div class="bars">${o.inscriptions.map((x, i) => `<div><b class="num">${x.n}</b><i style="height:${Math.max(4, x.n / mx * 100)}px;animation-delay:${i * 60}ms"></i>${MONTH(x.mois)}</div>`).join("")}</div></div>
@@ -176,10 +178,10 @@ function vPaiements() {
 }
 function vBars() {
   const q = (V.q || "").toLowerCase(), now = Date.now();
-  const FL = { tous: () => true, payants: b => b.plan !== "beta" && !b.blocage, beta: b => b.plan === "beta", bientot: b => b.plan !== "beta" && b.plan_until && (new Date(b.plan_until) - now) / 864e5 <= 7 && !b.blocage, bloques: b => b.blocage || b.suspended, inactifs: b => !b.derniere_activite || now - new Date(b.derniere_activite) > 7 * 864e5 };
+  const FL = { tous: () => true, payants: b => !["beta", "essai"].includes(b.plan) && !b.blocage, essai: b => b.plan === "essai", beta: b => b.plan === "beta", bientot: b => b.plan !== "beta" && b.plan_until && (new Date(b.plan_until) - now) / 864e5 <= 7 && !b.blocage, bloques: b => b.blocage || b.suspended, inactifs: b => !b.derniere_activite || now - new Date(b.derniere_activite) > 7 * 864e5 };
   const list = V.data.bars.filter(FL[V.filter]).filter(b => !q || (b.name + " " + b.code + " " + (b.city || "") + " " + (b.pdg || "") + " " + (b.email || "")).toLowerCase().includes(q));
   return `<div class="ph"><div><h1>Bars</h1><p class="mu" style="margin:4px 0 0">${V.data.bars.length} bar(s) inscrit(s)</p></div><input style="max-width:320px" id="q" placeholder="Rechercher : nom, code, ville, PDG…" value="${esc(V.q)}"></div>
-    <div class="chips" style="margin-bottom:12px">${[["tous", "Tous"], ["payants", "Payants"], ["beta", "Bêta"], ["bientot", "Expirent bientôt"], ["bloques", "Bloqués"], ["inactifs", "Inactifs 7 j"]].map(([k, l]) => `<button class="chip ${V.filter === k ? "on" : ""}" data-a="filter" data-v="${k}">${l}</button>`).join("")}</div>
+    <div class="chips" style="margin-bottom:12px">${[["tous", "Tous"], ["payants", "Payants"], ["essai", "En essai"], ["beta", "Bêta"], ["bientot", "Expirent bientôt"], ["bloques", "Bloqués"], ["inactifs", "Inactifs 7 j"]].map(([k, l]) => `<button class="chip ${V.filter === k ? "on" : ""}" data-a="filter" data-v="${k}">${l}</button>`).join("")}</div>
     <div class="card scroll" style="padding:4px 8px"><table><tr><th>Bar</th><th>PDG</th><th>Formule</th><th>Équipe</th><th>Ventes 30 j</th><th>Dernière activité</th><th></th></tr>
       ${list.map(b => `<tr class="click" data-a="openBar" data-id="${b.id}"><td><b>${esc(b.name)}</b><br><span class="mu">${esc(b.code)} · ${esc(b.city || "—")}</span></td><td>${esc(b.pdg || "—")}<br><span class="mu">${esc(b.email || "")}</span></td>
         <td>${planPill(b)}${b.a_valider ? ` <span class="pill warn">Paiement à valider</span>` : ""}</td><td>${b.employes} <span class="mu">(${b.serveuses} serv.)</span></td><td class="num">${F(b.ventes_30j)}</td><td>${ago(b.derniere_activite)}</td><td>›</td></tr>`).join("") || `<tr><td colspan="7" class="empty">Aucun bar ne correspond.</td></tr>`}</table></div>`;
@@ -198,6 +200,7 @@ function vPanel() {
     <div class="card stack"><h3>Abonnement</h3>
       <div class="row"><label class="f grow">Formule<select id="p_plan">${Object.entries(PLANS).map(([k, [n]]) => `<option value="${k}" ${plan === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>
       <label class="f grow">Valable jusqu’au<input id="p_until" type="date" value="${esc(until)}" ${plan === "beta" ? "disabled" : ""}></label></div>
+      <div class="row"><span class="mu">Essai gratuit :</span>${[14, 30].map(n => `<button class="btn soft sm" data-a="trialB" data-v="${n}">${n} jours dès aujourd’hui</button>`).join("")}</div>
       <div class="row"><span class="mu">Offrir :</span>${[1, 3, 12].map(n => `<button class="btn soft sm" data-a="addM" data-v="${addM(n)}">+${n} mois</button>`).join("")}</div>
       <label class="f">Note interne<input id="p_note" value="${esc(f.p_note ?? (b.admin_note || ""))}" placeholder="Ex. offert pour le pilote"></label>
       <div class="row"><button class="btn grow" data-a="saveBar" data-id="${b.id}" ${V.busy ? "disabled" : ""}>Enregistrer</button>
@@ -212,6 +215,11 @@ function vPanel() {
 function vReglages() {
   const p = V.data.pc;
   return `<div class="ph"><div><h1>Réglages</h1><p class="mu" style="margin:4px 0 0">Ces informations s’affichent dans la rubrique Abonnement de chaque bar.</p></div></div>
+    <div class="card stack" style="max-width:640px;margin-bottom:14px"><h3>Nouveaux bars</h3>
+      <label class="row" style="gap:10px;font-weight:600;flex-wrap:nowrap;align-items:flex-start;cursor:pointer"><input type="checkbox" id="s_trial_on" style="width:22px;height:22px;min-height:22px;flex:none;margin:1px 0 0;accent-color:var(--brand)" ${p.trial_days ? "checked" : ""}> Démarrer chaque nouveau bar avec un essai gratuit</label>
+      <label class="f" style="max-width:220px">Durée de l’essai (jours)<input id="s_trial" type="number" min="1" max="90" inputmode="numeric" value="${esc(p.trial_days || 30)}"></label>
+      <p class="mu" style="margin:0;font-size:13px">${p.trial_days ? `Actuellement : <b>${p.trial_days} jours d’essai</b>, puis blocage automatique si aucune formule n’est payée.` : "Actuellement : <b>bêta gratuite illimitée</b> pour les nouveaux bars."} Les bars déjà inscrits ne changent pas : réglez-les un par un dans Bars.</p>
+      <button class="btn soft" data-a="trialDays" ${V.busy ? "disabled" : ""}>Enregistrer</button></div>
     <div class="card stack" style="max-width:640px"><h3>Réception des abonnements</h3>
       <label class="f">Nom affiché du bénéficiaire<input id="s_holder" value="${esc(p.holder_name || "")}"></label>
       <div class="row"><label class="f grow">Numéro Orange Money<input id="s_om" inputmode="numeric" value="${esc(p.om_number || "")}"></label><label class="f grow">Numéro MTN MoMo<input id="s_mtn" inputmode="numeric" value="${esc(p.mtn_number || "")}"></label></div>
@@ -246,6 +254,24 @@ function vThread(t) {
     <label class="f">Votre réponse (le client la lit dans sa fenêtre d’aide)<textarea id="rep_${t.id}" rows="3" placeholder="Écrivez votre réponse…">${esc(V.f["rep_" + t.id] || "")}</textarea></label>
     <div class="row"><button class="btn" data-a="reply" data-id="${t.id}" ${V.busy ? "disabled" : ""}>Envoyer</button><button class="btn ok" data-a="reply" data-id="${t.id}" data-close="1" ${V.busy ? "disabled" : ""}>Envoyer et marquer résolu</button>${t.status !== "resolu" ? `<button class="btn soft" data-a="reply" data-id="${t.id}" data-close="1" data-silent="1">Marquer résolu sans répondre</button>` : ""}</div>`;
 }
+/* Avis des utilisateurs */
+const AVT = { simple: "Facile à utiliser", rapide: "Fait gagner du temps", fiable: "Caisse plus fiable", utile: "Très utile au bar", manque: "Il manque une fonction", bug: "J’ai eu un bug", lent: "C’est lent", prix: "Le prix", autre: "Autre" };
+const stars = n => `<span class="stz" aria-label="${n} sur 5">${"★".repeat(n)}<i>${"★".repeat(5 - n)}</i></span>`;
+function vAvis() {
+  const all = V.data.avis || [], f = V.avF || "tous", list = all.filter(a => f === "tous" || (f === "neg" ? a.rating <= 2 : f === "pos" ? a.rating >= 4 : f === "msg" ? a.message : true));
+  const n = all.length, avg = n ? all.reduce((s, a) => s + a.rating, 0) / n : 0, dist = [5, 4, 3, 2, 1].map(r => [r, all.filter(a => a.rating === r).length]);
+  const tc = Object.keys(AVT).map(k => [k, all.filter(a => (a.topics || []).includes(k)).length]).filter(x => x[1]).sort((a, b) => b[1] - a[1]);
+  const ROL = { pdg: "PDG", directeur: "Directeur", caisse: "Caisse", serveuse: "Serveuse" };
+  return `<div class="ph"><div><h1>Avis</h1><p class="mu" style="margin:4px 0 0">Ce que les équipes des bars pensent de GesCo Bar (menu de l’application → « Donner mon avis »).</p></div>${all.some(a => !a.admin_seen_at) ? `<button class="btn soft" data-a="avSeen">Tout marquer comme lu</button>` : ""}</div>
+    <div class="grid2" style="margin-bottom:14px"><div class="card stack"><h3>Note moyenne</h3><div class="row" style="align-items:flex-end;gap:12px"><b style="font:800 44px/1 var(--display)">${n ? avg.toFixed(1).replace(".", ",") : "—"}</b><div>${stars(Math.round(avg))}<div class="mu" style="font-size:13px">${n} avis</div></div></div>
+        ${dist.map(([r, c]) => `<div class="row" style="flex-wrap:nowrap;gap:8px;font-size:13px"><span style="width:28px">${r} ★</span><span class="bar-h"><i style="width:${n ? c / n * 100 : 0}%"></i></span><span class="num" style="width:24px;text-align:right">${c}</span></div>`).join("")}</div>
+      <div class="card stack"><h3>Sujets les plus cités</h3>${tc.length ? tc.map(([k, c]) => `<div class="kv"><span>${AVT[k]}</span><b class="num">${c}</b></div>`).join("") : `<div class="empty">Pas encore de sujet cité.</div>`}</div></div>
+    <div class="chips" style="margin-bottom:12px">${[["tous", "Tous"], ["neg", "1 à 2 ★"], ["pos", "4 à 5 ★"], ["msg", "Avec message"]].map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-a="avF" data-v="${k}">${l}</button>`).join("")}</div>
+    <div class="stack">${list.map(a => `<div class="card stack" style="gap:6px${a.admin_seen_at ? "" : ";border-color:var(--brand)"}"><div class="row" style="justify-content:space-between">${stars(a.rating)}<span class="mu" style="font-size:12px">${!a.admin_seen_at ? `<span class="pill ok">Nouveau</span> ` : ""}${new Date(a.created_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span></div>
+        <div class="mu" style="font-size:13px"><b style="color:var(--ink)">${esc(a.staff_name || "Ancien membre")}</b> · ${ROL[a.role] || ""} · ${esc(a.bar_name || "")} <span class="mu">${esc(a.bar_code || "")}</span></div>
+        ${(a.topics || []).length ? `<div class="chips">${a.topics.map(t => `<span class="chip" style="font-size:12px;padding:3px 9px">${AVT[t] || esc(t)}</span>`).join("")}</div>` : ""}
+        ${a.message ? `<p style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere">${esc(a.message)}</p>` : ""}</div>`).join("") || `<div class="card empty">Aucun avis pour le moment. Invitez vos bars à toucher « Donner mon avis » dans le menu de l’application.</div>`}</div>`;
+}
 function vJournal() {
   const name = id => (V.data.bars.find(b => b.id === id) || {}).name || "";
   const L = { paiement_valide: "Paiement validé", paiement_refuse: "Paiement refusé", bar_modifie: "Bar modifié", kyc: "Identité", reglages: "Réglages" };
@@ -257,8 +283,8 @@ function render() {
   if (V.view === "loading") h = `<div class="auth"><span class="spin"></span></div>`;
   else if (V.view === "login") h = vLogin();
   else if (V.view === "relock") h = vRelock();
-  else { const pend = (V.data.subs || []).filter(s => s.status === "en_attente").length, nsup = (V.data.sup || []).filter(supNew).length, nav = (cls) => SECT.map(([k, l]) => `<a href="#${k}" class="${V.tab === k ? "on" : ""}">${l}${k === "paiements" && pend ? `<i>${pend}</i>` : ""}${k === "assistance" && nsup ? `<i>${nsup}</i>` : ""}</a>`).join("");
-    const body = { apercu: vApercu, paiements: vPaiements, assistance: vAssistance, bars: vBars, reglages: vReglages, journal: vJournal }[V.tab] || vApercu;
+  else { const pend = (V.data.subs || []).filter(s => s.status === "en_attente").length, nsup = (V.data.sup || []).filter(supNew).length, nav_av = (V.data.avis || []).filter(a => !a.admin_seen_at).length, nav = (cls) => SECT.map(([k, l]) => `<a href="#${k}" class="${V.tab === k ? "on" : ""}">${l}${k === "paiements" && pend ? `<i>${pend}</i>` : ""}${k === "assistance" && nsup ? `<i>${nsup}</i>` : ""}${k === "avis" && nav_av ? `<i>${nav_av}</i>` : ""}</a>`).join("");
+    const body = { apercu: vApercu, paiements: vPaiements, assistance: vAssistance, avis: vAvis, bars: vBars, reglages: vReglages, journal: vJournal }[V.tab] || vApercu;
     h = `<div class="shell"><nav class="side"><div class="brand"><img src="${LOGO}" alt="" style="width:46px;filter:brightness(1.2)"><div><b>GesCo Bar</b><small>Console éditeur</small></div></div>${nav()}
       <div class="foot"><span>${esc(V.me || "")}</span><button data-a="theme">Thème clair / sombre</button><button data-a="logout">Se déconnecter</button></div></nav>
       <div><div class="tabs-m">${nav()}<a href="#" data-a="logout">Quitter</a></div><main>${body()}</main></div></div>${V.panel ? vPanel() : ""}`; }
@@ -277,6 +303,8 @@ const A = {
   logout: async () => { await sb.auth.signOut(); V.view = "login"; V.data = {}; V.panel = null; render(); },
   reload: () => run(async () => { await loadAll(); if (V.thr) await loadMsgs(V.thr); }),
   supF: d => { V.supF = d.v; render(); },
+  avF: d => { V.avF = d.v; render(); },
+  avSeen: () => run(async () => { await rpc("gb_pf_feedback_seen"); await loadAll(); }),
   openThr: d => { V.thr = d.id; V.msgs = null; render(); loadMsgs(d.id).then(async () => { const t = (V.data.sup || []).find(x => x.id === d.id); if (t && supNew(t)) { await rpc("gb_pf_support_seen", { p_thread: d.id }).catch(() => {}); t.admin_seen_at = new Date().toISOString(); } render();
     const l = document.querySelector(".slog"); if (l) l.scrollTop = l.scrollHeight; if (matchMedia("(max-width:860px)").matches) document.querySelector(".supt")?.scrollIntoView({ behavior: "smooth" }); }); },
   reply: d => run(async () => { const body = d.silent ? "" : val("rep_" + d.id); if (!d.silent && !body) throw new Error("Écrivez une réponse.");
@@ -285,6 +313,9 @@ const A = {
   filter: d => { V.filter = d.v; render(); },
   openBar: d => { V.panel = d.id; V.f = {}; render(); },
   close: () => { V.panel = null; V.f = {}; render(); },
+  trialB: d => { const t = new Date(); t.setDate(t.getDate() + +d.v); V.f.p_plan = "essai"; V.f.p_until = t.toLocaleDateString("sv-SE"); render(); },
+  trialDays: () => run(async () => { const on = V.snap ? !!V.snap.s_trial_on : !!document.getElementById("s_trial_on")?.checked, n = parseInt(val("s_trial"), 10);
+    await rpc("gb_pf_trial_days", { p_days: on ? (n || 30) : null }); await loadAll(); toast(on ? `Les nouveaux bars démarreront avec ${n || 30} jours d’essai gratuit.` : "Les nouveaux bars démarreront en bêta gratuite illimitée."); }),
   addM: d => { V.f.p_until = d.v; if ((V.f.p_plan ?? (V.data.bars.find(b => b.id === V.panel) || {}).plan) === "beta") V.f.p_plan = "gold"; render(); },
   saveBar: d => run(async () => { const plan = val("p_plan"), until = val("p_until") || null; if (plan !== "beta" && !until) throw new Error("Indiquez la date de fin.");
     await rpc("gb_pf_bar_set", { p_bar: d.id, p_plan: plan, p_until: until, p_suspended: null, p_note: val("p_note") }); V.f = {}; await loadAll(); toast("Bar mis à jour."); }),

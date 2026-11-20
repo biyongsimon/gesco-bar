@@ -107,3 +107,10 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - L'assistant ne fait aucune action et ne demande jamais de PIN ni de code secret. S'il ne peut pas régler le problème, il transmet à BISMO Agency (outil `transmettre_a_bismo`) : la discussion apparaît dans la console, rubrique **Assistance**, avec un résumé et l'urgence. La réponse de BISMO s'affiche dans la fenêtre d'aide du client.
 - Quotas journaliers par utilisateur et par visiteur ; migration `010_assistance_ia.sql`.
 - Activation : ajouter le secret `ANTHROPIC_API_KEY` dans Supabase → Edge Functions → Secrets. Sans clé, la fenêtre indique que l'assistant n'est pas encore activé.
+
+## v4.3 · Essai gratuit et avis
+- Formule **Essai gratuit** (`essai`) : toutes les fonctions jusqu'à la date de fin, puis blocage automatique (3 jours de grâce) tant qu'aucune formule n'est payée. Un paiement pendant l'essai démarre à la fin de l'essai.
+- Console → Bars → fiche : boutons « Essai gratuit 14 / 30 jours dès aujourd'hui ». Console → Réglages → « Nouveaux bars » : essai automatique de N jours à l'inscription (sinon bêta illimitée).
+- **Avis** : menu de l'application → « Donner mon avis » (étoiles, sujets, message ; possible même bloqué ; 5 par jour et par personne). Console → rubrique **Avis** : note moyenne, répartition, sujets, filtres.
+- Migrations `011_essai_gratuit.sql`, `012_avis.sql` (+ message de blocage spécifique à l'essai).
+- À déployer avec l'activation de l'assistant : `kb.ts` mis à jour (essai, avis).

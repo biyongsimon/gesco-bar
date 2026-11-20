@@ -41,7 +41,7 @@
 *{box-sizing:border-box}
 html,body{background:var(--bg)}
 body{margin:0;color:var(--ink);font:15px/1.45 var(--body);-webkit-text-size-adjust:100%}
-button,input,select{font:inherit;color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
 #app{max-width:1080px;margin:0 auto;padding-block:12px 96px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .num{font-variant-numeric:tabular-nums}
 h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
@@ -55,9 +55,9 @@ h3{font-size:12px;font-family:var(--body);text-transform:uppercase;letter-spacin
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);min-width:0}
 .sub{background:var(--sunk);border-radius:10px;padding:10px 12px}
 .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))}
-input[type=text],input[type=number],input[type=email],input[type=password],input[type=tel],input:not([type]),select{
+input[type=text],input[type=number],input[type=email],input[type=password],input[type=tel],input:not([type]),select,textarea{
   width:100%;min-height:46px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
-input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid color-mix(in srgb,var(--brand) 45%,transparent);outline-offset:1px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid color-mix(in srgb,var(--brand) 45%,transparent);outline-offset:1px}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:600}
 .btn{min-height:46px;padding:10px 16px;border-radius:10px;border:1px solid transparent;background:var(--brand);color:var(--brand-ink);font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;white-space:nowrap}
 .btn.amber{background:var(--amber);color:#1d1404}
@@ -354,7 +354,13 @@ input[type=date],input[type=time]{width:100%;min-height:46px;padding:10px 12px;b
 .hmsg.bismo{align-self:flex-start;background:var(--amber-soft);border:1px solid color-mix(in srgb,var(--amber) 50%,var(--line));border-bottom-left-radius:4px}
 .typing{display:flex;gap:4px;padding:14px}.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:blink 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
 @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
-.hhead{flex-wrap:nowrap;gap:10px}.hhead .ib{flex:none}.hin{flex-wrap:nowrap}.hin input{flex:1;min-width:0}.hin .btn{flex:none;padding:0 14px}.hin .btn .ico{margin:0}
+.hhead{flex-wrap:nowrap;gap:10px}
+.stars{display:flex;justify-content:center;gap:6px}.star{background:none;border:0;padding:4px;cursor:pointer;width:52px;height:52px}
+.star svg{width:100%;height:100%;fill:var(--sunk);stroke:var(--line);stroke-width:1;transition:transform .15s,fill .15s}.star.on svg{fill:#f5b301;stroke:#d99a00}.star:active svg{transform:scale(.88)}
+textarea{resize:vertical;min-height:84px;line-height:1.4}
+.av-lbl{text-align:center;margin:-4px 0 0;font-weight:800;min-height:1.4em}
+.chip.pick.on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.av-ok{width:64px;height:64px;border-radius:50%;margin:0 auto;display:grid;place-items:center;background:var(--ok-soft,#dff3e8);color:var(--ok,#0f8a5f)}.av-ok .ico{width:32px;height:32px}.hhead .ib{flex:none}.hin{flex-wrap:nowrap}.hin input{flex:1;min-width:0}.hin .btn{flex:none;padding:0 14px}.hin .btn .ico{margin:0}
 .lockpin{gap:10px;min-height:86vh}.lockpin .pad{width:min(300px,86vw)}.lockpin .pad .go{background:var(--brand);color:var(--brand-ink);border-color:var(--brand);font-weight:800}
 .avatar.big{width:76px;height:76px;font-size:32px;border-radius:24px}
 .dots{display:flex;gap:12px;justify-content:center;margin:6px 0}.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted);transition:background .15s,transform .15s}.dots i.on{background:var(--brand);border-color:var(--brand);transform:scale(1.1)}
@@ -838,6 +844,10 @@ function DemoBackend() {
       [p_om_ussd, p_mtn_ussd].forEach(t => { if (t && (!t.includes("{code}") || !t.includes("{montant}"))) E("Le modèle USSD doit contenir {code} et {montant}."); });
       Object.assign(db.bar, { om_code: (p_om_code || "").trim() || null, mtn_code: (p_mtn_code || "").trim() || null, om_ussd: (p_om_ussd || "").trim() || db.bar.om_ussd, mtn_ussd: (p_mtn_ussd || "").trim() || db.bar.mtn_ussd });
       if (p_key != null) db.bar.push_enabled = !!p_key.trim(); log(c, "paiement_config", { orange: p_om_code, mtn: p_mtn_code });
+    },
+    gb_feedback_send({ p_rating, p_topics, p_message }) {
+      const c = ctx(); if (!(p_rating >= 1 && p_rating <= 5)) E("Choisissez une note de 1 à 5 étoiles.");
+      db.feedback = db.feedback || []; db.feedback.push({ staff_id: c.id, rating: p_rating, topics: p_topics || [], message: p_message || "", created_at: now() });
     },
     gb_sub_request({ p_plan, p_months, p_method, p_reference, p_proof }) {
       const c = ctx(); mgr(c); const price = { simple: 10000, premium: 15000, gold: 20000, lounge: 30000 }[p_plan]; if (!price) E("Formule inconnue.");
@@ -1558,6 +1568,24 @@ function barBlock() { if (!S || !S.bar) return null; const b = S.bar; if (b.susp
   if (b.plan && b.plan !== "beta" && b.plan_until) { const lim = new Date(b.plan_until + "T23:59:59"); lim.setDate(lim.getDate() + 3);
     if (lim < Date.now() && !(b.plan_trial_until && new Date(b.plan_trial_until) > Date.now())) return "expire"; } return null; }
 const navFor = () => barBlock() === "expire" && isMgr() ? ["abo"] : NAV[ROLE()] || NAV.serveuse;
+/* ═══════════════ Avis sur le logiciel ═══════════════ */
+const AV_T = [["simple", "Facile à utiliser"], ["rapide", "Fait gagner du temps"], ["fiable", "Caisse plus fiable"], ["utile", "Très utile au bar"], ["manque", "Il manque une fonction"], ["bug", "J’ai eu un bug"], ["lent", "C’est lent"], ["prix", "Le prix"], ["autre", "Autre"]];
+const AV_L = ["", "Très déçu", "Pas satisfait", "Correct", "Satisfait", "Excellent !"];
+A.avis = () => { V.menu = false; V.av = { r: 0, t: [] }; V.f.av_msg = ""; V.modal = { type: "avis" }; render(); };
+A.avStar = d => { V.av.r = +d.v; render(); };
+A.avTopic = d => { const t = V.av.t, i = t.indexOf(d.v); i < 0 ? t.push(d.v) : t.splice(i, 1); render(); };
+A.avSend = () => run(async () => { if (!V.av.r) throw bizErr("Touchez une étoile pour donner votre note.");
+  await call("gb_feedback_send", { p_rating: V.av.r, p_topics: V.av.t, p_message: (V.f.av_msg || "").trim() }); V.av.done = true; LS.set("gesco-avis-" + S.me.id, Date.now()); });
+function vAvis() { const a = V.av || { r: 0, t: [] };
+  if (a.done) return `<div class="stack" style="text-align:center;padding:10px 0"><div class="av-ok">${ico("check")}</div><h2 style="margin:0">Merci ${esc(S.me.name)} !</h2>
+    <p class="mu" style="margin:0">Votre avis est arrivé chez BISMO Agency. Il nous aide à améliorer GesCo Bar pour vous et pour tous les bars.</p><button class="btn wide" data-a="close">Fermer</button></div>`;
+  return `<div class="stack"><div class="between hhead"><div style="min-width:0"><h2 style="margin:0">Votre avis compte</h2><span class="mu">Que pensez-vous de GesCo Bar ?</span></div><button class="ib" data-a="close" aria-label="Fermer">${ico("x")}</button></div>
+    <div class="stars" role="radiogroup" aria-label="Note">${[1, 2, 3, 4, 5].map(n => `<button class="star ${n <= a.r ? "on" : ""}" data-a="avStar" data-v="${n}" role="radio" aria-checked="${n === a.r}" aria-label="${n} étoile${n > 1 ? "s" : ""}"><svg viewBox="0 0 24 24"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg></button>`).join("")}</div>
+    <p class="av-lbl">${a.r ? AV_L[a.r] : "Touchez une étoile"}</p>
+    <div><span class="mu" style="font-size:13px;font-weight:700">Ce qui compte pour vous (facultatif)</span><div class="chips" style="margin-top:6px">${AV_T.map(([k, l]) => `<button class="chip pick ${a.t.includes(k) ? "on" : ""}" data-a="avTopic" data-v="${k}" aria-pressed="${a.t.includes(k)}">${l}</button>`).join("")}</div></div>
+    <label class="f" for="av_msg">Votre message (facultatif)<textarea id="av_msg" data-k="av_msg" rows="3" maxlength="2000" placeholder="Ce que vous aimez, ce qui vous gêne, ce que vous aimeriez avoir…">${esc(V.f.av_msg || "")}</textarea></label>
+    <button class="btn wide" data-a="avSend" ${V.busy ? "disabled" : ""}>${ico("send")} Envoyer mon avis</button>
+    <span class="mu" style="font-size:12px;text-align:center">Votre avis est lu par BISMO Agency, pas par votre patron.</span></div>`; }
 /* ═══════════════ Aide : assistant IA + BISMO Agency ═══════════════ */
 const helpKey = () => "gesco-help-" + (S && S.me ? S.me.id : "anon");
 const helpTok = () => { let t = LS.get("gesco-help-tok", ""); if (!t || t.length < 16) { t = uuid().replace(/-/g, "") + uuid().replace(/-/g, ""); LS.set("gesco-help-tok", t); } return t; };
@@ -1586,8 +1614,8 @@ function vHelp() { const h = V.help || { msgs: [] }, sug = HELP_SUG[S && S.me ? 
     <div class="row hin"><input id="hq" data-k="hq" data-enter="helpSend" value="${val("hq")}" placeholder="Écrivez votre question…" maxlength="1500" autocomplete="off" aria-label="Votre question"><button class="btn" data-a="helpSend" ${h.sending ? "disabled" : ""} aria-label="Envoyer">${ico("send")}</button></div>
     <div class="between"><span class="mu" style="font-size:12px">Ne partagez jamais votre PIN ni votre code secret Mobile Money.</span>${h.msgs.length ? `<button class="lnk" data-a="helpNew">Nouvelle discussion</button>` : ""}</div></div>`; }
 function lockView(k) {
-  return `<div class="lockv"><div class="lock-ic">${ico("alert")}</div><h1>${k === "suspendu" ? "Accès suspendu" : "Abonnement expiré"}</h1>
-    <p>${k === "suspendu" ? "L’accès de ce bar a été suspendu par BISMO Agency. Le PDG doit contacter BISMO Agency pour le rétablir." : "L’abonnement de " + esc(S.bar.name) + " est arrivé à échéance. Prévenez votre PDG ou votre directeur : il le renouvelle en un geste depuis l’application."}</p>
+  return `<div class="lockv"><div class="lock-ic">${ico("alert")}</div><h1>${k === "suspendu" ? "Accès suspendu" : S.bar.plan === "essai" ? "Essai gratuit terminé" : "Abonnement expiré"}</h1>
+    <p>${k === "suspendu" ? "L’accès de ce bar a été suspendu par BISMO Agency. Le PDG doit contacter BISMO Agency pour le rétablir." : (S.bar.plan === "essai" ? "La période d’essai gratuite de " + esc(S.bar.name) + " est terminée. Prévenez votre PDG ou votre directeur : il choisit une formule en un geste depuis l’application." : "L’abonnement de " + esc(S.bar.name) + " est arrivé à échéance. Prévenez votre PDG ou votre directeur : il le renouvelle en un geste depuis l’application.")}</p>
     <p class="mu">Vos données sont conservées et seront de nouveau accessibles dès le renouvellement.</p>
     <div class="row" style="justify-content:center"><button class="btn soft" data-a="help">${ico("help")} Aide</button>${themeBtn()}<button class="btn bad" data-a="logout">${ico("out")} Se déconnecter</button></div></div>`;
 }
@@ -1659,6 +1687,7 @@ function drawer(nav, b) {
     <div class="row">${themeBtn()}<button class="btn ghost sm" data-a="notifTest">${ico("alert")} Tester le son</button>${"Notification" in window && Notification.permission !== "granted" ? `<button class="btn ghost sm" data-a="notifOn">Activer les notifications</button>` : ""}
       ${CFG.mode === "demo" ? `<button class="btn ghost sm" data-a="resetDemo">Réinitialiser la démo</button>` : ""}</div>
     <button class="btn soft wide" data-a="help">${ico("help")} Aide et assistance</button>
+    <button class="btn soft wide" data-a="avis">${ico("star")} Donner mon avis</button>
     <button class="btn bad wide" data-a="logout">${ico("out")} Se déconnecter</button></aside>`;
 }
 function searchRes(q0) {
@@ -1881,7 +1910,7 @@ function pHome() {
     low.length && ["stock", `${low.length} produit(s) en stock bas`, low.slice(0, 4).map(p => p.name).join(", ") + " · à faire approvisionner par la caissière", null],
     lateOrders().length && ["alert", `${lateOrders().length} commande(s) servie(s) en retard`, "Plus de 10 minutes sans service", "sales"],
     unpaid.length && ["pay", `${unpaid.length} salaire(s) à payer`, monthName(cur), "paie"],
-    (() => { const ps = planState(); return ps.expired ? ["star", "Abonnement expiré", "Renouvelez en un geste", "abo"] : ps.days != null && ps.days <= 7 ? ["star", `Abonnement : ${ps.days} jour(s) restant(s)`, "Renouvelez en un geste", "abo"] : null; })(),
+    (() => { const ps = planState(); return ps.essai ? (ps.expired ? ["star", "Essai gratuit terminé", "Choisissez votre formule", "abo"] : ["star", `Essai gratuit : ${ps.days} jour(s) restant(s)`, "Choisissez votre formule quand vous êtes prêt", "abo"]) : ps.expired ? ["star", "Abonnement expiré", "Renouvelez en un geste", "abo"] : ps.days != null && ps.days <= 7 ? ["star", `Abonnement : ${ps.days} jour(s) restant(s)`, "Renouvelez en un geste", "abo"] : null; })(),
     !S.bar.niu && ["gear", "Identité légale à compléter", "Raison sociale et NIU (facultatif)", "settings"]].filter(Boolean);
   return `<div class="stack"><div class="hero-pdg"><div style="min-width:0"><span class="eyebrow">${dfr(td, { weekday: "long", day: "numeric", month: "long" })}</span><h2>${hello} ${esc(S.me.name)}</h2>
       <p>${esc(S.bar.name)} · ${here.length} employé(s) présent(s) sur ${planned.length} prévu(s)</p></div><div class="hero-num"><span>Ventes du jour</span><b class="num">${F(sum(DT.filter(sold), t => t.total))}</b></div></div>
@@ -2130,6 +2159,7 @@ const PLANS = {
 const fmtTel = n => String(n || "").replace(/^(\d{3})(\d{2})(\d{2})(\d{2})$/, "$1 $2 $3 $4");
 function planState() { const b = S.bar, now = Date.now(), until = b.plan_until ? new Date(b.plan_until + "T23:59:59") : null, trial = b.plan_trial_until ? new Date(b.plan_trial_until) : null;
   const days = until ? Math.ceil((until - now) / 864e5) : null;
+  if (b.plan === "essai" && until && !(trial && trial > now)) return until > now ? { k: "essai", name: "Essai gratuit", days, until, ok: true, essai: true } : { k: "essai", name: "Essai gratuit", days, until, expired: true, essai: true };
   if (PLANS[b.plan] && until && until > now) return { k: b.plan, name: PLANS[b.plan][0], days, until, ok: true, trial: trial && trial > now ? trial : null };
   if (trial && trial > now) return { k: b.trial_plan, name: (PLANS[b.trial_plan] || ["Formule"])[0], trial, ok: true, provisional: true };
   if (PLANS[b.plan] && until) return { k: b.plan, name: PLANS[b.plan][0], days, until, expired: true };
@@ -2139,12 +2169,13 @@ function vAbo() {
   const P = S.platform || {}, num0 = meth === "orange" ? P.om_number : P.mtn_number, tpl = meth === "orange" ? P.om_tpl : P.mtn_tpl, ref = "GB-" + b.code;
   const dial = tpl ? tpl.replace("{numero}", num0).replace("{montant}", total) : meth === "orange" ? "#150#" : "*126#";
   const pend = (S.subs || []).find(x => x.status === "en_attente"), SST = { en_attente: ["warn", "En vérification"], validee: ["ok", "Validé"], refusee: ["bad", "Refusé"] };
-  const head = ps.provisional ? `Activée provisoirement jusqu’au ${ps.trial.toLocaleString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}` : ps.until ? `${ps.expired ? "Expirée depuis le" : "Valable jusqu’au"} ${ps.until.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : "Profitez de toutes les fonctions pendant la bêta";
+  const head = ps.essai ? (ps.expired ? `Terminé le ${ps.until.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : `Toutes les fonctions offertes jusqu’au ${ps.until.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`) : ps.provisional ? `Activée provisoirement jusqu’au ${ps.trial.toLocaleString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}` : ps.until ? `${ps.expired ? "Expirée depuis le" : "Valable jusqu’au"} ${ps.until.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : "Profitez de toutes les fonctions pendant la bêta";
   const cp = (v, l) => `<button class="btn soft sm" data-a="copy" data-txt="${esc(String(v))}">Copier ${l}</button>`;
   return `<div class="stack">
     <div class="hero-pdg"><div style="min-width:0"><span class="eyebrow">Votre formule</span><h2>${esc(ps.name)}</h2><p>${head}</p></div>${ps.days != null && !ps.expired ? `<div class="hero-num"><span>Jours restants</span><b class="num">${ps.days}</b></div>` : ""}</div>
-    ${barBlock() === "expire" ? `<div class="note bad"><b>L’application est bloquée pour toute l’équipe.</b> Renouvelez ci-dessous : elle se rouvre immédiatement pendant la vérification du paiement.</div>` : ""}
-    ${ps.expired ? `<div class="note bad"><b>Abonnement expiré.</b> Renouvelez-le ci-dessous pour continuer sans interruption.</div>` : ps.days != null && ps.days <= 7 ? `<div class="note warn"><b>Votre abonnement se termine dans ${ps.days} jour(s).</b> Renouvelez-le en un geste ci-dessous.</div>` : ""}
+    ${barBlock() === "expire" ? `<div class="note bad"><b>L’application est bloquée pour toute l’équipe.</b> ${ps.essai ? "Choisissez votre formule" : "Renouvelez"} ci-dessous : elle se rouvre immédiatement pendant la vérification du paiement.</div>` : ""}
+    ${ps.essai && !ps.expired ? `<div class="note ${ps.days <= 7 ? "warn" : "info"}"><b>${ps.days <= 7 ? `Votre essai gratuit se termine dans ${ps.days} jour(s).` : "Vous profitez de l’essai gratuit."}</b> Choisissez dès maintenant la formule qui vous convient : vos jours d’essai restants sont conservés, l’abonnement commence à la fin de l’essai.</div>` : ""}
+    ${ps.essai && ps.expired ? `<div class="note bad"><b>Votre essai gratuit est terminé.</b> Merci d’avoir testé GesCo Bar ! Choisissez votre formule ci-dessous pour continuer : toutes vos données sont conservées.</div>` : ps.essai ? "" : ps.expired ? `<div class="note bad"><b>Abonnement expiré.</b> Renouvelez-le ci-dessous pour continuer sans interruption.</div>` : ps.days != null && ps.days <= 7 ? `<div class="note warn"><b>Votre abonnement se termine dans ${ps.days} jour(s).</b> Renouvelez-le en un geste ci-dessous.</div>` : ""}
     ${pend ? `<div class="note info"><b>Paiement en cours de vérification</b> · ${PLANS[pend.plan][0]}, ${pend.months} mois, ${F(pend.amount)}. Votre formule est déjà active : BISMO Agency confirme sous 72 h.</div>` : ""}
     <div class="plans">${Object.entries(PLANS).map(([k, [n, p, feats]], i) => `<button class="plan rise ${pl === k ? "on" : ""} ${k}" style="--i:${i}" data-a="setF" data-k2="ab_p" data-v="${k}" aria-pressed="${pl === k}">
       ${k === "gold" ? '<span class="pill brand">Le plus choisi</span>' : ""}<b>${n}</b><span class="pp num">${Fs(p)}<small> FCFA / mois</small></span><ul>${feats.map(f => `<li>${f}</li>`).join("")}</ul></button>`).join("")}</div>
@@ -2436,6 +2467,7 @@ function vModal() {
       <div class="row">${m.url ? `<button class="btn grow" data-a="planShare">${ico("share")} Partager l’image</button><button class="btn soft grow" data-a="planDl">${ico("dl")} Télécharger</button>` : ""}</div>
       <a class="btn soft wide" href="https://wa.me/?text=${encodeURIComponent(planText())}" target="_blank" rel="noopener">Envoyer le planning en texte sur WhatsApp</a>
       <p class="mu" style="margin:0">Sur téléphone, « Partager l’image » ouvre la liste des applications : choisissez WhatsApp puis le groupe de l’équipe.</p><button class="btn ghost" data-a="close">Fermer</button>`;
+  if (m.type === "avis") return `<div class="scrim" data-a="close" data-self="1"><div class="sheet" role="dialog" aria-modal="true" aria-label="Donner mon avis">${vAvis()}</div></div>`;
   if (m.type === "help") return `<div class="scrim help-scrim" data-a="close" data-self="1"><div class="sheet helpsheet" role="dialog" aria-modal="true" aria-label="Aide">${vHelp()}</div></div>`;
   if (m.type === "subRecu") { const x = (S.subs || []).find(y => y.id === m.id) || {}, P = S.platform || {};
     const txt = `REÇU D’ABONNEMENT GESCO BAR\n${S.bar.legal_name || S.bar.name}\nFormule : ${(PLANS[x.plan] || [""])[0]} · ${x.months} mois\nMontant : ${F(x.amount)}\nPayé le ${new Date(x.created_at).toLocaleDateString("fr-FR")} par ${x.method === "orange" ? "Orange Money" : "MTN MoMo"}\nRéférence : ${x.reference}\nBISMO Agency`;
