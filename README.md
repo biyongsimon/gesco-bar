@@ -114,3 +114,8 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - **Avis** : invitation automatique après 2 semaines d’utilisation (« Plus tard » = 3 jours, « Non merci » = 2 mois, puis tous les 2 mois). Menu de l'application → « Donner mon avis » (étoiles, sujets, message ; possible même bloqué ; 5 par jour et par personne). Console → rubrique **Avis** : note moyenne, répartition, sujets, filtres.
 - Migrations `011_essai_gratuit.sql`, `012_avis.sql` (+ message de blocage spécifique à l'essai).
 - À déployer avec l'activation de l'assistant : `kb.ts` mis à jour (essai, avis).
+
+## v4.4 · Abonnement payé en direct (Notch Pay de l'éditeur)
+- Rubrique Abonnement → « Sur mon téléphone » : le PDG saisit son numéro, reçoit la demande Mobile Money, tape son code secret ; la formule s'active automatiquement (vérification du statut et du montant chez Notch Pay). Le transfert avec preuve reste disponible.
+- Activation : secret Supabase `NOTCHPAY_SUB_KEY` (clé publique Notch Pay, sandbox pour tester puis production) + console → Réglages → « Paiement direct des abonnements ».
+- Migration `013_abonnement_notchpay.sql`. Une demande non validée expire après 15 minutes.

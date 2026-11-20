@@ -161,8 +161,8 @@ function vApercu() {
       <div class="card"><h3>Bars les plus actifs (30 j)</h3><table>${top.map(b => `<tr class="click" data-a="openBar" data-id="${b.id}"><td><b>${esc(b.name)}</b><br><span class="mu">${esc(b.city || "")}</span></td><td class="num" style="text-align:right">${F(b.ventes_30j)}<br><span class="mu">${b.tickets_30j} tickets</span></td></tr>`).join("") || `<tr><td class="empty">Pas encore d’activité.</td></tr>`}</table></div></div>`;
 }
 function vPaiements() {
-  const subs = V.data.subs, pend = subs.filter(s => s.status === "en_attente"), done = subs.filter(s => s.status !== "en_attente");
-  const SST = { validee: ["ok", "Validé"], refusee: ["bad", "Refusé"] };
+  const subs = V.data.subs, pend = subs.filter(s => s.status === "en_attente" && s.channel !== "notchpay"), done = subs.filter(s => s.status !== "en_attente" || s.channel === "notchpay");
+  const SST = { validee: ["ok", "Validé"], refusee: ["bad", "Refusé"], echouee: ["", "Non abouti"], en_attente: ["warn", "En cours (direct)"] };
   return `<div class="ph"><div><h1>Paiements</h1><p class="mu" style="margin:4px 0 0">Vérifiez la réception sur votre téléphone, puis validez : la formule s’active et la date de fin est prolongée.</p></div></div>
     <div class="stack">${pend.map(s => { const img = s.proof_path && V.urls[s.proof_path];
       return `<div class="card pay"><div class="stack" style="gap:6px"><div class="row" style="justify-content:space-between"><h2 style="font-size:20px">${esc(s.bar_name)} <span class="mu" style="font:500 14px var(--body)">· ${esc(s.bar_code)} · ${esc(s.city || "")}</span></h2><span class="pill warn">À vérifier</span></div>
@@ -174,7 +174,7 @@ function vPaiements() {
         <div class="row" style="margin-top:6px"><button class="btn ok grow" data-a="decide" data-id="${s.id}" data-ok="1" ${V.busy ? "disabled" : ""}>Valider le paiement</button><button class="btn bad" data-a="decide" data-id="${s.id}" data-ok="0" ${V.busy ? "disabled" : ""}>Refuser</button></div></div>
         ${img ? `<a href="${esc(img)}" target="_blank" rel="noopener"><img src="${esc(img)}" alt="Capture du SMS de paiement"></a>` : `<div class="noimg">${s.proof_path ? "Capture en cours de chargement…" : "Pas de capture : vérifiez la référence dans vos SMS."}</div>`}</div>`; }).join("") || `<div class="card empty">Aucun paiement en attente. 🎉</div>`}
     <div class="card"><h3>Historique</h3><div class="scroll"><table><tr><th>Date</th><th>Bar</th><th>Formule</th><th>Montant</th><th>Opérateur</th><th>Référence</th><th>Statut</th></tr>
-      ${done.map(s => `<tr><td>${D(s.created_at)}</td><td>${esc(s.bar_name)}</td><td>${PLANS[s.plan][0]} · ${s.months} m</td><td class="num">${F(s.amount)}</td><td>${s.method === "orange" ? "Orange" : "MTN"}</td><td style="word-break:break-all">${esc(s.reference)}</td><td><span class="pill ${SST[s.status][0]}">${SST[s.status][1]}</span>${s.admin_note ? `<br><span class="mu">${esc(s.admin_note)}</span>` : ""}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">Aucun paiement traité.</td></tr>`}</table></div></div></div>`;
+      ${done.map(s => `<tr><td>${D(s.created_at)}</td><td>${esc(s.bar_name)}</td><td>${PLANS[s.plan][0]} · ${s.months} m</td><td class="num">${F(s.amount)}</td><td>${s.method === "orange" ? "Orange" : "MTN"}${s.channel === "notchpay" ? ` <span class="pill ok">direct</span>` : ""}</td><td style="word-break:break-all">${esc(s.reference)}</td><td><span class="pill ${SST[s.status][0]}">${SST[s.status][1]}</span>${s.admin_note ? `<br><span class="mu">${esc(s.admin_note)}</span>` : ""}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">Aucun paiement traité.</td></tr>`}</table></div></div></div>`;
 }
 function vBars() {
   const q = (V.q || "").toLowerCase(), now = Date.now();
@@ -215,6 +215,11 @@ function vPanel() {
 function vReglages() {
   const p = V.data.pc;
   return `<div class="ph"><div><h1>Réglages</h1><p class="mu" style="margin:4px 0 0">Ces informations s’affichent dans la rubrique Abonnement de chaque bar.</p></div></div>
+    <div class="card stack" style="max-width:640px;margin-bottom:14px"><h3>Paiement direct des abonnements</h3>
+      <p class="mu" style="margin:0;font-size:14px">Avec votre compte Notch Pay, le PDG reçoit la demande sur son téléphone, tape son code secret et la formule s’active toute seule (aucune capture à vérifier). Le paiement par transfert reste proposé en secours.</p>
+      <label class="row" style="gap:10px;font-weight:600;flex-wrap:nowrap;align-items:flex-start;cursor:pointer"><input type="checkbox" id="s_push_on" style="width:22px;height:22px;min-height:22px;flex:none;margin:1px 0 0;accent-color:var(--brand)" ${p.sub_push ? "checked" : ""}> Proposer le paiement direct dans la rubrique Abonnement des bars</label>
+      <p class="mu" style="margin:0;font-size:13px">Prérequis : le secret <code>NOTCHPAY_SUB_KEY</code> (clé publique Notch Pay) enregistré dans Supabase → Edge Functions → Secrets. Sans lui, les bars voient « paiement direct pas encore activé ».</p>
+      <button class="btn soft" data-a="subPushSet" ${V.busy ? "disabled" : ""}>Enregistrer</button></div>
     <div class="card stack" style="max-width:640px;margin-bottom:14px"><h3>Nouveaux bars</h3>
       <label class="row" style="gap:10px;font-weight:600;flex-wrap:nowrap;align-items:flex-start;cursor:pointer"><input type="checkbox" id="s_trial_on" style="width:22px;height:22px;min-height:22px;flex:none;margin:1px 0 0;accent-color:var(--brand)" ${p.trial_days ? "checked" : ""}> Démarrer chaque nouveau bar avec un essai gratuit</label>
       <label class="f" style="max-width:220px">Durée de l’essai (jours)<input id="s_trial" type="number" min="1" max="90" inputmode="numeric" value="${esc(p.trial_days || 30)}"></label>
@@ -274,7 +279,7 @@ function vAvis() {
 }
 function vJournal() {
   const name = id => (V.data.bars.find(b => b.id === id) || {}).name || "";
-  const L = { paiement_valide: "Paiement validé", paiement_refuse: "Paiement refusé", bar_modifie: "Bar modifié", kyc: "Identité", reglages: "Réglages" };
+  const L = { paiement_auto: "Abonnement payé en direct (validé automatiquement)", paiement_valide: "Paiement validé", paiement_refuse: "Paiement refusé", bar_modifie: "Bar modifié", kyc: "Identité", reglages: "Réglages" };
   return `<div class="ph"><h1>Journal</h1></div><div class="card scroll"><table><tr><th>Date</th><th>Action</th><th>Bar</th><th>Détails</th></tr>${V.data.log.map(l => `<tr><td>${new Date(l.created_at).toLocaleString("fr-FR")}</td><td>${L[l.action] || esc(l.action)}</td><td>${esc(name(l.bar_id))}</td><td class="mu">${esc(Object.entries(l.data || {}).filter(([, v]) => v != null && v !== "").map(([k, v]) => k + " : " + v).join(" · "))}</td></tr>`).join("") || `<tr><td colspan="4" class="empty">Aucune action pour le moment.</td></tr>`}</table></div>`;
 }
 function render() {
@@ -283,7 +288,7 @@ function render() {
   if (V.view === "loading") h = `<div class="auth"><span class="spin"></span></div>`;
   else if (V.view === "login") h = vLogin();
   else if (V.view === "relock") h = vRelock();
-  else { const pend = (V.data.subs || []).filter(s => s.status === "en_attente").length, nsup = (V.data.sup || []).filter(supNew).length, nav_av = (V.data.avis || []).filter(a => !a.admin_seen_at).length, nav = (cls) => SECT.map(([k, l]) => `<a href="#${k}" class="${V.tab === k ? "on" : ""}">${l}${k === "paiements" && pend ? `<i>${pend}</i>` : ""}${k === "assistance" && nsup ? `<i>${nsup}</i>` : ""}${k === "avis" && nav_av ? `<i>${nav_av}</i>` : ""}</a>`).join("");
+  else { const pend = (V.data.subs || []).filter(s => s.status === "en_attente" && s.channel !== "notchpay").length, nsup = (V.data.sup || []).filter(supNew).length, nav_av = (V.data.avis || []).filter(a => !a.admin_seen_at).length, nav = (cls) => SECT.map(([k, l]) => `<a href="#${k}" class="${V.tab === k ? "on" : ""}">${l}${k === "paiements" && pend ? `<i>${pend}</i>` : ""}${k === "assistance" && nsup ? `<i>${nsup}</i>` : ""}${k === "avis" && nav_av ? `<i>${nav_av}</i>` : ""}</a>`).join("");
     const body = { apercu: vApercu, paiements: vPaiements, assistance: vAssistance, avis: vAvis, bars: vBars, reglages: vReglages, journal: vJournal }[V.tab] || vApercu;
     h = `<div class="shell"><nav class="side"><div class="brand"><img src="${LOGO}" alt="" style="width:46px;filter:brightness(1.2)"><div><b>GesCo Bar</b><small>Console éditeur</small></div></div>${nav()}
       <div class="foot"><span>${esc(V.me || "")}</span><button data-a="theme">Thème clair / sombre</button><button data-a="logout">Se déconnecter</button></div></nav>
@@ -313,6 +318,7 @@ const A = {
   filter: d => { V.filter = d.v; render(); },
   openBar: d => { V.panel = d.id; V.f = {}; render(); },
   close: () => { V.panel = null; V.f = {}; render(); },
+  subPushSet: () => run(async () => { const on = V.snap ? !!V.snap.s_push_on : !!document.getElementById("s_push_on")?.checked; await rpc("gb_pf_sub_push", { p_on: on }); await loadAll(); toast(on ? "Paiement direct proposé aux bars." : "Paiement direct désactivé : seul le transfert est proposé."); }),
   trialB: d => { const t = new Date(); t.setDate(t.getDate() + +d.v); V.f.p_plan = "essai"; V.f.p_until = t.toLocaleDateString("sv-SE"); render(); },
   trialDays: () => run(async () => { const on = V.snap ? !!V.snap.s_trial_on : !!document.getElementById("s_trial_on")?.checked, n = parseInt(val("s_trial"), 10);
     await rpc("gb_pf_trial_days", { p_days: on ? (n || 30) : null }); await loadAll(); toast(on ? `Les nouveaux bars démarreront avec ${n || 30} jours d’essai gratuit.` : "Les nouveaux bars démarreront en bêta gratuite illimitée."); }),

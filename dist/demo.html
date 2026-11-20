@@ -349,6 +349,7 @@ textarea{resize:vertical;min-height:84px;line-height:1.4}
 .av-ask{display:flex;justify-content:center;gap:4px}.av-ask svg{width:34px;height:34px;fill:#f5b301;animation:avpop .5s both;animation-delay:calc(var(--i) * 90ms)}
 @keyframes avpop{0%{transform:scale(0) rotate(-40deg);opacity:0}70%{transform:scale(1.2)}100%{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.av-ask svg{animation:none}}
+.paywait{text-align:center;align-items:center;border-color:color-mix(in srgb,var(--brand) 45%,var(--line))}.pw-ic{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--sunk)}.pw-ic .spin{width:26px;height:26px}
 .av-lbl{text-align:center;margin:-4px 0 0;font-weight:800;min-height:1.4em}
 .chip.pick.on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
 .av-ok{width:64px;height:64px;border-radius:50%;margin:0 auto;display:grid;place-items:center;background:var(--ok-soft,#dff3e8);color:var(--ok,#0f8a5f)}.av-ok .ico{width:32px;height:32px}.hhead .ib{flex:none}.hin{flex-wrap:nowrap}.hin input{flex:1;min-width:0}.hin .btn{flex:none;padding:0 14px}.hin .btn .ico{margin:0}
@@ -949,7 +950,7 @@ function DemoBackend() {
         audit: cs ? db.audit.slice(0, 200) : [], moves: cs ? db.moves.slice(0, 150) : [],
         days: cs ? db.days.filter(d => d.status === "closed").sort((a, b) => a.closed_at < b.closed_at ? 1 : -1).slice(0, 30) : [],
         shifts: db.shifts, attendance: db.attendance.filter(a => mg || own(a)).sort((a, b) => a.day < b.day ? 1 : -1), leaves: db.leaves.filter(l => mg || own(l)),
-        salaries: db.salaries.filter(x => pg || own(x)), payroll: db.payroll.filter(x => pg || own(x)), subs: mg ? db.subs : [], platform: { holder_name: "BIYONG BIYONG SIMON STEVE (BISMO AGENCY)", om_number: "691468175", mtn_number: "673383951", om_tpl: null, mtn_tpl: null } });
+        salaries: db.salaries.filter(x => pg || own(x)), payroll: db.payroll.filter(x => pg || own(x)), subs: mg ? db.subs : [], platform: { holder_name: "BIYONG BIYONG SIMON STEVE (BISMO AGENCY)", om_number: "691468175", mtn_number: "673383951", om_tpl: null, mtn_tpl: null, sub_push: true } });
     },
     async rpc(name, args) { const f = R[name]; if (!f) throw bizErr("Action inconnue."); db = LS.get(KEY) || db; const r = f(args || {}); save(); return r; },
     async momoPush(ticket, phone, operator) { // démo : le client « valide » sur son téléphone au bout de 6 secondes
@@ -958,6 +959,18 @@ function DemoBackend() {
       if (!/^6\d{8}$/.test(ph)) E("Numéro camerounais invalide (9 chiffres commençant par 6).");
       const id = uuid(); db.momo.push({ id, ticket_id: t.id, status: "en_cours", at: Date.now() }); save(); return { ok: true, id, message: "Demande envoyée au téléphone du client (démo)." };
     },
+    async subPush(plan, months, operator, phone) { // démo : le PDG « valide » sur son téléphone au bout de 6 secondes
+      const c = ctx(); mgr(c); const price = { simple: 10000, premium: 15000, gold: 20000, lounge: 30000 }[plan]; if (!price) E("Formule inconnue.");
+      let ph = String(phone || "").replace(/\D/g, ""); if (ph.length === 12 && ph.startsWith("237")) ph = ph.slice(3); if (!/^6\d{8}$/.test(ph)) E("Numéro camerounais invalide (9 chiffres commençant par 6).");
+      if (db.subs.some(x => x.status === "en_attente")) E("Un paiement est déjà en cours.");
+      const id = uuid(), amount = price * (+months === 12 ? 10 : +months);
+      db.subs.unshift({ id, plan, months: +months, amount, method: operator, reference: "Mobile Money (en cours)", pay_ref: "GB-" + db.bar.code, status: "en_attente", channel: "notchpay", payer_phone: ph, requested_by: c.id, created_at: now(), at: Date.now() });
+      save(); return { ok: true, id, amount }; },
+    async subStatus(id) { db = LS.get(KEY) || db; const x = db.subs.find(y => y.id === id); if (!x) E("Paiement introuvable.");
+      if (x.status === "en_attente" && Date.now() - (x.at || 0) > 6000) { x.status = "validee"; x.reference = "NP-DEMO-" + id.slice(0, 6).toUpperCase(); x.decided_at = now();
+        const base = Math.max(Date.now(), db.bar.plan_until ? new Date(db.bar.plan_until + "T12:00:00").getTime() : 0), d = new Date(base); d.setMonth(d.getMonth() + x.months);
+        Object.assign(db.bar, { plan: x.plan, plan_until: d.toLocaleDateString("sv-SE"), plan_trial_until: null, trial_plan: null }); save(); }
+      return { status: x.status }; },
     async momoStatus(id) { db = LS.get(KEY) || db; const m = db.momo.find(x => x.id === id); if (!m) E("Demande introuvable.");
       if (m.status === "en_cours" && Date.now() - m.at > 6000) { m.status = "reussi"; const t = db.tickets.find(x => x.id === m.ticket_id);
         if (t && ["sent", "cashed"].includes(t.status)) Object.assign(t, { status: "paid", pay_method: "momo", received: t.total, change_due: 0, change_status: "none", cashed_at: now(), paid_at: now(), updated_at: now() });
@@ -1036,7 +1049,7 @@ function LiveBackend() {
         q(sb.from("leave_requests").select("*").order("created_at", { ascending: false }).limit(150)),
         q(sb.from("staff_salaries").select("staff_id,salary")),
         q(sb.from("payroll").select("*").order("paid_at", { ascending: false }).limit(300)),
-        q(sb.from("subscriptions").select("*").order("created_at", { ascending: false }).limit(50)), q(sb.from("platform_config").select("om_code,mtn_code,phone,whatsapp,holder_name,om_number,mtn_number,om_tpl,mtn_tpl").limit(1))]);
+        q(sb.from("subscriptions").select("*").order("created_at", { ascending: false }).limit(50)), q(sb.from("platform_config").select("om_code,mtn_code,phone,whatsapp,holder_name,om_number,mtn_number,om_tpl,mtn_tpl,sub_push").limit(1))]);
       extra.catch(() => {});
       let tq = sb.from("tickets").select("*, ticket_items(product_id,qty,unit_price)").order("created_at", { ascending: false }).limit(600);
       tq = tq.or("status.in.(draft,sent,cashed),change_status.eq.pending" + (day ? ",day_id.eq." + day.id : ""));
@@ -1056,6 +1069,8 @@ function LiveBackend() {
     staffCreate: (name, role, pin) => fn("staff_create", { name, role, pin }, true),
     momoPush: (ticket, phone, operator) => fn("momo_push", { ticket, phone, operator }, true),
     momoStatus: id => fn("momo_status", { id }, true),
+    subPush: (plan, months, operator, phone) => fn("sub_push", { plan, months, operator, phone }, true),
+    subStatus: id => fn("sub_status", { id }, true),
     assist: (message, thread, token) => fn("assist", { message, thread, token }, true),
     assistHistory: (thread, token) => fn("assist_history", { thread, token }, true),
     async uploadProof(file) {
@@ -1168,6 +1183,7 @@ async function enterApp() {
   }
   V.tab = LS.get("gesco-tab-" + ROLE(), navFor()[0]); if (!navFor().includes(V.tab)) V.tab = navFor()[0]; V.secT = Date.now(); V.menu = false; notifyNew(); lazyLoad();
   render(); flush(); setTimeout(avisCheck, 6000);
+  try { const sp = (S.subs || []).find(x => x.status === "en_attente" && x.channel === "notchpay"); if (sp && B.subStatus) subWatch(sp.id); } catch (e) {}
 }
 async function logout(silent) {
   try { await B.logout(); } catch (e) {}
@@ -2175,7 +2191,8 @@ function vAbo() {
   const b = S.bar, ps = planState(), pl = V.f.ab_p || (PLANS[ps.k] ? ps.k : "gold"), mo = +(V.f.ab_m || 1), price = PLANS[pl][1], total = price * (mo === 12 ? 10 : mo), meth = V.f.ab_o || "orange";
   const P = S.platform || {}, num0 = meth === "orange" ? P.om_number : P.mtn_number, tpl = meth === "orange" ? P.om_tpl : P.mtn_tpl, ref = "GB-" + b.code;
   const dial = tpl ? tpl.replace("{numero}", num0).replace("{montant}", total) : meth === "orange" ? "#150#" : "*126#";
-  const pend = (S.subs || []).find(x => x.status === "en_attente"), SST = { en_attente: ["warn", "En vérification"], validee: ["ok", "Validé"], refusee: ["bad", "Refusé"] };
+  const pend = (S.subs || []).find(x => x.status === "en_attente"), SST = { en_attente: ["warn", "En vérification"], validee: ["ok", "Validé"], refusee: ["bad", "Refusé"], echouee: ["", "Non abouti"] };
+  const direct = !!P.sub_push, mode = direct ? (V.f.ab_mode || "direct") : "transfert", sp = V.subPay && V.subPay.status === "en_attente" ? V.subPay : null;
   const head = ps.essai ? (ps.expired ? `Terminé le ${ps.until.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : `Toutes les fonctions offertes jusqu’au ${ps.until.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`) : ps.provisional ? `Activée provisoirement jusqu’au ${ps.trial.toLocaleString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}` : ps.until ? `${ps.expired ? "Expirée depuis le" : "Valable jusqu’au"} ${ps.until.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : "Profitez de toutes les fonctions pendant la bêta";
   const cp = (v, l) => `<button class="btn soft sm" data-a="copy" data-txt="${esc(String(v))}">Copier ${l}</button>`;
   return `<div class="stack">
@@ -2183,12 +2200,24 @@ function vAbo() {
     ${barBlock() === "expire" ? `<div class="note bad"><b>L’application est bloquée pour toute l’équipe.</b> ${ps.essai ? "Choisissez votre formule" : "Renouvelez"} ci-dessous : elle se rouvre immédiatement pendant la vérification du paiement.</div>` : ""}
     ${ps.essai && !ps.expired ? `<div class="note ${ps.days <= 7 ? "warn" : "info"}"><b>${ps.days <= 7 ? `Votre essai gratuit se termine dans ${ps.days} jour(s).` : "Vous profitez de l’essai gratuit."}</b> Choisissez dès maintenant la formule qui vous convient : vos jours d’essai restants sont conservés, l’abonnement commence à la fin de l’essai.</div>` : ""}
     ${ps.essai && ps.expired ? `<div class="note bad"><b>Votre essai gratuit est terminé.</b> Merci d’avoir testé GesCo Bar ! Choisissez votre formule ci-dessous pour continuer : toutes vos données sont conservées.</div>` : ps.essai ? "" : ps.expired ? `<div class="note bad"><b>Abonnement expiré.</b> Renouvelez-le ci-dessous pour continuer sans interruption.</div>` : ps.days != null && ps.days <= 7 ? `<div class="note warn"><b>Votre abonnement se termine dans ${ps.days} jour(s).</b> Renouvelez-le en un geste ci-dessous.</div>` : ""}
-    ${pend ? `<div class="note info"><b>Paiement en cours de vérification</b> · ${PLANS[pend.plan][0]}, ${pend.months} mois, ${F(pend.amount)}. Votre formule est déjà active : BISMO Agency confirme sous 72 h.</div>` : ""}
+    ${pend && pend.channel === "notchpay" ? `<div class="card stack paywait"><div class="pw-ic"><span class="spin"></span></div><b style="font-size:18px">Validez le paiement sur votre téléphone</b>
+        <p style="margin:0">Une demande de <b>${F(pend.amount)}</b> (${PLANS[pend.plan][0]}, ${pend.months} mois) a été envoyée au <b>${fmtTel(pend.payer_phone || "")}</b>. Tapez votre <b>code secret ${pend.method === "orange" ? "Orange Money" : "MTN MoMo"}</b> pour confirmer.</p>
+        <p class="mu" style="margin:0">Rien ne s’affiche ? Gardez le téléphone déverrouillé, vérifiez votre solde, puis ouvrez le menu ${pend.method === "orange" ? "Orange Money" : "MTN MoMo"} : les paiements en attente de validation y apparaissent. Votre formule s’active toute seule dès la confirmation.</p>
+        <button class="btn soft" data-a="subCheck" data-id="${pend.id}">J’ai validé : vérifier maintenant</button></div>`
+      : pend ? `<div class="note info"><b>Paiement en cours de vérification</b> · ${PLANS[pend.plan][0]}, ${pend.months} mois, ${F(pend.amount)}. Votre formule est déjà active : BISMO Agency confirme sous 72 h.</div>` : ""}
     <div class="plans">${Object.entries(PLANS).map(([k, [n, p, feats]], i) => `<button class="plan rise ${pl === k ? "on" : ""} ${k}" style="--i:${i}" data-a="setF" data-k2="ab_p" data-v="${k}" aria-pressed="${pl === k}">
       ${k === "gold" ? '<span class="pill brand">Le plus choisi</span>' : ""}<b>${n}</b><span class="pp num">${Fs(p)}<small> FCFA / mois</small></span><ul>${feats.map(f => `<li>${f}</li>`).join("")}</ul></button>`).join("")}</div>
-    ${pend ? "" : `<div class="card stack paysteps"><h3>Payer en 3 étapes</h3>
+    ${pend ? "" : `<div class="card stack paysteps"><h3>${mode === "direct" ? "Payer en un geste" : "Payer en 3 étapes"}</h3>
       <div class="segs">${[[1, "1 mois"], [3, "3 mois"], [6, "6 mois"], [12, "12 mois · 2 offerts"]].map(([m, l]) => `<button class="${mo === m ? "on ok" : ""}" data-a="setF" data-k2="ab_m" data-v="${m}">${l}</button>`).join("")}</div>
       <div class="between"><span class="mu">${PLANS[pl][0]} · ${mo} mois</span><b class="num" style="font:800 26px var(--display)">${F(total)}</b></div>
+      ${direct ? `<div class="segs">${[["direct", "Sur mon téléphone · recommandé"], ["transfert", "Par transfert"]].map(([k, l]) => `<button class="${mode === k ? "on ok" : ""}" data-a="setF" data-k2="ab_mode" data-v="${k}">${l}</button>`).join("")}</div>` : ""}
+      ${mode === "direct" ? (() => { const ph = String(V.f.ab_ph ?? LS.get("gesco-abph-" + S.me.id, "")).replace(/\D/g, ""), op = opOf(ph) || meth;
+        return `<div class="step"><i>1</i><div class="grow stack" style="gap:8px"><b>Votre numéro Mobile Money</b>
+          <input id="ab_ph" data-k="ab_ph" inputmode="tel" autocomplete="tel" maxlength="13" value="${esc(V.f.ab_ph ?? LS.get("gesco-abph-" + S.me.id, ""))}" placeholder="Ex. 6XX XX XX XX">
+          <div class="segs">${[["orange", "Orange Money"], ["mtn", "MTN MoMo"]].map(([k, l]) => `<button class="${op === k ? "on " + (k === "orange" ? "warn" : "sky") : ""}" data-a="setF" data-k2="ab_o" data-v="${k}">${l}</button>`).join("")}</div></div></div>
+        <div class="step"><i>2</i><div class="grow stack" style="gap:8px"><b>Validez avec votre code secret</b>
+          <button class="btn wide" data-a="subPush" ${V.busy ? "disabled" : ""}>Recevoir la demande de ${F(total)}</button>
+          <p class="mu" style="margin:0">Une demande de paiement s’affiche sur ce numéro : tapez votre code secret pour confirmer. La formule s’active aussitôt, sans capture à envoyer. Personne d’autre que vous ne voit votre code secret.</p></div></div>`; })() : `
       <div class="step"><i>1</i><div class="grow stack" style="gap:8px"><b>Choisissez votre opérateur</b>
         <div class="segs">${[["orange", "Orange Money"], ["mtn", "MTN MoMo"]].map(([k, l]) => `<button class="${meth === k ? "on " + (k === "orange" ? "warn" : "sky") : ""}" data-a="setF" data-k2="ab_o" data-v="${k}">${l}</button>`).join("")}</div></div></div>
       <div class="step"><i>2</i><div class="grow stack" style="gap:8px"><b>Envoyez ${F(total)} par transfert</b>
@@ -2203,14 +2232,29 @@ function vAbo() {
         <label class="f" for="ab_file">ou capture d’écran du SMS<input id="ab_file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label>
         ${window.__abFile ? `<span class="mu">Capture prête : ${esc(window.__abFile.name)}</span>` : ""}
         <button class="btn" data-a="subGo">Activer mon abonnement</button>
-        <p class="mu" style="margin:0">La formule s’active tout de suite pendant 72 h, le temps que BISMO Agency confirme la réception. Le paiement à l’année vous offre 2 mois.</p></div></div></div>`}
-    <div class="card"><h3>Historique et reçus</h3><div class="list">${(S.subs || []).map(x => `<div class="li"><div class="grow"><b>${PLANS[x.plan][0]} · ${x.months} mois</b><div class="mu">${new Date(x.created_at).toLocaleDateString("fr-FR")} · ${x.method === "orange" ? "Orange Money" : "MTN MoMo"} · réf. ${esc(x.reference)}</div></div><b class="num">${F(x.amount)}</b><span class="pill ${SST[x.status][0]}">${SST[x.status][1]}</span>${x.status === "validee" ? `<button class="btn soft sm" data-a="subRecu" data-id="${x.id}">Reçu</button>` : ""}</div>`).join("") || '<div class="empty">Aucun paiement d’abonnement pour le moment.</div>'}</div></div></div>`;
+        <p class="mu" style="margin:0">La formule s’active tout de suite pendant 72 h, le temps que BISMO Agency confirme la réception. Le paiement à l’année vous offre 2 mois.</p></div></div>`}</div>`}
+    <div class="card"><h3>Historique et reçus</h3><div class="list">${(S.subs || []).map(x => `<div class="li"><div class="grow"><b>${PLANS[x.plan][0]} · ${x.months} mois</b><div class="mu">${new Date(x.created_at).toLocaleDateString("fr-FR")} · ${x.method === "orange" ? "Orange Money" : "MTN MoMo"}${x.channel === "notchpay" ? " direct" : ""} · réf. ${esc(x.reference)}</div></div><b class="num">${F(x.amount)}</b><span class="pill ${SST[x.status][0]}">${SST[x.status][1]}</span>${x.status === "validee" ? `<button class="btn soft sm" data-a="subRecu" data-id="${x.id}">Reçu</button>` : ""}</div>`).join("") || '<div class="empty">Aucun paiement d’abonnement pour le moment.</div>'}</div></div></div>`;
 }
 A.subGo = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ? planState().k : "gold"); let proof = null; const f = window.__abFile;
   if (!f && (V.f.ab_ref || "").trim().length < 4) throw bizErr("Collez la référence du SMS ou ajoutez la capture du SMS.");
   if (f) { if (f.size > 5242880) throw bizErr("Capture trop lourde (5 Mo maximum)."); proof = await B.uploadProof(f); }
   const r = await call("gb_sub_request", { p_plan: pl, p_months: +(V.f.ab_m || 1), p_method: V.f.ab_o || "orange", p_reference: V.f.ab_ref || "", p_proof: proof });
   V.f.ab_ref = ""; window.__abFile = null; await refresh(); notify("ok", "Abonnement activé", `${PLANS[pl][0]} actif jusqu’à la confirmation de BISMO Agency (72 h).`); });
+A.subPush = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ? planState().k : "gold"), mo = +(V.f.ab_m || 1);
+  const ph = String(V.f.ab_ph ?? LS.get("gesco-abph-" + S.me.id, "")).replace(/\D/g, ""), op = opOf(ph) || V.f.ab_o || "orange";
+  if (!/^(237)?6\d{8}$/.test(ph)) throw bizErr("Saisissez votre numéro Mobile Money : 9 chiffres commençant par 6.");
+  const r = await B.subPush(pl, mo, op, ph); LS.set("gesco-abph-" + S.me.id, ph.slice(-9));
+  toast("Demande envoyée : validez avec votre code secret sur le téléphone."); await refresh(); subWatch(r.id); });
+A.subCheck = d => run(async () => { const s = await B.subStatus(d.id); await subDone(s.status, true); });
+async function subDone(st, manual) { if (st === "en_attente") { if (manual) toast("Pas encore de confirmation de l’opérateur. Validez la demande sur votre téléphone puis réessayez."); return; }
+  clearInterval(window.__subw); V.subPay = null; await refresh();
+  if (st === "validee") { const ps = planState(); notify("ok", "Abonnement activé", `${ps.name} actif jusqu’au ${ps.until ? ps.until.toLocaleDateString("fr-FR") : ""}. Merci !`); }
+  else toast("Le paiement n’a pas abouti (non validé ou solde insuffisant). Vous pouvez réessayer.", "err");
+  render(); }
+function subWatch(id) { V.subPay = { id, status: "en_attente", at: Date.now() }; clearInterval(window.__subw);
+  window.__subw = setInterval(async () => { if (!V.subPay || !S) return clearInterval(window.__subw);
+    if (Date.now() - V.subPay.at > 16 * 60000) { clearInterval(window.__subw); return; }
+    try { const s = await B.subStatus(id); if (s.status !== "en_attente") await subDone(s.status); } catch (e) {} }, 5000); }
 A.subRecu = d => { V.modal = { type: "subRecu", id: d.id }; render(); };
 
 /* Réglages : paiement marchand (PDG) */

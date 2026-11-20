@@ -1,4 +1,4 @@
-// GesCo Bar · fonction serveur : inscription, connexion par PIN, ajout du personnel, paiement Mobile Money par numéro (Notch Pay), installation du compte éditeur, assistant IA.
+// GesCo Bar · fonction serveur : inscription, connexion par PIN, ajout du personnel, paiement Mobile Money par numéro (Notch Pay), abonnements payés en direct, installation du compte éditeur, assistant IA.
 // verify_jwt = false : les actions publiques (inscription, liste, PIN) n'ont pas de session ;
 // les autres actions vérifient elles-mêmes le jeton de l'appelant.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -151,6 +151,45 @@ Deno.serve(async (req) => {
         const done = s === "complete" ? "reussi" : ["failed", "rejected", "canceled", "abandoned", "expired"].includes(s) || old ? "echoue" : null;
         if (done) await admin.rpc("gb_admin_momo_update", { p_req: id, p_status: done, p_ref: g.ref, p_msg: s });
         return json({ status: done ?? "en_cours", provider: s });
+      }
+
+      case "sub_push": case "sub_status": {
+        // Abonnement payé directement par Mobile Money sur le compte Notch Pay de l'éditeur (secret NOTCHPAY_SUB_KEY = clé publique Notch Pay).
+        const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+        const { data: me, error: e0 } = await admin.auth.getUser(jwt);
+        if (e0 || !me?.user) return fail("Session expirée. Reconnectez-vous.", 401);
+        const KEY = Deno.env.get("NOTCHPAY_SUB_KEY");
+        if (!KEY) return fail("Le paiement direct n'est pas encore activé : utilisez le paiement par transfert.", 503);
+        const NP = "https://api.notchpay.co/payments";
+        const np = async (method: string, path: string, payload?: unknown) => {
+          const r = await fetch(NP + path, { method, headers: { Authorization: KEY, Accept: "application/json", "Content-Type": "application/json" }, body: payload ? JSON.stringify(payload) : undefined });
+          const j = await r.json().catch(() => ({})); return { ok: r.ok, j };
+        };
+        if (body.action === "sub_push") {
+          const { plan, operator, phone } = body as Record<string, string>;
+          const { data: st, error: e1 } = await admin.rpc("gb_admin_sub_push_start", { p_user: me.user.id, p_plan: plan, p_months: Number(body.months), p_method: operator, p_phone: phone });
+          if (e1) return fail(e1.message);
+          const init = await np("POST", "", { amount: st.amount, currency: "XAF", reference: "gbsub-" + st.id, description: st.label, customer: { phone: st.phone, name: st.bar } });
+          const ref = init.j?.transaction?.reference;
+          if (!init.ok || !ref) { await admin.rpc("gb_admin_sub_push_done", { p_id: st.id, p_ok: false, p_ref: null, p_msg: "init: " + (init.j?.message ?? "") }); console.error("notchpay_sub_init", JSON.stringify(init.j)); return fail("Le service de paiement est indisponible pour le moment. Réessayez ou payez par transfert."); }
+          await admin.rpc("gb_admin_sub_push_ref", { p_id: st.id, p_ref: ref });
+          const ch = await np("PUT", "/" + encodeURIComponent(ref), { channel: operator === "orange" ? "cm.orange" : "cm.mtn", data: { phone: st.phone } });
+          if (!ch.ok) { await admin.rpc("gb_admin_sub_push_done", { p_id: st.id, p_ok: false, p_ref: ref, p_msg: "charge: " + (ch.j?.message ?? "") }); console.error("notchpay_sub_charge", JSON.stringify(ch.j)); return fail("Envoi de la demande impossible : " + (ch.j?.message ?? "vérifiez le numéro et réessayez.")); }
+          return json({ ok: true, id: st.id, amount: st.amount, message: ch.j?.message ?? "Demande envoyée sur le téléphone." });
+        }
+        const { data: g, error: e2 } = await admin.rpc("gb_admin_sub_get", { p_user: me.user.id, p_id: String(body.id ?? "") });
+        if (e2) return fail(e2.message);
+        if (g.status !== "en_attente" || g.channel !== "notchpay") return json({ status: g.status });
+        const old = Date.now() - new Date(g.created).getTime() > 15 * 60000;
+        if (!g.ref) { if (old) await admin.rpc("gb_admin_sub_push_done", { p_id: g.id, p_ok: false, p_ref: null, p_msg: "Délai dépassé" }); return json({ status: old ? "echouee" : "en_attente" }); }
+        const v = await np("GET", "/" + encodeURIComponent(g.ref));
+        const s = String(v.j?.transaction?.status ?? "pending");
+        const paid = Number(v.j?.transaction?.amount ?? 0), short = s === "complete" && paid > 0 && paid < Number(g.amount);
+        if (short) console.error("notchpay_sub_amount", g.id, paid, g.amount);
+        const done = s === "complete" && !short ? true : short || ["failed", "rejected", "canceled", "cancelled", "abandoned", "expired"].includes(s) || old ? false : null;
+        if (done === null) return json({ status: "en_attente", provider: s });
+        const { data: res } = await admin.rpc("gb_admin_sub_push_done", { p_id: g.id, p_ok: done, p_ref: g.ref, p_msg: done ? null : short ? `Montant reçu ${paid} au lieu de ${g.amount} : à vérifier` : "Notch Pay : " + s });
+        return json({ status: res ?? (done ? "validee" : "echouee"), provider: s });
       }
 
       case "admin_setup_open": {
