@@ -111,6 +111,6 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 ## v4.3 · Essai gratuit et avis
 - Formule **Essai gratuit** (`essai`) : toutes les fonctions jusqu'à la date de fin, puis blocage automatique (3 jours de grâce) tant qu'aucune formule n'est payée. Un paiement pendant l'essai démarre à la fin de l'essai.
 - Console → Bars → fiche : boutons « Essai gratuit 14 / 30 jours dès aujourd'hui ». Console → Réglages → « Nouveaux bars » : essai automatique de N jours à l'inscription (sinon bêta illimitée).
-- **Avis** : menu de l'application → « Donner mon avis » (étoiles, sujets, message ; possible même bloqué ; 5 par jour et par personne). Console → rubrique **Avis** : note moyenne, répartition, sujets, filtres.
+- **Avis** : invitation automatique après 2 semaines d’utilisation (« Plus tard » = 3 jours, « Non merci » = 2 mois, puis tous les 2 mois). Menu de l'application → « Donner mon avis » (étoiles, sujets, message ; possible même bloqué ; 5 par jour et par personne). Console → rubrique **Avis** : note moyenne, répartition, sujets, filtres.
 - Migrations `011_essai_gratuit.sql`, `012_avis.sql` (+ message de blocage spécifique à l'essai).
 - À déployer avec l'activation de l'assistant : `kb.ts` mis à jour (essai, avis).
