@@ -1568,16 +1568,16 @@ const CATALOG = [
   ["planet-cocktail", "Planet Cocktail", "Sucreries", ["planet cocktail", "planete cocktail"], 1],
   ["tangui", "Tangui", "Eaux", ["tangui"], 1], ["supermont", "Supermont", "Eaux", ["supermont"], 1],
   ["opur", "Opur", "Eaux", ["opur"], 1], ["vitale", "Eau Vitale", "Eaux", ["vitale", "eau vitale"], 1],
-  ["grants", "Grant’s", "Spiritueux", ["grant's", "grants", "grant"], 0], ["ballantines", "Ballantine’s", "Spiritueux", ["ballantine's", "ballantines", "ballantine"], 0],
-  ["chivas", "Chivas Regal 12 ans", "Spiritueux", ["chivas"], 0], ["johnnie-walker-black", "Johnnie Walker Black Label", "Spiritueux", ["black label", "johnnie walker", "johnny walker"], 0],
-  ["jack-daniels", "Jack Daniel’s", "Spiritueux", ["jack daniel's", "jack daniels", "jack"], 0], ["absolut", "Absolut Vodka", "Spiritueux", ["absolut"], 0],
-  ["martini-rosso", "Martini Rosso", "Liqueurs", ["martini", "martini rosso", "martini rouge"], 0], ["martini-bianco", "Martini Bianco", "Liqueurs", ["martini bianco", "martini blanc"], 0],
-  ["martini-rosato", "Martini Rosato", "Liqueurs", ["martini rosato", "martini rose"], 0], ["martini-extra-dry", "Martini Extra Dry", "Liqueurs", ["martini extra dry", "martini dry"], 0],
-  ["martini-fiero", "Martini Fiero", "Liqueurs", ["martini fiero"], 0],
-  ["castillo-rouge", "Castillo de Ferrer rouge", "Vins rouges", ["castillo", "castillo rouge", "castillo de ferrer", "castillo de ferrer rouge"], 0],
-  ["castillo-blanc", "Castillo de Ferrer blanc", "Vins blancs", ["castillo blanc", "castillo de ferrer blanc"], 0],
-  ["castillo-mousseux", "Castillo de Ferrer mousseux", "Champagnes", ["castillo mousseux", "castillo sparkling", "castillo petillant", "castillo de ferrer mousseux"], 0],
-  ["bordeaux", "Bordeaux rouge", "Vins rouges", ["bordeaux"], 0]
+  ["grants", "Grant’s", "Spiritueux", ["grant's", "grants", "grant"], 1], ["ballantines", "Ballantine’s", "Spiritueux", ["ballantine's", "ballantines", "ballantine"], 1],
+  ["chivas", "Chivas Regal 12 ans", "Spiritueux", ["chivas"], 1], ["johnnie-walker-black", "Johnnie Walker Black Label", "Spiritueux", ["black label", "johnnie walker", "johnny walker"], 1],
+  ["jack-daniels", "Jack Daniel’s", "Spiritueux", ["jack daniel's", "jack daniels", "jack"], 1], ["absolut", "Absolut Vodka", "Spiritueux", ["absolut"], 1],
+  ["martini-rosso", "Martini Rosso", "Liqueurs", ["martini", "martini rosso", "martini rouge"], 1], ["martini-bianco", "Martini Bianco", "Liqueurs", ["martini bianco", "martini blanc"], 1],
+  ["martini-rosato", "Martini Rosato", "Liqueurs", ["martini rosato", "martini rose"], 1], ["martini-extra-dry", "Martini Extra Dry", "Liqueurs", ["martini extra dry", "martini dry"], 1],
+  ["martini-fiero", "Martini Fiero", "Liqueurs", ["martini fiero"], 1],
+  ["castillo-rouge", "Castillo de Ferrer rouge", "Vins rouges", ["castillo", "castillo rouge", "castillo de ferrer", "castillo de ferrer rouge"], 1],
+  ["castillo-blanc", "Castillo de Ferrer blanc", "Vins blancs", ["castillo blanc", "castillo de ferrer blanc"], 1],
+  ["castillo-mousseux", "Castillo de Ferrer mousseux", "Champagnes", ["castillo mousseux", "castillo sparkling", "castillo petillant", "castillo de ferrer mousseux"], 1],
+  ["bordeaux", "Bordeaux rouge", "Vins rouges", ["bordeaux"], 1]
 ].map(([k, n, c, kw, ph, sh, col]) => ({ k, n, c, kw, ph: !!ph, sh, col }));
 const CAT_BY = Object.fromEntries(CATALOG.map(x => [x.k, x])); CAT_BY.guinness = CAT_BY["guinness-grande"]; CAT_BY.planete = CAT_BY["planet-orange"];
 const KW = CATALOG.flatMap(x => x.kw.map(w => [w, x])).sort((a, b) => b[0].length - a[0].length);
