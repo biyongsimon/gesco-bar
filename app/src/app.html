@@ -138,6 +138,35 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
 .pt.on{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 10%,var(--surface));box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 25%,transparent)}
 .pthumb{width:44px;height:58px;flex:none;display:flex;align-items:flex-end;justify-content:center;border-radius:10px;background:var(--sunk);padding:3px;border:0;cursor:pointer}.pthumb img,.pthumb svg{height:100%;width:auto;max-width:100%;object-fit:contain}
 @media (prefers-reduced-motion:reduce){.pcard.bump,.pcard.bump .pi img,.pcard.bump .pi svg,.pcard.bump .pn,.pcard.bump::after,.pcard .fly{animation:none!important}}
+.aplist{display:flex;flex-direction:column;gap:8px}
+.apday{border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
+.apday.closed{background:var(--sunk);opacity:.75}
+.apday .f{font-size:12.5px;min-width:0}.apday select{min-width:0;width:100%;padding-inline:8px}
+.apgrid{display:flex;flex-direction:column;gap:10px}
+.aphd,.apcells{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.aphd span{text-align:center;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;display:flex;flex-direction:column}.aphd b{color:var(--ink);font-size:13px}
+.aprow{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid var(--line)}
+.apcells .pc{min-height:40px;padding:5px 1px;font-size:11px;line-height:1.25;border-radius:9px}
+.apbar{flex:1;height:6px;border-radius:99px;background:var(--sunk);margin:0 10px;overflow:hidden;max-width:120px}.apbar i{display:block;height:100%;background:var(--brand);border-radius:99px}
+.apstep{display:flex;align-items:center;gap:4px;flex:0 0 auto}.apstep span{display:flex;flex-direction:column;align-items:center;line-height:1;min-width:34px}.apstep small{font-size:10.5px;color:var(--muted)}
+.apcta{border:1.5px solid color-mix(in srgb,var(--brand) 40%,var(--line))}
+.kboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px;align-items:start}
+.kcol{display:flex;flex-direction:column;gap:10px;background:var(--sunk);border-radius:18px;padding:12px;min-width:0}
+.kcol h3{display:flex;align-items:center;gap:8px;margin:2px 4px}
+.kcol.pret{background:color-mix(in srgb,var(--ok) 12%,var(--sunk))}
+.kcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);animation:rise .3s both}
+.kcard.late{border-color:var(--bad);box-shadow:0 0 0 2px color-mix(in srgb,var(--bad) 35%,transparent)}
+.kband{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px;background:hsl(var(--h) 58% 38%);color:#fff}
+.kbon{font:800 18px var(--display);letter-spacing:.05em}.kwho{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kbody{display:flex;gap:12px;padding:10px 12px;align-items:center}
+.kdish{font:700 17px/1.25 var(--display)}.kdish b{color:var(--brand);font-size:20px}
+.ktab{font-weight:600;overflow-wrap:anywhere}.ktime{font-size:12.5px;color:var(--muted)}.ktime.bad-t{color:var(--bad);font-weight:700}
+.kcard .row{padding:0 12px 12px}
+.kstrip{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;align-items:center}
+.kchip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-size:12.5px;background:var(--sunk)}
+.kchip .ico{width:15px;height:15px}
+.kchip.prep{background:var(--warn-soft);color:var(--warn)}.kchip.pret{background:var(--ok-soft);color:var(--ok);font-weight:700;animation:kpulse 1.4s infinite}.kchip.servi{opacity:.6}
+@keyframes kpulse{50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 28%,transparent)}}
 .rea{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);align-items:flex-start}.rea:last-child{border-bottom:0}.rea .pthumb{cursor:default}
 .prow{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:10px}
 .prow.on{background:color-mix(in srgb,var(--amber) 14%,transparent)}
@@ -540,6 +569,8 @@ function notifyNew() { // chacun est prévenu de ce qui le concerne, avec un gé
   if (r === "caisse") S.tickets.filter(t => !isCounter(t) && (t.status === "sent" || t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo")))
     .forEach(t => K.set(`t:${t.id}:${t.status}:${t.cancel_requested ? 1 : 0}`, ["order", t.cancel_requested ? "Annulation demandée" : t.status === "cashed" ? "Mobile Money à vérifier" : "Nouvelle commande", `${staffName(t.waitress_id)} · ${t.client_label} · ${F(t.total)}`]));
   if (r === "caisse") S.tickets.filter(t => t.status === "paid" && t.pay_method === "momo" && !isCounter(t)).forEach(t => K.set("m:" + t.id, ["ok", "Paiement Mobile Money reçu", `${staffName(t.waitress_id)} · ${t.client_label} · ${F(t.total)}`]));
+  if (r === "cuisine") (S.kitchen || []).filter(o => o.status === "attente").forEach(o => K.set("k:" + o.id, ["order", "Nouvelle commande en cuisine", `Bon ${o.bon} · ${o.qty}× ${prodName(o.product_id)} · ${o.label || ""} · ${staffName(o.waitress_id)}`]));
+  if (r === "serveuse") (S.kitchen || []).filter(o => o.status === "pret" && o.waitress_id === me).forEach(o => K.set("kr:" + o.id, ["ok", "Plat prêt en cuisine 🍽", `${o.qty}× ${prodName(o.product_id)} · ${o.label || ""} · bon ${o.bon} : allez le récupérer`]));
   if (r === "serveuse") S.tickets.filter(t => t.waitress_id === me).forEach(t => {
     if (t.status === "paid") K.set("p:" + t.id, ["ok", t.pay_method === "momo" ? "Paiement Mobile Money reçu" : "Commande validée par la caisse", `${t.client_label} · ${F(t.total)}`]);
     if (t.change_status === "given") K.set("g:" + t.id, ["ok", "Monnaie prête à la caisse", `${t.client_label} · ${F(t.change_due)} à rendre au client`]);
@@ -558,7 +589,7 @@ const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentC
 
 /* ═══════════════ Moteur DÉMO (données locales, mêmes règles que le serveur) ═══════════════ */
 function DemoBackend() {
-  const KEY = "gesco-demo-v11";
+  const KEY = "gesco-demo-v12";
   let db = LS.get(KEY), sess = LS.get(KEY + "-sess");
   const listeners = [];
   const save = () => LS.set(KEY, db);
@@ -584,8 +615,19 @@ function DemoBackend() {
   const move = (c, p, w, q, kind) => { db.moves.unshift({ id: uuid(), product_id: p, waitress_id: w, qty: q, kind, created_by: c.id, created_at: now() }); db.moves = db.moves.slice(0, 300); };
   const own = (c, t) => { if (!["caisse", "pdg"].includes(c.role) && t.waitress_id !== c.id) E("Ce ticket appartient à une autre serveuse."); };
   const counter = t => (db.staff.find(s => s.id === t.waitress_id) || {}).role === "caisse"; // vente comptoir de la caisse
+  // Cuisine (démo) : mêmes règles que le serveur
+  const isDish = p => !!(db.bar.kitchen_on && p && (p.category === "Cuisine" || ["plat", "portion"].includes(p.unit)));
+  const kTake = (t, pid, q, c) => { if (q <= 0) return; db.kitchen = db.kitchen || []; db.bar.next_bon = db.bar.next_bon || 1;
+    db.kitchen.push({ id: uuid(), ticket_id: t.id, product_id: pid, waitress_id: t.waitress_id, label: t.client_label, ticket_no: t.number, bon: db.bar.next_bon++, qty: q, status: "attente", created_at: now(), started_at: null, ready_at: null, served_at: null });
+    (db.recipes || []).filter(r => r.dish_id === pid).forEach(r => { const n = Math.ceil(r.qty * q); prod(r.ingredient_id).stock -= n; move(c, r.ingredient_id, null, -n, "cuisine"); }); };
+  const kRelease = (o, q, c) => (db.recipes || []).filter(r => r.dish_id === o.product_id).forEach(r => { const n = Math.ceil(r.qty * q); prod(r.ingredient_id).stock += n; move(c, r.ingredient_id, null, n, "cuisine_retour"); });
+  const kSend = (t, c) => t.items.forEach(i => { if (isDish(prod(i.product_id))) kTake(t, i.product_id, i.qty, c); });
+  const kReduce = (t, pid, q, c) => { const pend = (db.kitchen || []).filter(o => o.ticket_id === t.id && o.product_id === pid && o.status === "attente");
+    if (pend.reduce((a, o) => a + o.qty, 0) < q) E("Ce plat est déjà en préparation en cuisine : demandez son annulation à la caisse.");
+    let left = q; pend.reverse().forEach(o => { if (left <= 0) return; const k = Math.min(o.qty, left); kRelease(o, k, c); if (k === o.qty) o.status = "annule"; else o.qty -= k; left -= k; }); };
   function cancel(t, c) {
-    t.items.forEach(i => counter(t) ? (prod(i.product_id).stock += i.qty) : hold(t.waitress_id, i.product_id, i.qty));
+    t.items.forEach(i => { if (isDish(prod(i.product_id))) return; counter(t) ? (prod(i.product_id).stock += i.qty) : hold(t.waitress_id, i.product_id, i.qty); });
+    (db.kitchen || []).filter(o => o.ticket_id === t.id && ["attente", "prep", "pret"].includes(o.status)).forEach(o => { if (o.status === "attente") kRelease(o, o.qty, c); o.status = "annule"; });
     db.vouchers.forEach(v => { if (v.ticket_id === t.id && v.status === "active") v.status = "void"; });
     log(c, "ticket_supprime", { ticket: t.number, client: t.client_label, total: t.total, statut_avant: t.status });
     t.status = "cancelled"; t.cancel_requested = false; t.updated_at = now();
@@ -606,18 +648,19 @@ function DemoBackend() {
       const p = prod(p_product); p_qty = Math.max(0, Math.floor(+p_qty || 0)); if (p_qty > 200) E("Quantité trop élevée.");
       let it = t.items.find(i => i.product_id === p_product); const cur = it ? it.qty : 0, d = p_qty - cur; if (!d) return;
       if (!cur && !p.active) E("Ce produit n’est plus disponible.");
+      const dish = isDish(p); if (dish && t.status === "sent" && d < 0) kReduce(t, p_product, -d, c);
       if (!p_qty) t.items = t.items.filter(i => i !== it); else if (!it) t.items.push({ product_id: p_product, qty: p_qty, unit_price: p.price }); else it.qty = p_qty;
-      if (counter(t)) p.stock -= d; else hold(t.waitress_id, p_product, -d); recalc(t);
+      if (dish) { if (t.status === "sent" && d > 0) kTake(t, p_product, d, c); } else if (counter(t)) p.stock -= d; else hold(t.waitress_id, p_product, -d); recalc(t);
       if (t.status === "sent") { if (d < 0) t.corrections++; log(c, "ticket_modifie", { ticket: t.number, client: t.client_label, produit: p.name, variation: d }); }
       t.updated_at = now();
     },
     gb_ticket_send({ p_ticket }) {
       const c = ctx(), t = tk(p_ticket); own(c, t); if (t.status !== "draft") return;
-      if (t.total <= 0) E("Ajoutez au moins une boisson avant d’envoyer."); t.status = "sent"; t.sent_at = now(); t.updated_at = now();
+      if (t.total <= 0) E("Ajoutez au moins une boisson avant d’envoyer."); t.status = "sent"; t.sent_at = now(); t.updated_at = now(); kSend(t, c);
     },
     gb_ticket_cash({ p_ticket, p_method, p_received }) {
       const c = ctx(), t = tk(p_ticket); own(c, t); if (["cashed", "paid"].includes(t.status)) return;
-      const cnt = counter(t); if (cnt && t.status === "draft" && t.total > 0) { t.status = "sent"; t.sent_at = now(); }
+      const cnt = counter(t); if (cnt && t.status === "draft" && t.total > 0) { t.status = "sent"; t.sent_at = now(); kSend(t, c); }
       if (t.status !== "sent") E("Envoyez d’abord la commande à la caisse."); if (t.cancel_requested) E("Une annulation est en attente sur ce ticket.");
       let r = t.total;
       if (p_method === "cash") { r = p_received == null || p_received === "" ? t.total : +p_received; if (r < t.total) E(`Le montant reçu (${Fs(r)} FCFA) est inférieur au total (${Fs(t.total)} FCFA).`); }
@@ -694,7 +737,7 @@ function DemoBackend() {
       const days = Math.min(60, Math.max(1, +p_days || 7)), since = Date.now() - 14 * 864e5, win = 3; // démo : rythme d'exemple + ventes réelles du jour
       const sold = {}; db.tickets.filter(t => !["draft", "cancelled"].includes(t.status) && new Date(t.created_at) > since).forEach(t => t.items.forEach(i => { sold[i.product_id] = (sold[i.product_id] || 0) + i.qty; }));
       const RY = { "Castel": 9, "33 Export": 7, "Guinness": 5, "Mützig": 3, "Beaufort": 3, "Orijin": 4, "Coca": 5, "Top": 2, "Heineken": 2, "Petite Guinness": 3, "Tangui": 3, "Supermont": 2, "Booster": 1.5, "Vimto": 1, "Planet": 1.5, "Malta": 1 };
-      const items = db.products.filter(p => !p.parent_id && p.active).map(p => { const kids = db.products.filter(g => g.parent_id === p.id), rk = Object.keys(RY).find(k => p.name.startsWith(k));
+      const items = db.products.filter(p => !p.parent_id && p.active && !isDish(p) && p.category !== "Cuisine").map(p => { const kids = db.products.filter(g => g.parent_id === p.id), rk = Object.keys(RY).find(k => p.name.startsWith(k));
         const vendu = (sold[p.id] || 0) + kids.reduce((a, g) => a + (sold[g.id] || 0) / (g.doses || 1), 0) + (rk ? RY[rk] * win : 0);
         const en_main = db.holdings.filter(h => h.product_id === p.id).reduce((a, h) => a + Math.max(0, h.qty), 0), verres = kids.reduce((a, g) => a + g.stock / (g.doses || 1), 0);
         const dispo = p.stock + en_main + verres, pj = vendu / win;
@@ -716,6 +759,17 @@ function DemoBackend() {
     gb_product_rule({ p_id, p_min, p_pack }) { const c = ctx(); caisse(c); const p = prod(p_id);
       if (p_min != null && (p_min < 0 || p_min > 100000)) E("Stock minimum invalide."); if (p_pack != null && (p_pack < 1 || p_pack > 500)) E("Taille du casier invalide.");
       p.reorder_min = p_min || null; p.pack = p_pack || null; log(c, "regle_reappro", { produit: p.name, minimum: p_min, casier: p_pack }); },
+    gb_kitchen_step({ p_id, p_status }) { const c = ctx(), o = (db.kitchen || []).find(x => x.id === p_id) || E("Bon cuisine introuvable.");
+      if (["servi", "annule"].includes(o.status)) E("Ce bon est déjà " + (o.status === "servi" ? "servi." : "annulé."));
+      if (p_status === "servi") { if (o.waitress_id !== c.id && !["caisse", "pdg", "directeur"].includes(c.role)) E("Seule la serveuse de la table récupère ce plat.");
+        if (o.status !== "pret") E("Le plat n’est pas encore prêt."); o.status = "servi"; o.served_at = now(); return; }
+      if (!["prep", "pret", "attente"].includes(p_status)) E("Étape inconnue."); if (!["cuisine", "caisse", "pdg", "directeur"].includes(c.role)) E("Action réservée à la cuisine.");
+      Object.assign(o, { status: p_status, started_at: ["prep", "pret"].includes(p_status) ? (o.started_at || now()) : null, ready_at: p_status === "pret" ? now() : null, cook_id: c.id }); },
+    gb_kitchen_toggle({ p_on }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG active le module Cuisine."); db.bar.kitchen_on = !!p_on; log(c, "module_cuisine", { actif: !!p_on }); },
+    gb_recipe_set({ p_dish, p_items }) { const c = ctx(); caisse(c); const d = prod(p_dish); db.recipes = (db.recipes || []).filter(r => r.dish_id !== p_dish);
+      (p_items || []).forEach(i => { const q = +i.q; if (!(q > 0)) return; if (i.i === p_dish) E("Un plat ne peut pas être son propre ingrédient."); prod(i.i); db.recipes.push({ dish_id: p_dish, ingredient_id: i.i, qty: q }); });
+      const tot = Math.round(db.recipes.filter(r => r.dish_id === p_dish).reduce((x, r) => x + r.qty * (prod(r.ingredient_id).cost || 0), 0)); if (tot > 0) d.cost = tot;
+      log(c, "recette_modifiee", { plat: d.name, ingredients: (p_items || []).length, cout: tot }); },
     gb_po_cancel({ p_id }) { const c = ctx(); caisse(c); const po = (db.pos || []).find(x => x.id === p_id && x.status === "envoye") || E("Bon de commande introuvable ou déjà traité."); po.status = "annule"; log(c, "bon_commande_annule", { numero: po.number }); },
     gb_product_save({ p_id, p_name, p_category, p_price, p_stock, p_active, p_unit, p_parent, p_doses }) {
       const c = ctx(); caisse(c); p_name = (p_name || "").trim(); if (!p_name) E("Donnez un nom au produit.");
@@ -865,6 +919,15 @@ function DemoBackend() {
       db.shifts.push({ id: uuid(), staff_id: p_staff, day: p_day, kind: p_kind, start_time: p_kind === "travail" ? t8(p_start) : null, end_time: p_kind === "travail" ? t8(p_end) : null,
         note: (p_note || "").trim() || null, updated_by: c.id });
     },
+    gb_plan_load() { const c = ctx(); mgr(c); const by = {}; db.history.forEach(h => { by[h.date] = (by[h.date] || 0) + h.tickets; });
+      const acc = [[], [], [], [], [], [], []]; Object.entries(by).slice(-56).forEach(([d, n]) => acc[(new Date(d + "T12:00:00").getDay() + 6) % 7].push(n));
+      return acc.map(a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length * 10) / 10 : 0); },
+    gb_shift_bulk({ p_from, p_items, p_cfg }) { const c = ctx(); mgr(c); if ((new Date(p_from + "T12:00:00").getDay() + 6) % 7) E("La semaine doit commencer un lundi.");
+      const ids = new Set(p_items.map(i => i.s)); ids.forEach(id => { const s = member(id); if (!s.active) E("Un employé du planning est introuvable."); });
+      const to = dAdd(p_from, 6); db.shifts = db.shifts.filter(x => !(ids.has(x.staff_id) && x.day >= p_from && x.day <= to));
+      p_items.forEach(i => { if (i.d < p_from || i.d > to) E("Jour hors de la semaine."); if (!["travail", "repos"].includes(i.k)) E("Type de planning inconnu.");
+        db.shifts.push({ id: uuid(), staff_id: i.s, day: i.d, kind: i.k, start_time: i.k === "travail" ? t8(i.a) : null, end_time: i.k === "travail" ? t8(i.b) : null, note: (i.n || "").trim() || null, updated_by: c.id }); });
+      if (p_cfg) db.bar.plan_cfg = p_cfg; log(c, "planning_auto", { semaine: p_from, creneaux: p_items.length }); return p_items.length; },
     gb_shift_copy_week({ p_from, p_to }) {
       const c = ctx(); mgr(c); const off = Math.round((new Date(p_to + "T12:00:00") - new Date(p_from + "T12:00:00")) / 864e5);
       db.shifts = db.shifts.filter(x => !(x.day >= p_to && x.day < dAdd(p_to, 7)));
@@ -976,13 +1039,23 @@ function DemoBackend() {
     db.products.forEach(p => { p.low_at = p.parent_id ? 3 : /Vins|Spiritueux/.test(p.category) ? 2 : null; });
     const COST = { "Castel": 450, "33 Export": 450, "Mützig": 450, "Beaufort": 450, "Guinness": 750, "Orijin": 450, "Coca": 300, "Top": 300, "Chivas": 26000, "Grant": 8500, "Martini": 6000, "Castillo": 3200, "Petite Guinness": 420, "Isenbeck": 450, "Malta": 350, "Fanta": 400, "Planet": 280, "Opur": 200, "Vitale": 350, "Heineken": 600, "Doppel": 500, "Booster": 500, "World": 350, "Vimto": 400, "Orangina": 500, "D’jino": 400, "Tangui": 400, "Supermont": 350, "Vin rouge Bordeaux": 3500, "Vin rouge (verre)": 600, "Vin blanc": 3500, "Whisky J&B 75cl": 9000, "Whisky J&B (verre)": 600, "Jack": 16000 };
     db.products.forEach(p => { const k = Object.keys(COST).find(x => p.name.startsWith(x)); p.cost = k ? COST[k] : 0; });
+    Object.assign(db.bar, { kitchen_on: true, next_bon: 1 }); db.kitchen = []; db.recipes = [];
+    db.staff.push({ id: uuid(), name: "Paul", role: "cuisine", pin: "4444", active: true, fails: 0, lock: 0 });
+    [["Poisson (bar)", 12, "pièce", 1500], ["Poulet (morceaux)", 30, "pièce", 600], ["Viande de bœuf", 4000, "g", 4], ["Plantain mûr", 40, "pièce", 100], ["Huile de palme", 5000, "ml", 2], ["Épices et piment", 1000, "g", 3]]
+      .forEach(([name, stock, unit, cost]) => db.products.push({ id: uuid(), name, category: "Ingrédients", price: 0, stock, active: true, sort: db.products.length + 1, unit, parent_id: null, doses: null, cost }));
+    [["Poisson braisé", 3500, [["Poisson (bar)", 1], ["Épices et piment", 20], ["Huile de palme", 30]]], ["Poulet DG", 3000, [["Poulet (morceaux)", 2], ["Plantain mûr", 2], ["Huile de palme", 50]]],
+     ["Soya (brochettes)", 1000, [["Viande de bœuf", 150], ["Épices et piment", 10]]], ["Frites de plantain", 500, [["Plantain mûr", 2], ["Huile de palme", 40]]]]
+      .forEach(([name, price, rec]) => { const id = uuid(); db.products.push({ id, name, category: "Cuisine", price, stock: 0, active: true, sort: db.products.length + 1, unit: "plat", parent_id: null, doses: null, cost: 0 });
+        rec.forEach(([ing, q]) => db.recipes.push({ dish_id: id, ingredient_id: db.products.find(p => p.name === ing).id, qty: q }));
+        db.products.find(p => p.id === id).cost = Math.round(rec.reduce((x, [ing, q]) => x + q * db.products.find(p => p.name === ing).cost, 0)); });
     db.expenses = [];
     const ex = (dAgo, category, label, amount, method) => db.expenses.push({ id: uuid(), day: new Date(Date.now() - 6 * 3600e3 - dAgo * 86400e3).toLocaleDateString("sv-SE"), category, label, amount, method });
     ex(14, "Loyer", "Loyer du local", 80000, "cash"); ex(10, "Électricité et eau", "Facture ENEO", 32000, "momo"); ex(2, "Transport", "Livraison casiers", 6000, "cash");
     // Historique d'exemple : 75 jours de ventes passées pour l'onglet Revenus
     let s = 7; const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
     for (let i = 1; i <= 75; i++) { const d = new Date(Date.now() - 6 * 3600e3 - i * 86400e3).toLocaleDateString("sv-SE");
-      ["Aline", "Brigitte", "Carine"].forEach(w => { const n = 6 + Math.floor(rnd() * 14); db.history.push({ date: d, waitress: w, tickets: n, total: Math.round(n * (1400 + rnd() * 1600) / 50) * 50 }); }); }
+      const wf = [0.7, 0.75, 0.85, 1, 1.45, 1.7, 1.1][(new Date(d + "T12:00:00").getDay() + 6) % 7];
+      ["Aline", "Brigitte", "Carine"].forEach(w => { const n = Math.round((6 + Math.floor(rnd() * 14)) * wf); db.history.push({ date: d, waitress: w, tickets: n, total: Math.round(n * (1400 + rnd() * 1600) / 50) * 50 }); }); }
     // Planning type : [début, fin, jour de repos (0 = lundi)], 5 semaines passées + 2 à venir, présences des jours passés
     const SID = n => db.staff.find(x => x.name === n).id, PAT = { "Hervé": ["15:00", "23:00", 6], "Mireille": ["16:00", "00:00", 0], "Aline": ["17:00", "01:00", 2], "Brigitte": ["12:00", "20:00", 1], "Carine": ["18:00", "02:00", 3] };
     const t0 = bizDate(), mon = (() => { const x = new Date(t0 + "T12:00:00"); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x.toLocaleDateString("sv-SE"); })();
@@ -1046,7 +1119,8 @@ function DemoBackend() {
         audit: cs ? db.audit.slice(0, 200) : [], moves: cs ? db.moves.slice(0, 150) : [],
         days: cs ? db.days.filter(d => d.status === "closed").sort((a, b) => a.closed_at < b.closed_at ? 1 : -1).slice(0, 30) : [],
         shifts: db.shifts, attendance: db.attendance.filter(a => mg || own(a)).sort((a, b) => a.day < b.day ? 1 : -1), leaves: db.leaves.filter(l => mg || own(l)),
-        salaries: db.salaries.filter(x => pg || own(x)), payroll: db.payroll.filter(x => pg || own(x)), subs: mg ? db.subs : [], platform: { holder_name: "BIYONG BIYONG SIMON STEVE (BISMO AGENCY)", om_number: "691468175", mtn_number: "673383951", om_tpl: null, mtn_tpl: null, sub_push: true } });
+        salaries: db.salaries.filter(x => pg || own(x)), payroll: db.payroll.filter(x => pg || own(x)), subs: mg ? db.subs : [],
+        kitchen: (db.kitchen || []).filter(o => (cs || o.waitress_id === me.id) && (["attente", "prep", "pret"].includes(o.status) || Date.now() - new Date(o.created_at) < 18 * 3600e3)), recipes: db.recipes || [], platform: { holder_name: "BIYONG BIYONG SIMON STEVE (BISMO AGENCY)", om_number: "691468175", mtn_number: "673383951", om_tpl: null, mtn_tpl: null, sub_push: true } });
     },
     async rpc(name, args) { const f = R[name]; if (!f) throw bizErr("Action inconnue."); db = LS.get(KEY) || db; const r = f(args || {}); save(); return r; },
     async momoPush(ticket, phone, operator) { // démo : le client « valide » sur son téléphone au bout de 6 secondes
@@ -1096,7 +1170,7 @@ function DemoBackend() {
     async uploadDoc(file) { const c = ctx(); pdg(c); return db.bar.id + "/demo-" + (file.name || "piece"); },
     async staffCreate(name, role, pin) {
       const c = ctx(); mgr(c); name = (name || "").trim(); if (!name) throw bizErr("Indiquez un nom."); pinOk(pin);
-      if (!["directeur", "caisse", "serveuse"].includes(role)) throw bizErr("Rôle inconnu."); if (role === "directeur" && c.role !== "pdg") throw bizErr("Seul le PDG peut ajouter un directeur.");
+      if (!["directeur", "caisse", "serveuse", "cuisine"].includes(role)) throw bizErr("Rôle inconnu."); if (role === "directeur" && c.role !== "pdg") throw bizErr("Seul le PDG peut ajouter un directeur.");
       if (db.staff.some(s => s.name.toLowerCase() === name.toLowerCase())) throw bizErr("Ce nom est déjà utilisé dans l’équipe.");
       db.staff.push({ id: uuid(), name, role, pin, active: true, fails: 0, lock: 0 }); log(c, "membre_ajoute", { membre: name, role }); save();
     },
@@ -1123,7 +1197,7 @@ function LiveBackend() {
   function subscribe(bid) {
     if (channel && barId === bid) return; if (channel) sb.removeChannel(channel); barId = bid;
     channel = sb.channel("bar-" + bid);
-    ["tickets", "ticket_items", "holdings", "vouchers", "remittances", "products", "service_days", "shifts", "attendance", "leave_requests"].forEach(t =>
+    ["tickets", "ticket_items", "holdings", "vouchers", "remittances", "products", "service_days", "shifts", "attendance", "leave_requests", "kitchen_orders"].forEach(t =>
       channel.on("postgres_changes", { event: "*", schema: "public", table: t, filter: "bar_id=eq." + bid }, () => listeners.forEach(f => f())));
     channel.subscribe();
   }
@@ -1141,7 +1215,7 @@ function LiveBackend() {
       const uid = sd.session.user.id;
       const [staff, bars, products, days] = await Promise.all([
         q(sb.from("staff").select("id,name,role,active,user_id").order("name")),
-        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status,om_code,mtn_code,om_ussd,mtn_ussd,push_enabled,plan,plan_until,plan_trial_until,trial_plan,suspended").limit(1)),
+        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status,om_code,mtn_code,om_ussd,mtn_ussd,push_enabled,plan,plan_until,plan_trial_until,trial_plan,suspended,kitchen_on,plan_cfg").limit(1)),
         q(sb.from("products").select("*").order("sort")),
         q(sb.from("service_days").select("*").eq("status", "open").limit(1))]);
       const meRow = staff.find(s => s.user_id === uid && s.active); if (!meRow || !bars.length) { const e = bizErr("Compte non rattaché à un bar ou désactivé."); e.auth = true; throw e; }
@@ -1153,7 +1227,9 @@ function LiveBackend() {
         q(sb.from("leave_requests").select("*").order("created_at", { ascending: false }).limit(150)),
         q(sb.from("staff_salaries").select("staff_id,salary")),
         q(sb.from("payroll").select("*").order("paid_at", { ascending: false }).limit(300)),
-        q(sb.from("subscriptions").select("*").order("created_at", { ascending: false }).limit(50)), q(sb.from("platform_config").select("om_code,mtn_code,phone,whatsapp,holder_name,om_number,mtn_number,om_tpl,mtn_tpl,sub_push").limit(1))]);
+        q(sb.from("subscriptions").select("*").order("created_at", { ascending: false }).limit(50)), q(sb.from("platform_config").select("om_code,mtn_code,phone,whatsapp,holder_name,om_number,mtn_number,om_tpl,mtn_tpl,sub_push").limit(1)),
+        q(sb.from("kitchen_orders").select("*").or("status.in.(attente,prep,pret),created_at.gte." + new Date(Date.now() - 18 * 3600e3).toISOString()).order("created_at").limit(300)),
+        q(sb.from("recipes").select("dish_id,ingredient_id,qty"))]);
       extra.catch(() => {});
       let tq = sb.from("tickets").select("*, ticket_items(product_id,qty,unit_price)").order("created_at", { ascending: false }).limit(600);
       tq = tq.or("status.in.(draft,sent,cashed),change_status.eq.pending" + (day ? ",day_id.eq." + day.id : ""));
@@ -1163,11 +1239,11 @@ function LiveBackend() {
         q(sb.from("stock_moves").select("*").order("created_at", { ascending: false }).limit(150)),
         q(sb.from("service_days").select("*").eq("status", "closed").order("closed_at", { ascending: false }).limit(30)));
       const [tickets, holdings, vouchers, remits, audit = [], moves = [], closed = []] = await Promise.all(jobs);
-      const [shifts, attendance, leaves, salaries, payroll, subs, plat] = await extra;
+      const [shifts, attendance, leaves, salaries, payroll, subs, plat, kitchen, recipes] = await extra;
       subscribe(bars[0].id);
       return { bar: bars[0], me, staff: staff.map(s => ({ id: s.id, name: s.name, role: s.role, active: s.active })), products, day,
         tickets: tickets.map(t => { const { ticket_items, ...r } = t; return { ...r, items: ticket_items || [] }; }), holdings, vouchers, remits, audit, moves, days: closed,
-        shifts, attendance, leaves, salaries, payroll, subs, platform: plat[0] || {} };
+        shifts, attendance, leaves, salaries, payroll, subs, platform: plat[0] || {}, kitchen: kitchen || [], recipes: recipes || [] };
     },
     async rpc(name, args) { const { data, error } = await sb.rpc(name, args || {}); if (error) { const e = toErr(error); if (/non soldé/.test(error.message)) e.pending = true; throw e; } return data; },
     staffCreate: (name, role, pin) => fn("staff_create", { name, role, pin }, true),
@@ -1211,8 +1287,8 @@ const V = { screen: "boot", ltab: "staff", code: LS.get("gesco-code", CFG.mode =
 const val = k => esc(V.f[k] ?? "");
 const prodName = id => (S.products.find(p => p.id === id) || { name: "Produit retiré" }).name;
 const staffName = id => (S.staff.find(s => s.id === id) || { name: "—" }).name;
-const ROLES = { pdg: "PDG", directeur: "Directeur", caisse: "Caisse", serveuse: "Serveuse" };
-const RO = { pdg: 0, directeur: 1, caisse: 2, serveuse: 3 };
+const ROLES = { pdg: "PDG", directeur: "Directeur", caisse: "Caisse", serveuse: "Serveuse", cuisine: "Cuisine" };
+const RO = { pdg: 0, directeur: 1, caisse: 2, serveuse: 3, cuisine: 4 };
 const roleSort = (a, b) => (RO[a.role] - RO[b.role]) || a.name.localeCompare(b.name);
 const ROLE = () => S ? S.me.role : "";
 const isCaisse = () => ROLE() === "caisse"; // gestes de caisse : la caissière seulement
@@ -1238,7 +1314,7 @@ function applyLocal(op) {
   if (op.n === "gb_ticket_set_qty") { if (!["draft", "sent"].includes(t.status)) return; const p = S.products.find(x => x.id === a.p_product); if (!p) return;
     let it = t.items.find(i => i.product_id === a.p_product); const cur = it ? it.qty : 0, d = a.p_qty - cur; if (!d) return;
     if (!a.p_qty) t.items = t.items.filter(i => i !== it); else if (!it) t.items.push({ product_id: p.id, qty: a.p_qty, unit_price: p.price }); else it.qty = a.p_qty;
-    if (isCounter(t)) p.stock -= d;
+    if (isDishP(p)) {} else if (isCounter(t)) p.stock -= d;
     else { let h = S.holdings.find(x => x.waitress_id === t.waitress_id && x.product_id === p.id); if (!h) S.holdings.push(h = { waitress_id: t.waitress_id, product_id: p.id, qty: 0 }); h.qty -= d; }
     t.total = sum(t.items, i => i.qty * i.unit_price); }
   if (op.n === "gb_ticket_send" && t.status === "draft" && t.total > 0) t.status = "sent";
@@ -1527,7 +1603,7 @@ function vLogin() {
     else if (!V.pick) {
       const grp = r => V.list.staff.filter(s => s.role === r).map(s => `<button data-a="pick" data-id="${s.id}">${esc(s.name)}<span>${ROLES[r]}</span></button>`).join("");
       body = `<div class="card stack"><div class="between"><div><h3>${esc(V.code)}</h3><b>${esc(V.list.bar)}</b></div><button class="btn ghost sm" data-a="changeBar">Changer de bar</button></div>
-        <p class="mu" style="margin:0">Touchez votre nom.</p><div class="who-pick">${grp("serveuse")}${grp("caisse")}${grp("directeur")}${grp("pdg")}</div></div>`;
+        <p class="mu" style="margin:0">Touchez votre nom.</p><div class="who-pick">${grp("serveuse")}${grp("cuisine")}${grp("caisse")}${grp("directeur")}${grp("pdg")}</div></div>`;
     } else body = `<div class="card stack" style="text-align:center"><div class="between"><button class="btn ghost sm" data-a="unpick">← Retour</button><span class="mu">${esc(V.list.bar)}</span></div>
         <div><div class="avatar" style="margin:0 auto 6px">${esc(V.pick.name[0])}</div><b style="font-size:18px">${esc(V.pick.name)}</b><div class="mu">Saisissez votre PIN</div></div>
         <div class="pin-dots" aria-label="${V.pin.length} chiffres saisis">${Array.from({ length: Math.max(4, V.pin.length) }, (_, i) => `<i class="${i < V.pin.length ? "f" : ""}"></i>`).join("")}</div>
@@ -1667,11 +1743,11 @@ function pImg(p) { const v = pVis(p);
 function editor(t) {
   const inT = new Map(t.items.map(i => [i.product_id, i.qty])), hmap = new Map(S.holdings.filter(h => h.waitress_id === t.waitress_id).map(h => [h.product_id, h.qty]));
   const q = (V.f["q_" + t.id] || "").toLowerCase().trim(), cat = V.f["cat_" + t.id] || "", counter = isCounter(t);
-  const avail = S.products.filter(p => p.active || inT.has(p.id)), allCats = [...new Set(avail.map(p => p.category))];
+  const avail = S.products.filter(p => (p.active || inT.has(p.id)) && p.category !== "Ingrédients"), allCats = [...new Set(avail.map(p => p.category))];
   const ps = avail.filter(p => (!q || nrm(p.name).includes(nrm(q).trim())) && (!cat || p.category === cat));
   const bump = V.bump && V.bump.t === t.id && Date.now() - V.bump.at < 700 ? V.bump : null;
   const card = p => { const n = inT.get(p.id) || 0, h = hmap.get(p.id) || 0, u = unitOf(p), b = bump && bump.p === p.id;
-    const info = counter ? `stock ${p.stock}` : h > 0 ? `${h} en main` : h < 0 ? `<span class="warn-t">${-h} à prendre</span>` : "à prendre en caisse";
+    const info = isDishP(p) ? "préparé en cuisine" : counter ? `stock ${p.stock}` : h > 0 ? `${h} en main` : h < 0 ? `<span class="warn-t">${-h} à prendre</span>` : "à prendre en caisse";
     return `<div class="pcw"><button type="button" class="pcard ${n ? "on" : ""} ${b && bump.d > 0 ? "bump" : ""} ${b && bump.d < 0 ? "dip" : ""}" data-a="qty" data-t="${t.id}" data-p="${p.id}" data-d="1" aria-label="Ajouter ${esc(p.name)}${n ? `, ${n} dans le ticket` : ""}">
       <span class="pi">${pImg(p)}</span>${n ? `<i class="pn num">${n}</i>` : ""}${b && bump.d > 0 ? `<i class="fly">+1</i>` : ""}
       <b>${esc(p.name)}</b><span class="pp num">${F(p.price)}${u ? `<small> / ${esc(u)}</small>` : ""}</span><span class="ps">${info}</span></button>
@@ -1815,6 +1891,61 @@ A.poRecvGo = d => run(async () => { const po = (V.pos || []).find(x => x.id === 
   await refresh(); await A.reaLoad(true); toast(`Livraison N°${po.number} enregistrée : stock mis à jour.`); });
 A.poCancel = d => ask("Annuler ce bon de commande ?", "Il restera visible dans la liste comme annulé. Le stock ne change pas.", "Annuler le bon", "poCancelGo", { id: d.id }, true);
 A.poCancelGo = d => run(async () => { await B.rpc("gb_po_cancel", { p_id: d.id }); await A.reaLoad(true); toast("Bon de commande annulé."); });
+/* ═══════════════ Module Cuisine : écran cuisine, bons, retrait par la bonne serveuse, recettes ═══════════════ */
+const isDishP = p => !!(S && S.bar && S.bar.kitchen_on && p && (p.category === "Cuisine" || ["plat", "portion"].includes(p.unit)));
+const KST = { attente: "en attente", prep: "en préparation", pret: "PRÊT à récupérer", servi: "servi ✓" };
+const kHue = s => [...String(s || "?")].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
+function kStrip(t) {
+  const ks = (S.kitchen || []).filter(o => o.ticket_id === t.id && o.status !== "annule"); if (!ks.length) return "";
+  return `<div class="kstrip">${ks.map(o => `<span class="kchip ${o.status}">${ico("kitchen")}<b>${o.qty}× ${esc(prodName(o.product_id))}</b> · bon ${o.bon} · ${KST[o.status]}</span>${o.status === "pret" && o.waitress_id === S.me.id ? `<button class="btn amber sm" data-a="kPick" data-id="${o.id}">Je l’ai récupéré</button>` : ""}`).join("")}</div>`;
+}
+function kCard(o) {
+  const p = S.products.find(x => x.id === o.product_id) || { name: "?" }, ref = o.status === "pret" ? (o.ready_at || o.created_at) : o.created_at;
+  const mins = Math.max(0, Math.floor((Date.now() - new Date(ref)) / 60000)), late = o.status !== "pret" && mins >= 15, can = ["cuisine", "caisse", "pdg", "directeur"].includes(ROLE());
+  const acts = o.status === "attente" ? `<button class="btn soft grow" data-a="kStep" data-id="${o.id}" data-v="prep">Commencer</button><button class="btn grow" data-a="kStep" data-id="${o.id}" data-v="pret">Prêt ✓</button>`
+    : o.status === "prep" ? `<button class="btn ghost sm" data-a="kStep" data-id="${o.id}" data-v="attente" aria-label="Remettre en attente">↩</button><button class="btn grow" data-a="kStep" data-id="${o.id}" data-v="pret">Prêt ✓</button>`
+    : `<span class="mu grow">Attend ${esc(staffName(o.waitress_id))}</span><button class="btn ghost sm" data-a="kStep" data-id="${o.id}" data-v="prep" aria-label="Remettre en préparation">↩</button>${ROLE() !== "cuisine" ? `<button class="btn soft sm" data-a="kStep" data-id="${o.id}" data-v="servi">Servi</button>` : ""}`;
+  return `<div class="kcard ${late ? "late" : ""}" style="--h:${kHue(staffName(o.waitress_id))}"><div class="kband"><b class="kbon">BON ${o.bon}</b><span class="kwho">${esc(staffName(o.waitress_id))}</span></div>
+    <div class="kbody"><span class="pthumb">${pImg(p)}</span><div class="grow" style="min-width:0"><div class="kdish"><b>${o.qty}×</b> ${esc(p.name)}</div>
+      <div class="ktab">${esc(o.label || "")}${o.ticket_no ? ` · ticket N°${o.ticket_no}` : ""}</div><div class="ktime ${late ? "bad-t" : ""}">${o.status === "pret" ? `prêt depuis ${mins} min` : `commandé il y a ${mins} min${late ? " ⚠" : ""}`}</div></div></div>
+    ${can ? `<div class="row">${acts}</div>` : ""}</div>`;
+}
+function vKitchen() {
+  if (!S.bar.kitchen_on) return `<div class="card stack"><h3>Module Cuisine</h3><p class="mu" style="margin:0">Le module Cuisine n’est pas activé. ${isPdg() ? "Activez-le dans Réglages." : "Le PDG l’active dans Réglages (formule Snack Gold et plus)."}</p></div>`;
+  const ks = (S.kitchen || []).filter(o => o.status !== "annule");
+  const col = (st, title, empty) => { const l = ks.filter(o => o.status === st).sort((a, b) => a.created_at < b.created_at ? -1 : 1);
+    return `<section class="kcol ${st}"><h3>${title} <span class="pill ${st === "pret" ? "ok" : st === "prep" ? "warn" : ""}">${l.length}</span></h3>${l.map(kCard).join("") || `<div class="empty">${empty}</div>`}</section>`; };
+  const served = ks.filter(o => o.status === "servi").sort((a, b) => (a.served_at || "") < (b.served_at || "") ? 1 : -1).slice(0, 6);
+  return `<div class="kboard">${col("attente", "À préparer", "Aucune commande en attente.")}${col("prep", "En préparation", "Rien sur le feu.")}${col("pret", "Prêts à servir", "Aucun plat en attente de retrait.")}</div>
+    <p class="mu" style="margin:6px 4px 12px">Chaque bon porte la couleur et le nom de sa serveuse : seule elle est prévenue quand le plat est prêt, et elle confirme le retrait.</p>
+    ${served.length ? `<div class="card"><h3>Derniers plats servis</h3><div class="list">${served.map(o => `<div class="li"><div class="grow"><b>${o.qty}× ${esc(prodName(o.product_id))}</b><div class="mu">Bon ${o.bon} · ${esc(o.label || "")} · ${esc(staffName(o.waitress_id))}</div></div><span class="mu">${o.served_at ? hm(o.served_at) : ""}</span></div>`).join("")}</div></div>` : ""}`;
+}
+A.kStep = d => run(async () => { await B.rpc("gb_kitchen_step", { p_id: d.id, p_status: d.v }); await refresh(); if (d.v === "pret") toast("Plat prêt : la serveuse est prévenue."); });
+A.kPick = d => run(async () => { await B.rpc("gb_kitchen_step", { p_id: d.id, p_status: "servi" }); await refresh(); toast("Plat récupéré : servez-le à la bonne table."); });
+A.kitchenToggle = () => run(async () => { const on = !S.bar.kitchen_on; await B.rpc("gb_kitchen_toggle", { p_on: on }); await refresh();
+  toast(on ? "Module Cuisine activé : ajoutez vos plats (catégorie Cuisine) et un cuisinier dans Équipe." : "Module Cuisine désactivé."); });
+setInterval(() => { if (V.screen === "app" && V.tab === "kitchen" && !V.modal && document.visibilityState === "visible") render(); }, 30000);
+// Recette d'un plat
+const fnum = k => { const v = String(V.f[k] ?? "").replace(",", ".").trim(); return v === "" ? null : +v; };
+function recipeBox(p) {
+  const ings = S.products.filter(x => x.id !== p.id && !isDishP(x) && x.category !== "Cuisine");
+  const rows = V.rec && V.rec.p === p.id ? V.rec.items : (S.recipes || []).filter(r => r.dish_id === p.id).map(r => ({ i: r.ingredient_id, q: +r.qty }));
+  return `<div class="sub stack"><b>Recette : ingrédients pour 1 ${esc(unitOf(p) || "plat")}</b><p class="mu" style="margin:0">À chaque plat envoyé en cuisine, ces quantités sortent du stock. Plat annulé avant d’être commencé : elles reviennent automatiquement.</p>
+    ${rows.map((r, k) => { const ip = S.products.find(x => x.id === r.i) || {}; return `<div class="row" style="align-items:center;flex-wrap:nowrap"><span class="grow" style="min-width:0">${esc(ip.name || "?")}</span>
+      <input style="flex:0 0 96px" type="number" inputmode="decimal" step="any" min="0" id="rc_${p.id}_${k}" data-k="rc_${p.id}_${k}" value="${esc(V.f["rc_" + p.id + "_" + k] ?? r.q)}" aria-label="Quantité de ${esc(ip.name || "")}">
+      <span class="mu" style="flex:0 0 42px">${esc(unitOf(ip) || "u.")}</span><button class="btn ghost sm" data-a="recDel" data-p="${p.id}" data-k="${k}" aria-label="Retirer ${esc(ip.name || "")}">×</button></div>`; }).join("") || `<span class="mu">Aucun ingrédient pour l’instant.</span>`}
+    <div class="row"><select class="grow" id="recAdd_${p.id}" data-k="recAdd_${p.id}" aria-label="Ingrédient à ajouter"><option value="">Ajouter un ingrédient…</option>${ings.map(x => `<option value="${x.id}">${esc(x.name)}${x.category === "Ingrédients" ? "" : " · " + esc(x.category)}</option>`).join("")}</select><button class="btn soft sm" data-a="recAdd" data-p="${p.id}">Ajouter</button></div>
+    ${ings.some(x => x.category === "Ingrédients") ? "" : `<p class="mu" style="margin:0;font-size:13px">Astuce : créez vos ingrédients dans « Ajouter un produit » avec la catégorie « Ingrédients » et l’unité g, ml ou pièce. Ils n’apparaissent pas chez les serveuses.</p>`}
+    <button class="btn sm" data-a="recSave" data-p="${p.id}">Enregistrer la recette</button></div>`;
+}
+const dishInfo = p => { const rs = (S.recipes || []).filter(r => r.dish_id === p.id); if (!rs.length) return ` · <span class="warn-t">recette à saisir</span>`;
+  const c = Math.round(sum(rs, r => (+r.qty) * ((S.products.find(x => x.id === r.ingredient_id) || {}).cost || 0))); return ` · recette ${rs.length} ingrédient(s)${c ? ` · coût ≈ ${F(c)} (marge ${Math.round((p.price - c) / Math.max(p.price, 1) * 100)} %)` : ""}`; };
+const recCur = pid => { if (!V.rec || V.rec.p !== pid) V.rec = { p: pid, items: (S.recipes || []).filter(r => r.dish_id === pid).map(r => ({ i: r.ingredient_id, q: +r.qty })) };
+  V.rec.items.forEach((r, k) => { const v = fnum("rc_" + pid + "_" + k); if (v != null) r.q = v; }); Object.keys(V.f).filter(k => k.startsWith("rc_" + pid)).forEach(k => delete V.f[k]); return V.rec; };
+A.recAdd = d => { const id = V.f["recAdd_" + d.p]; if (!id) return toast("Choisissez un ingrédient.", "err"); const r = recCur(d.p);
+  if (!r.items.some(x => x.i === id)) r.items.push({ i: id, q: 1 }); V.f["recAdd_" + d.p] = ""; render(); };
+A.recDel = d => { const r = recCur(d.p); r.items.splice(+d.k, 1); render(); };
+A.recSave = d => run(async () => { const r = recCur(d.p); await B.rpc("gb_recipe_set", { p_dish: d.p, p_items: r.items.filter(x => x.q > 0) }); V.rec = null; await refresh(); toast("Recette enregistrée."); });
 function payBox(t) {
   const r = num("rcv_" + t.id), bills = [...new Set([t.total, ...[500, 1000, 2000, 5000, 10000].map(b => Math.ceil(t.total / b) * b)])].filter(b => b >= t.total).sort((a, b) => a - b).slice(0, 5);
   const ch = r != null && r >= t.total ? r - t.total : null;
@@ -1845,7 +1976,7 @@ function ticket(t, opts = {}) {
     }
   }
   return `<div class="tk ${open ? "open" : ""}"><button class="tk-h" data-a="tog" data-id="${t.id}" aria-expanded="${open}">${chev}<span class="nm"><b>${esc(t.client_label)}</b><span class="mu">${meta}</span></span>
-    <span style="text-align:right"><span class="tt">${F(t.total)}</span><br>${statusPill(t)}</span></button>${open ? `<div class="tk-b">${body}</div>` : ""}</div>`;
+    <span style="text-align:right"><span class="tt">${F(t.total)}</span><br>${statusPill(t)}</span></button>${kStrip(t)}${open ? `<div class="tk-b">${body}</div>` : ""}</div>`;
 }
 
 /* ═══════════════ Rendu : serveuse ═══════════════ */
@@ -1870,6 +2001,7 @@ function wService() {
 
 /* ═══════════════ Cadre commun : rubriques par rôle, menu, recherche ═══════════════ */
 const IC = {
+  kitchen: '<path d="M5 12h14v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z"/><path d="M3 12h18"/><path d="M8.5 8.5c0-1.6 1-1.6 1-3.2M12 8.5c0-1.6 1-1.6 1-3.2M15.5 8.5c0-1.6 1-1.6 1-3.2"/>',
   camera: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
   service: '<path d="M4 7h16l-1.5 11a2 2 0 0 1-2 1.7H7.5a2 2 0 0 1-2-1.7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
   orders: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
@@ -1923,10 +2055,12 @@ const SEC = {
   settings: ["Réglages", "gear", "Paiements Mobile Money, identité légale et réglages du bar"],
   moi: ["Mon espace", "user", "Pointage, permissions et fiches de paie"],
   qr: ["Paiement QR", "qr", "QR code marchand et paiement par numéro du client"],
-  abo: ["Abonnement", "star", "Votre formule GesCo Bar et son paiement"]
+  abo: ["Abonnement", "star", "Votre formule GesCo Bar et son paiement"],
+  kitchen: ["Cuisine", "kitchen", "Plats à préparer, en préparation et prêts à servir"]
 };
 const NAV = {
   serveuse: ["service", "qr", "planning", "moi"],
+  cuisine: ["kitchen", "planning", "moi"],
   caisse: ["direct", "stock", "vouch", "sales", "day", "planning", "moi"],
   directeur: ["sup", "pres", "planning", "team", "sales", "log", "abo", "moi"],
   pdg: ["home", "paie", "acc", "team", "sales", "rev", "pres", "planning", "day", "log", "abo", "settings"]
@@ -1934,7 +2068,8 @@ const NAV = {
 function barBlock() { if (!S || !S.bar) return null; const b = S.bar; if (b.suspended) return "suspendu";
   if (b.plan && b.plan !== "beta" && b.plan_until) { const lim = new Date(b.plan_until + "T23:59:59"); lim.setDate(lim.getDate() + 3);
     if (lim < Date.now() && !(b.plan_trial_until && new Date(b.plan_trial_until) > Date.now())) return "expire"; } return null; }
-const navFor = () => barBlock() === "expire" && isMgr() ? ["abo"] : NAV[ROLE()] || NAV.serveuse;
+const navFor = () => { if (barBlock() === "expire" && isMgr()) return ["abo"]; const n = NAV[ROLE()] || NAV.serveuse;
+  return S && S.bar && S.bar.kitchen_on && ["caisse", "directeur", "pdg"].includes(ROLE()) ? [n[0], "kitchen", ...n.slice(1)] : n; };
 /* ═══════════════ Avis sur le logiciel ═══════════════ */
 const AV_T = [["simple", "Facile à utiliser"], ["rapide", "Fait gagner du temps"], ["fiable", "Caisse plus fiable"], ["utile", "Très utile au bar"], ["manque", "Il manque une fonction"], ["bug", "J’ai eu un bug"], ["lent", "C’est lent"], ["prix", "Le prix"], ["autre", "Autre"]];
 const AV_L = ["", "Très déçu", "Pas satisfait", "Correct", "Satisfait", "Excellent !"];
@@ -2035,7 +2170,8 @@ function badges() {
   const act = S.tickets.filter(t => t.status !== "cancelled"), b = {};
   const alerts = act.filter(t => t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo") || t.change_status === "pending").length;
   const pend = leavesToDecide().length;
-  b.direct = ROLE() === "caisse" ? alerts : 0; b.stock = V.rea && V.rea.urgent || 0; b.pres = isMgr() ? pend : 0;
+  b.direct = ROLE() === "caisse" ? alerts : 0; b.stock = V.rea && V.rea.urgent || 0;
+  b.kitchen = (S.kitchen || []).filter(o => o.status === "attente").length; b.service = (S.kitchen || []).filter(o => o.status === "pret" && o.waitress_id === S.me.id).length; b.pres = isMgr() ? pend : 0;
   b.sup = lateOrders().length + pend; b.home = pend;
   if (isMgr() && typeof planState === "function") { const ps = planState(); b.abo = ps.expired || (ps.days != null && ps.days <= 7) ? 1 : 0; }
   const sh = shiftOf(S.me.id, today()), a = attOf(S.me.id, today());
@@ -2096,7 +2232,7 @@ function vApp() {
   const VIEW = {
     service: () => wService(), direct: () => (ROLE() === "caisse" ? shiftBanner() : "") + cOps(), sup: dSup, home: pHome,
     stock: () => cStock(), vouch: () => cVouch(S.vouchers.filter(v => v.status === "active")), sales: () => cSales(dayT()),
-    rev: cRev, acc: cAcc, paie: pPaie, qr: vQr, abo: vAbo, pres: mPres, planning: vPlanning, team: cTeam, day: () => cDay(dayT()), log: cLog, settings: cSettings, moi: vMoi };
+    rev: cRev, acc: cAcc, paie: pPaie, qr: vQr, abo: vAbo, pres: mPres, planning: vPlanning, team: cTeam, day: () => cDay(dayT()), log: cLog, settings: cSettings, moi: vMoi, kitchen: vKitchen };
   const ask = "Notification" in window && Notification.permission === "default" && !LS.get("gesco-ntf-ask", 0) ? `<div class="note info between" style="flex-wrap:wrap;margin-bottom:12px"><span>${ico("alert")} Activez les notifications pour être prévenu(e) même quand le téléphone est en veille.</span><span class="row"><button class="btn sm" data-a="notifOn">Activer</button><button class="btn ghost sm" data-a="notifLater">Plus tard</button></span></div>` : "";
   return header(b) + `<main class="sec" style="--el:${elapsed(V.secT)}ms"><div class="ptitle"><h1>${l}</h1><p class="mu">${d}</p></div>${ask}${VIEW[V.tab]()}</main>`
     + bnav(nav, b) + (V.menu ? drawer(nav, b) : "");
@@ -2223,11 +2359,107 @@ function vPlanning() {
       return `<td class="${d === td ? "today" : ""}">${mg ? `<button class="pc ${p}" style="--i:${r * 7 + i}" data-a="shiftEd" data-s="${x.id}" data-d="${d}" aria-label="${esc(x.name)}, ${dfr(d)} : ${shTxt(sh)}">${inner}</button>` : `<span class="pc ${p}" style="--i:${r * 7 + i}">${inner}</span>`}</td>`; }).join("")}</tr>`).join("")
       || `<tr><td colspan="8" style="text-align:center">Aucun employé actif.</td></tr>`}</tbody></table></div>
     ${mg ? `<p class="mu" style="margin:10px 0 0">Touchez une case pour fixer l’horaire ou le jour de repos. ${empty ? `<b class="warn-t">${empty} case(s) vide(s)</b> · ` : ""}${Math.round(totH)} h planifiées cette semaine.</p>` : ""}</div>`;
-  const tools = mg ? `<div class="card stack"><h3>Publier et partager</h3><div class="row">
+  const tools = mg ? `<div class="card stack apcta"><div class="between"><h3>Planning automatique</h3><span class="pill ok">Intelligent</span></div>
+      <p class="mu" style="margin:0">Une semaine complète en un geste : selon l’affluence réelle de chaque jour, les permissions accordées et un repos tournant équitable. Vous ajustez ensuite ce que vous voulez.</p>
+      <button class="btn wide" data-a="autoPlan">${ico("star")} Générer la semaine automatiquement</button></div>
+    <div class="card stack"><h3>Publier et partager</h3><div class="row">
       <button class="btn soft grow" data-a="copyWeek">${ico("copy")} Copier la semaine d’avant</button>
       <button class="btn grow" data-a="planImg">${ico("share")} Partager sur WhatsApp</button></div>
       <p class="mu" style="margin:0">Chaque modification apparaît tout de suite dans l’application de chaque employé.</p></div>` : "";
   return `<div class="stack">${isPdg() ? "" : shiftBanner()}${navw}${todayCard}${mine}${grid}${tools}</div>`;
+}
+/* ═══════════════ Planning intelligent : semaine générée selon l’affluence, les permissions et un repos tournant ═══════════════ */
+const AP_DEF = () => ({ h: [["16:00", "00:00"], ["16:00", "00:00"], ["16:00", "00:00"], ["16:00", "01:00"], ["16:00", "03:00"], ["15:00", "03:00"], ["15:00", "23:00"]], n: null, rest: 1, split: true });
+const AP_T = [...Array(48)].map((_, i) => String(Math.floor(i / 2)).padStart(2, "0") + ":" + (i % 2 ? "30" : "00"));
+const apSel = (id, v, lab) => `<select id="${id}" data-k="${id}" aria-label="${lab}">${AP_T.map(t => `<option ${t === v ? "selected" : ""}>${t}</option>`).join("")}</select>`;
+const DOWL = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+const apMin = t => { const [h, m] = String(t || "0:0").split(":").map(Number); return h * 60 + (m || 0); };
+const apAdd = (t, min) => { const x = ((apMin(t) + Math.round(min / 30) * 30) % 1440 + 1440) % 1440; return String(Math.floor(x / 60)).padStart(2, "0") + ":" + String(x % 60).padStart(2, "0"); };
+const apSpan = ([o, c]) => { const d = apMin(c) - apMin(o); return (d <= 0 ? d + 1440 : d) / 60; };
+const apHash = s => [...String(s)].reduce((a, c) => (a * 33 + c.charCodeAt(0)) % 9973, 7);
+const apWaiters = () => S.staff.filter(x => x.active && x.role === "serveuse");
+// Serveuses conseillées par jour : proportionnelles à l’affluence réelle, sans dépasser ce que l’équipe peut couvrir
+function apAutoN(load, cfg) {
+  const nS = apWaiters().length; if (!nS) return [0, 0, 0, 0, 0, 0, 0];
+  const mx = Math.max(...load), open = i => !!cfg.h[i];
+  let n = load.map((l, i) => !open(i) ? 0 : mx > 0 ? Math.max(1, Math.min(nS, Math.round(nS * (0.4 + 0.6 * l / mx)))) : Math.max(1, Math.ceil(nS * (i >= 4 ? 1 : 0.6))));
+  const cap = nS * Math.max(0, 7 - cfg.rest) - 0; // jours de travail disponibles dans la semaine
+  const order = [0, 1, 2, 3, 4, 5, 6].filter(open).sort((a, b) => load[a] - load[b]);
+  let k = 0; while (n.reduce((a, b) => a + b, 0) > cap && k < 50) { const i = order[k % order.length]; if (n[i] > 1) n[i]--; k++; }
+  return n;
+}
+function apGen(cfg, days, load) {
+  load = load || [0, 0, 0, 0, 0, 0, 0]; const lmx = Math.max(1, ...load), keyRest = [0, 0, 0, 0, 0, 0, 0];
+  const items = [], warn = [], lastWk = days.map(d => dAdd(d, -7));
+  const onLeave = (sid, d) => (S.leaves || []).some(l => l.staff_id === sid && l.status === "acceptee" && l.day_from <= d && l.day_to >= d);
+  const wkN = Math.floor(new Date(days[0] + "T12:00:00") / 6048e5);
+  const roles = [["directeur", () => 1], ["caisse", () => 1], ["serveuse", i => cfg.n[i]], ["cuisine", () => S.bar.kitchen_on ? 1 : 0]];
+  const per = {};
+  roles.forEach(([role, needF]) => {
+    const P = S.staff.filter(x => x.active && x.role === role).sort((a, b) => ((apHash(a.id) + wkN) % 97) - ((apHash(b.id) + wkN) % 97)); if (!P.length) return;
+    const need = days.map((d, i) => cfg.h[i] ? needF(i) : 0), avail = days.map((d, i) => cfg.h[i] ? P.filter(p => !onLeave(p.id, d)).length : 0), taken = [0, 0, 0, 0, 0, 0, 0];
+    const off = {};
+    P.forEach(p => { off[p.id] = new Set(days.map((d, i) => !cfg.h[i] || onLeave(p.id, d) ? i : -1).filter(i => i >= 0));
+      let extra = Math.max(0, cfg.rest - off[p.id].size);
+      while (extra-- > 0) { let best = -1, bs = -1e9;
+        days.forEach((d, i) => { if (off[p.id].has(i)) return; const prev = shiftOf(p.id, lastWk[i]);
+          const s = (avail[i] - need[i]) * 10 - taken[i] * 3 - (prev && prev.kind === "repos" ? 4 : 0) - load[i] / lmx * 3 - (role !== "serveuse" ? keyRest[i] * 5 : 0) + (apHash(p.id + i) % 3) * 0.1;
+          if (s > bs) { bs = s; best = i; } });
+        if (best < 0) break; off[p.id].add(best); avail[best]--; taken[best]++; if (role !== "serveuse") keyRest[best]++; } });
+    days.forEach((d, i) => { const h = cfg.h[i], W = P.filter(p => !off[p.id].has(i));
+      P.filter(p => off[p.id].has(i)).forEach(p => items.push({ s: p.id, d, k: "repos", n: !h ? "Bar fermé" : onLeave(p.id, d) ? "Permission accordée" : "" }));
+      if (!h) return; const sp = apSpan(h), split = role === "serveuse" && cfg.split && sp > 9 && W.length >= 2;
+      W.forEach((p, j) => { const early = split && j % 2 === ((i + wkN) % 2);
+        const a = !split ? h[0] : early ? h[0] : apAdd(h[0], (sp / 2 - 1) * 60), b = !split ? h[1] : early ? apAdd(h[0], (sp / 2 + 1) * 60) : h[1];
+        items.push({ s: p.id, d, k: "travail", a, b, n: split ? (early ? "Équipe d’ouverture" : "Équipe de fermeture") : "" }); });
+      if (W.length < need[i] && role !== "directeur") warn.push(role === "serveuse" ? `${DOWL[i]} : ${W.length} serveuse${W.length > 1 ? "s" : ""} au lieu de ${need[i]} (repos ou permissions).`
+        : role === "caisse" ? `${DOWL[i]} : personne à la caisse (repos) · le directeur ou le PDG la tiendra.` : `${DOWL[i]} : le cuisinier est de repos · prévoyez un remplaçant ou fermez la cuisine ce jour-là.`); });
+    P.forEach(p => { per[p.id] = { j: 7 - off[p.id].size, h: days.reduce((x, d, i) => x + (off[p.id].has(i) ? 0 : (it => it ? apSpan([it.a, it.b]) : 0)(items.find(y => y.s === p.id && y.d === d && y.k === "travail"))), 0) }; });
+  });
+  if (!apWaiters().length) warn.push("Aucune serveuse active : ajoutez-les dans Équipe.");
+  return { items, warn, per };
+}
+A.autoPlan = () => run(async () => { let load = [0, 0, 0, 0, 0, 0, 0]; try { load = (await B.rpc("gb_plan_load", {})) || load; } catch (e) {}
+  const cfg = Object.assign(AP_DEF(), S.bar.plan_cfg || {}); if (!Array.isArray(cfg.n) || cfg.n.length !== 7) cfg.n = apAutoN(load, cfg);
+  V.ap = { load: load.map(Number), cfg, step: "cfg" }; V.modal = { type: "autoplan" }; });
+const apRead = () => { const c = V.ap.cfg; c.h = c.h.map((h, i) => h ? [V.f["ap_o" + i] || h[0], V.f["ap_c" + i] || h[1]] : null);
+  c.n = c.n.map((n, i) => { const v = num("ap_n" + i); return v == null ? n : Math.max(0, Math.min(20, v)); }); for (let i = 0; i < 7; i++) ["ap_o", "ap_c", "ap_n"].forEach(k => delete V.f[k + i]); return c; };
+A.apDay = d => { const c = apRead(), i = +d.i; c.h[i] = c.h[i] ? null : AP_DEF().h[i]; if (c.h[i] && !c.n[i]) c.n[i] = 1; render(); };
+A.apN = d => { const c = apRead(), i = +d.i; c.n[i] = Math.max(0, Math.min(apWaiters().length || 20, (c.n[i] || 0) + +d.v)); render(); };
+A.apAuto = () => { const c = apRead(); c.n = apAutoN(V.ap.load, c); render(); toast("Serveuses recalculées selon l’affluence de vos 8 dernières semaines."); };
+A.apRest = d => { apRead().rest = +d.v; render(); };
+A.apSplit = () => { const c = apRead(); c.split = !c.split; render(); };
+A.apPreview = () => { const c = apRead(); V.ap.res = apGen(c, weekDays(), V.ap.load); V.ap.step = "preview"; render(); };
+A.apBack = () => { V.ap.step = "cfg"; render(); };
+A.apApply = () => run(async () => { const r = V.ap.res, c = V.ap.cfg;
+  const n = await B.rpc("gb_shift_bulk", { p_from: wkStart(), p_items: r.items, p_cfg: c }); V.modal = null; V.ap = null; await refresh();
+  toast(`Planning de la semaine créé : ${n} case(s). Touchez une case pour l’ajuster.`); });
+function vAutoPlan() {
+  const ap = V.ap, c = ap.cfg, days = weekDays(), wk = `semaine du ${dfr(days[0], { day: "numeric", month: "long" })}`;
+  if (ap.step === "preview") { const r = ap.res, ppl = S.staff.filter(x => x.active && r.per[x.id]).sort(roleSort), filled = ppl.reduce((x, p) => x + days.filter(d => shiftOf(p.id, d)).length, 0);
+    const cell = (p, d) => { const it = r.items.find(y => y.s === p.id && y.d === d); if (!it) return "—"; if (it.k === "repos") return `<span class="pc off">${it.n === "Permission accordée" ? "Perm." : it.n === "Bar fermé" ? "Fermé" : "Repos"}</span>`;
+      return `<span class="pc ${period({ kind: "travail", start_time: it.a })}">${it.a.replace(":00", "h").replace(":30", "h30")}<br>${it.b.replace(":00", "h").replace(":30", "h30")}</span>`; };
+    return `<h2>Proposition · ${wk}</h2>
+      <div class="apgrid"><div class="aphd">${days.map((d, i) => `<span>${DOW[i]}<b class="num">${+d.slice(8)}</b></span>`).join("")}</div>
+      ${ppl.map(p => `<div class="aprow"><div class="between"><b>${esc(p.name)} <span class="mu" style="font-weight:500">· ${ROLES[p.role]}</span></b><span class="mu num">${r.per[p.id].j} j · ${Math.round(r.per[p.id].h)} h</span></div>
+        <div class="apcells">${days.map(d => cell(p, d)).join("")}</div></div>`).join("")}</div>
+      ${r.warn.length ? `<div class="note warn stack" style="gap:4px"><b>À surveiller</b>${r.warn.map(w => `<span>${esc(w)}</span>`).join("")}</div>` : `<div class="note ok">Tous les besoins sont couverts, chacun a ses ${c.rest} jour${c.rest > 1 ? "s" : ""} de repos.</div>`}
+      ${filled ? `<p class="mu" style="margin:0">Cette semaine contient déjà ${filled} case(s) remplie(s) : elles seront remplacées pour ces employés.</p>` : ""}
+      <div class="row"><button class="btn ghost grow" data-a="apBack">Modifier les réglages</button><button class="btn grow" data-a="apApply">Appliquer au planning</button></div>
+      <p class="mu" style="margin:0">Après application, chaque case reste modifiable à la main et chaque employé voit son planning tout de suite.</p>`; }
+  const mx = Math.max(1, ...ap.load), hasLoad = ap.load.some(x => x > 0), nS = apWaiters().length;
+  return `<h2>Planning automatique</h2><p class="mu" style="margin:0">GesCo prépare la ${wk} : plus de serveuses les jours chargés, un repos tournant et équitable, les permissions accordées respectées, une personne à la caisse${S.bar.kitchen_on ? " et en cuisine" : ""} chaque jour d’ouverture.</p>
+    <div class="aplist">${DOWL.map((dn, i) => { const h = c.h[i];
+      return `<div class="apday ${h ? "" : "closed"}"><div class="between"><b>${dn}</b>${hasLoad ? `<span class="apbar" title="Affluence moyenne : ${ap.load[i]} tickets"><i style="width:${Math.round(ap.load[i] / mx * 100)}%"></i></span>` : ""}
+        <button class="btn ${h ? "soft" : "ghost"} sm" data-a="apDay" data-i="${i}" aria-pressed="${!h}">${h ? "Ouvert" : "Fermé"}</button></div>
+        ${h ? `<div class="row" style="flex-wrap:nowrap;align-items:end;gap:8px"><label class="f grow" for="ap_o${i}">Ouverture${apSel("ap_o" + i, V.f["ap_o" + i] ?? h[0], "Ouverture le " + dn)}</label>
+          <label class="f grow" for="ap_c${i}">Fermeture${apSel("ap_c" + i, V.f["ap_c" + i] ?? h[1], "Fermeture le " + dn)}</label>
+          <div class="apstep" role="group" aria-label="Serveuses le ${dn}"><button class="ib" data-a="apN" data-i="${i}" data-v="-1" aria-label="Une serveuse de moins">−</button><span><b class="num">${c.n[i]}</b><small>serv.</small></span><button class="ib" data-a="apN" data-i="${i}" data-v="1" aria-label="Une serveuse de plus">+</button></div></div>` : ""}</div>`; }).join("")}</div>
+    <div class="row" style="align-items:center"><span class="grow mu">${hasLoad ? "La barre montre l’affluence moyenne de chaque jour (8 dernières semaines)." : "Pas encore assez de ventes : réglage par défaut, plus de monde le week-end."}</span><button class="btn ghost sm" data-a="apAuto">Recalculer selon l’affluence</button></div>
+    <div class="stack" style="gap:6px"><b>Jours de repos par employé</b><div class="segs">${[1, 2].map(v => `<button class="${c.rest === v ? "on" : ""}" data-a="apRest" data-v="${v}" aria-pressed="${c.rest === v}">${v} jour${v > 1 ? "s" : ""} par semaine</button>`).join("")}</div></div>
+    <button class="tgl ${c.split ? "on" : ""}" data-a="apSplit" role="switch" aria-checked="${!!c.split}"><i></i><span>Les longues soirées (plus de 9 h) : une équipe d’ouverture et une équipe de fermeture, qui se croisent 2 h au moment du rush</span></button>
+    ${nS ? "" : `<div class="note warn">Aucune serveuse active dans l’équipe.</div>`}
+    <div class="row"><button class="btn ghost grow" data-a="close">Annuler</button><button class="btn grow" data-a="apPreview">Voir la proposition</button></div>`;
 }
 const PRESETS = [["Matin", "08:00", "16:00"], ["Journée", "10:00", "18:00"], ["Après-midi", "14:00", "22:00"], ["Soir", "17:00", "01:00"], ["Nuit", "18:00", "02:00"]];
 const rr = (x, a, b, w, h, r) => { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); };
@@ -2412,8 +2644,8 @@ function cVouch(vAct) {
     <div class="card"><h3>Bons en circulation · ${vAct.length} · ${F(sum(vAct, v => v.amount))}</h3><div class="list">${vAct.map(v => `<div class="li"><div class="grow"><b>${esc(v.number)}</b> · <b class="num">${F(v.amount)}</b><div class="mu">${esc(v.client_label)} · ${esc(staffName(v.waitress_id))} · ${new Date(v.issued_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div></div><button class="btn soft sm" data-a="showV" data-v="${v.id}">Reçu</button></div>`).join("") || '<div class="empty">Aucun bon en circulation.</div>'}</div></div>
     ${used.length ? `<div class="card"><h3>Bons utilisés ou annulés</h3><div class="list">${used.map(v => `<div class="li"><span>${esc(v.number)} · ${esc(v.client_label)}</span><span class="row"><b class="num">${F(v.amount)}</b>${v.status === "used" ? '<span class="pill ok">Utilisé</span>' : '<span class="pill">Annulé</span>'}</span></div>`).join("")}</div></div>` : ""}</div>`;
 }
-const CATS = ["Bières", "Vins rouges", "Vins blancs", "Vins rosés", "Champagnes", "Spiritueux", "Liqueurs", "Sucreries", "Jus", "Eaux", "Cuisine", "Autres"];
-const UNITS = ["bouteille", "verre", "canette", "demi-bouteille", "carafe", "plat", "portion", "pièce"];
+const CATS = ["Bières", "Vins rouges", "Vins blancs", "Vins rosés", "Champagnes", "Spiritueux", "Liqueurs", "Sucreries", "Jus", "Eaux", "Cuisine", "Ingrédients", "Autres"];
+const UNITS = ["bouteille", "verre", "canette", "demi-bouteille", "carafe", "plat", "portion", "pièce", "g", "ml"];
 function cStock() {
   const k = (s, id) => "p_" + s + "_" + id, fv = (s, p, d) => esc(V.f[k(s, p.id)] ?? d ?? "");
   const bottles = S.products.filter(p => !p.parent_id), cats = [...new Set([...S.products.map(p => p.category)])];
@@ -2423,7 +2655,7 @@ function cStock() {
   const row = p => { const inh = sum(S.holdings.filter(h => h.product_id === p.id), h => Math.max(0, h.qty)), ed = !!V.open["p_" + p.id], par = p.parent_id && S.products.find(x => x.id === p.parent_id), u = unitOf(p);
     const unit = V.f[k("u", p.id)] ?? (p.unit || "bouteille");
     return `<div class="stack" id="prod_${p.id}" style="padding:12px 0;${p.active ? "" : "opacity:.6"}">
-      <div class="between"><button class="pthumb" data-a="pimg" data-p="${p.id}" aria-label="Changer la photo de ${esc(p.name)}">${pImg(p)}</button><div class="grow" style="min-width:0"><b>${esc(p.name)}</b><div class="mu num">${F(p.price)}${u ? " / " + esc(u) : ""}${p.cost ? ` · achat ${F(p.cost)}` : ` · <span class="warn-t">prix d’achat à saisir</span>`} · stock <b>${p.stock}</b>${inh ? ` · ${inh} chez les serveuses` : ""}${p.active ? "" : " · masqué"}</div>
+      <div class="between"><button class="pthumb" data-a="pimg" data-p="${p.id}" aria-label="Changer la photo de ${esc(p.name)}">${pImg(p)}</button><div class="grow" style="min-width:0"><b>${esc(p.name)}</b><div class="mu num">${F(p.price)}${u ? " / " + esc(u) : ""}${isDishP(p) ? dishInfo(p) : `${p.cost ? ` · achat ${F(p.cost)}` : ` · <span class="warn-t">prix d’achat à saisir</span>`} · stock <b>${p.stock}</b>`}${inh ? ` · ${inh} chez les serveuses` : ""}${p.active ? "" : " · masqué"}</div>
       ${par ? `<div class="mu">1 bouteille de ${esc(par.name)} = ${p.doses} verres (reste ${par.stock} bouteille(s))</div>` : ""}</div>
       <button class="btn ghost sm" data-a="togPe" data-p="${p.id}">${ed ? "Fermer" : "Modifier"}</button></div>
       ${par ? `<div class="row"><input style="flex:0 1 110px" id="ob_${p.id}" type="number" inputmode="numeric" data-k="ob_${p.id}" value="${val("ob_" + p.id)}" placeholder="1" aria-label="Nombre de bouteilles à ouvrir"><button class="btn soft sm grow" data-a="openB" data-p="${p.id}">Ouvrir une bouteille (+${p.doses} verres)</button></div>` : ""}
@@ -2432,9 +2664,10 @@ function cStock() {
         <div class="row"><label class="f grow" for="${k("co", p.id)}">Prix d’achat<input id="${k("co", p.id)}" type="number" inputmode="numeric" data-k="${k("co", p.id)}" value="${fv("co", p, p.cost || 0)}"></label>
         <label class="f grow" for="${k("pr", p.id)}">Prix de vente (FCFA)<input id="${k("pr", p.id)}" type="number" inputmode="numeric" data-k="${k("pr", p.id)}" value="${fv("pr", p, p.price)}"></label>
         <label class="f grow" for="${k("u", p.id)}">Vendu à la${sel(k("u", p.id), UNITS.map(x => [x, x]), unit, "Unité de vente")}</label>
-        <label class="f grow" for="${k("st", p.id)}">Stock général<input id="${k("st", p.id)}" type="number" inputmode="numeric" data-k="${k("st", p.id)}" value="${fv("st", p, p.stock)}"></label>
+        ${isDishP(p) ? "" : `<label class="f grow" for="${k("st", p.id)}">Stock général<input id="${k("st", p.id)}" type="number" inputmode="numeric" data-k="${k("st", p.id)}" value="${fv("st", p, p.stock)}"></label>`}
 </div>
         ${glassFields(k("par", p.id), k("dz", p.id), p.id, unit, V.f[k("par", p.id)] ?? p.parent_id ?? "", V.f[k("dz", p.id)] ?? p.doses)}
+        ${S.bar.kitchen_on && (p.category === "Cuisine" || ["plat", "portion"].includes(p.unit)) ? recipeBox(p) : ""}
         <div class="row"><button class="btn soft sm" data-a="pimg" data-p="${p.id}">${ico("camera")} Photo</button><button class="btn ghost sm" data-a="togP" data-p="${p.id}">${p.active ? "Masquer de la carte" : "Remettre sur la carte"}</button><span class="grow"></span><button class="btn sm" data-a="saveP" data-p="${p.id}">Enregistrer</button></div></div>` : ""}</div>`; };
   const npUnit = V.f.np_u || "bouteille";
   return `<div class="stack"><datalist id="gb-cats">${[...new Set([...CATS, ...cats])].map(c => `<option value="${esc(c)}"></option>`).join("")}</datalist>
@@ -2465,7 +2698,7 @@ function cStock() {
 }
 function cTeam() {
   const b = S.bar, me = ROLE(), url = joinUrl(), msg = `Bonjour, voici l’application de ${b.name}. Ouvrez ce lien sur votre téléphone, touchez votre nom et tapez votre PIN : ${url}`;
-  const roleOpts = me === "pdg" ? ["directeur", "caisse", "serveuse"] : ["caisse", "serveuse"];
+  const roleOpts = me === "pdg" ? ["directeur", "caisse", "serveuse", "cuisine"] : ["caisse", "serveuse", "cuisine"];
   const canEdit = x => x.id === S.me.id || (me === "pdg" && x.role !== "pdg") || (me === "directeur" && ["caisse", "serveuse"].includes(x.role));
   const ns = V.f.ns_r || "serveuse";
   const row = (x, i) => !canEdit(x) ? `<div class="li rise" style="--i:${i};${x.active ? "" : "opacity:.6"}"><div class="grow"><b>${esc(x.name)}</b><div class="mu">${ROLES[x.role]}</div></div><span class="pill">${x.active ? "Actif" : "Désactivé"}</span></div>`
@@ -2692,7 +2925,11 @@ A.payKeyDel = () => payCfgSave("");
 
 function cSettings() {
   const b = S.bar, kyc = { non_renseigne: ["", "Non renseignée"], a_verifier: ["warn", "En attente de vérification"], verifie: ["ok", "Vérifiée"], refuse: ["bad", "Refusée"] }[b.kyc_status || "non_renseigne"];
-  return `<div class="stack"><div class="card stack"><div class="between"><h3>Identité légale du bar</h3><span class="pill ${kyc[0]}">${kyc[1]}</span></div>
+  return `<div class="stack"><div class="card stack"><div class="between"><h3>Module Cuisine</h3><span class="pill ${b.kitchen_on ? "ok" : ""}">${b.kitchen_on ? "Activé" : "Désactivé"}</span></div>
+      <p class="mu" style="margin:0">Pour les bars qui servent à manger. Chaque plat commandé part sur l’écran cuisine avec la table, la serveuse et un numéro de bon. Le cuisinier le marque « Prêt » : seule la bonne serveuse est prévenue et confirme le retrait. Les ingrédients des recettes sortent du stock tout seuls. Inclus à partir de Snack Gold.</p>
+      <p class="mu" style="margin:0">Les plats sont les produits de catégorie « Cuisine » (ou vendus au plat / à la portion). Ajoutez ensuite votre cuisinier dans Équipe avec le rôle « Cuisine ».</p>
+      <button class="btn ${b.kitchen_on ? "soft" : ""}" data-a="kitchenToggle">${b.kitchen_on ? "Désactiver le module Cuisine" : "Activer le module Cuisine"}</button></div>
+    <div class="card stack"><div class="between"><h3>Identité légale du bar</h3><span class="pill ${kyc[0]}">${kyc[1]}</span></div>
       <p class="mu" style="margin:0">Facultatif. Sert à établir vos factures d’abonnement et à vérifier que le compte appartient bien à l’entreprise. La pièce d’identité est stockée dans un espace privé, visible uniquement par le PDG de ce bar et l’éditeur du logiciel.</p>
       <div class="row"><label class="f grow" for="id_legal">Raison sociale<input id="id_legal" data-k="id_legal" value="${esc(V.f.id_legal ?? (b.legal_name || ""))}" placeholder="Ex. SNACK LE MANGUIER SARL"></label>
       <label class="f grow" for="id_niu">NIU (DGI)<input id="id_niu" data-k="id_niu" value="${esc(V.f.id_niu ?? (b.niu || ""))}" placeholder="Ex. M012345678901A" autocapitalize="characters" maxlength="16"></label></div>
@@ -2777,7 +3014,7 @@ function cDay(DT) {
 }
 const ACT = { ticket_supprime: "Ticket supprimé", ticket_modifie: "Ticket modifié après envoi", annulation_demandee: "Annulation demandée", annulation_refusee: "Annulation refusée", ticket_rouvert: "Ticket rouvert",
   versement: "Versement reçu", momo_confirme: "Mobile Money confirmé", monnaie_remise: "Monnaie remise", bon_emis: "Bon émis", bon_verifie: "Bon vérifié", bon_utilise: "Bon utilisé",
-  approvisionnement: "Approvisionnement", produit_ajoute: "Boisson ajoutée", produit_modifie: "Boisson modifiée", produit_photo: "Photo de produit changée", bon_commande: "Bon de commande envoyé", livraison_recue: "Livraison reçue (stock mis à jour)", bon_commande_annule: "Bon de commande annulé", regle_reappro: "Règle de réapprovisionnement", equipe_modifiee: "Équipe modifiée", pin_change: "PIN modifié",
+  approvisionnement: "Approvisionnement", produit_ajoute: "Boisson ajoutée", produit_modifie: "Boisson modifiée", produit_photo: "Photo de produit changée", bon_commande: "Bon de commande envoyé", livraison_recue: "Livraison reçue (stock mis à jour)", bon_commande_annule: "Bon de commande annulé", regle_reappro: "Règle de réapprovisionnement", planning_auto: "Planning automatique", module_cuisine: "Module Cuisine", recette_modifiee: "Recette modifiée", equipe_modifiee: "Équipe modifiée", pin_change: "PIN modifié",
   reglages_modifies: "Réglages modifiés", journee_cloturee: "Journée clôturée", bar_cree: "Bar créé", membre_ajoute: "Membre ajouté", pin_bloque: "PIN bloqué après 5 essais", bouteille_ouverte: "Bouteille ouverte au verre", depense_ajoutee: "Dépense ajoutée", depense_supprimee: "Dépense supprimée", inventaire: "Inventaire du stock", identite_bar: "Identité légale mise à jour", presence: "Présence pointée", permission_demandee: "Permission demandée",
   permission_acceptee: "Permission acceptée", permission_refusee: "Permission refusée", planning_copie: "Planning copié", salaire_paye: "Salaire payé", salaire_annule: "Paiement de salaire annulé" };
 const KEYS = { ticket: "N°", client: "client", total: "total", produit: "boisson", variation: "variation", serveuse: "serveuse", attendu: "attendu", recu: "reçu", ecart: "écart", tickets: "tickets",
@@ -2925,6 +3162,7 @@ function vModal() {
       <div class="row"><button class="btn grow" data-a="shiftSave" data-k="travail">Enregistrer l’horaire</button><button class="btn soft grow" data-a="shiftSave" data-k="repos">Jour de repos</button></div>
       <div class="row">${sh ? `<button class="btn bad sm" data-a="shiftSave" data-k="aucun">Effacer la case</button>` : ""}<span class="grow"></span><button class="btn ghost sm" data-a="close">Fermer</button></div>`; }
   if (m.type === "pimg") c = vPimg(m);
+  if (m.type === "autoplan") c = vAutoPlan();
   if (m.type === "plan") c = `<h2>Planning de la semaine</h2>${m.url ? `<img class="planimg" src="${m.url}" alt="Planning de la semaine du ${dfr(wkStart(), { day: "numeric", month: "long" })}">` : `<div class="note bad">Image indisponible sur cet appareil.</div>`}
       <div class="row">${m.url ? `<button class="btn grow" data-a="planShare">${ico("share")} Partager l’image</button><button class="btn soft grow" data-a="planDl">${ico("dl")} Télécharger</button>` : ""}</div>
       <a class="btn soft wide" href="https://wa.me/?text=${encodeURIComponent(planText())}" target="_blank" rel="noopener">Envoyer le planning en texte sur WhatsApp</a>

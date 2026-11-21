@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
         if (!caller || !["pdg", "directeur"].includes(caller.role)) return fail("Seuls le directeur et le PDG ajoutent des membres.", 403);
         const { name, role, pin } = body as Record<string, string>;
         if (!name?.trim()) return fail("Indiquez un nom.");
-        if (!["directeur", "caisse", "serveuse"].includes(role)) return fail("Rôle inconnu.");
+        if (!["directeur", "caisse", "serveuse", "cuisine"].includes(role)) return fail("Rôle inconnu.");
         if (role === "directeur" && caller.role !== "pdg") return fail("Seul le PDG peut ajouter un directeur.", 403);
         if (!pinOk(pin)) return fail("Le PIN doit contenir 4 à 6 chiffres.");
         const { data: u, error } = await admin.auth.admin.createUser({

@@ -5,11 +5,13 @@ GesCo Bar est une application de gestion de bars et snacks au Cameroun, éditée
 Adresse : https://gescobar-cm.pages.dev (l'ancienne adresse gescobar-cm.netlify.app redirige vers elle). Elle s'utilise dans le navigateur du téléphone et s'installe comme une application (« Ajouter à l'écran d'accueil »).
 Elle fonctionne aussi sans réseau pour les gestes de la serveuse (tickets, quantités, envoi, encaissement) : tout est envoyé au retour du réseau.
 
-## Les 4 rôles
+## Les 5 rôles
 - PDG : créateur du bar. Supervise sans opérer : Accueil (vue d'ensemble), Paie, Compta, Équipe, Ventes, Revenus, Présences, Planning, Journée (rapports), Journal, Abonnement, Réglages. Il ne valide pas les paiements des tickets et ne clôture pas la journée.
 - Directeur : supervise le service. Supervision (commandes envoyées, servies ou en retard de plus de 10 min), Présences (présent, retard, absent, permission, repos), Planning, Équipe (ajoute caissières et serveuses), Ventes, Journal, Abonnement, Mon espace. Il ne valide aucun paiement.
 - Caisse (caissière) : Commandes (commandes envoyées, versements des serveuses, Mobile Money à vérifier, reliquats, annulations, vente au comptoir, dotations de bouteilles), Stock (inventaire, approvisionnement, carte des produits, prix), Bons, Ventes, Journée (clôture), Planning, Mon espace.
 - Serveuse : Service (ses tickets), Paiement QR, Planning, Mon espace (pointage, permissions, fiches de paie).
+- Cuisine (cuisinier) : Cuisine (écran des bons), Planning, Mon espace. Rôle disponible quand le module Cuisine est activé (formule Snack Gold et plus).
+- À chaque ouverture de l'application, chacun arrive sur le premier onglet de son espace.
 
 ## Connexion
 - Personnel : saisir le code du bar (6 caractères, ex. K7P2QM), toucher son nom, taper son PIN (4 à 6 chiffres).
@@ -42,20 +44,32 @@ Elle fonctionne aussi sans réseau pour les gestes de la serveuse (tickets, quan
 ## Caisse : journée et stock
 - Clôture : rubrique Journée, saisir les espèces comptées, « Clôturer la journée ». Seule la caissière clôture. Le PDG reçoit le rapport et une notification. Une journée commence et se termine à 6 h du matin (heure de Douala) : les ventes après minuit comptent sur la veille.
 - Tickets non soldés : la clôture les signale ; il faut les régler ou forcer.
+- Photos des produits : toucher la vignette d'un produit dans Stock pour choisir une photo de la photothèque GesCo ou prendre/choisir sa propre photo. « Ajouter un produit à la carte » : toucher une bouteille de la photothèque remplit le nom, la catégorie et la photo.
+- Réapprovisionnement intelligent (Stock, en haut) : GesCo calcule le rythme de vente de chaque produit (14 derniers jours), les jours restants avant rupture et la quantité à commander pour tenir N jours (7 par défaut), arrondie au casier. Alerte rouge quand le stock passe sous la moitié du minimum. « Règle » sur un produit : stock minimum et taille du casier/carton.
+- Bons de commande : « Créer le bon de commande » regroupe les quantités conseillées ; l'envoyer au fournisseur sur WhatsApp ; à la livraison, « Réceptionner » ajoute les quantités reçues au stock et le prix d'achat entre dans la compta.
 - Stock : Approvisionner (quantité + prix d'achat), Inventaire (compter et corriger les écarts), carte libre (bières, vins, whisky, sucreries, cuisine...). Vente au verre : « Ouvrir une bouteille » transforme une bouteille en verres.
 
 ## Planning, présences, permissions, paie
+- Planning automatique (directeur, PDG) : bouton « Générer la semaine automatiquement » dans Planning. Régler les horaires d'ouverture de chaque jour (ou Fermé), le nombre de serveuses par jour (proposé selon l'affluence réelle des 8 dernières semaines, « Recalculer selon l'affluence »), 1 ou 2 jours de repos par employé, et l'option équipe d'ouverture / équipe de fermeture pour les soirées de plus de 9 h. « Voir la proposition » montre la semaine, les heures de chacun et les points à surveiller ; « Appliquer au planning » l'enregistre. Les permissions accordées sont respectées, les repos tournent d'une semaine à l'autre et tombent de préférence les jours calmes. Chaque case reste modifiable ensuite.
 - Planning : fait par le directeur (ou le PDG), visible par tous. Toucher une case pour fixer l'horaire ou le repos ; « Copier la semaine d'avant » ; « Partager sur WhatsApp » (image ou texte).
 - Pointage : chacun pointe son arrivée et son départ (Mon espace ou bandeau du jour). Retard compté au-delà de 10 minutes. Le directeur est notifié.
 - Permissions : serveuses et caisse demandent au directeur ; le directeur demande au PDG. Personne ne valide sa propre demande.
 - Paie (PDG) : fixer le salaire de base, prime, retenue (une retenue est suggérée selon les absences), payer ; la dépense entre dans la compta ; l'employé voit sa fiche de paie.
 - Compta (PDG) : rapport du mois automatique (PDF imprimable et CSV), dépenses, indications fiscales (IGS en dessous de 50 millions de FCFA de chiffre d'affaires annuel). Ce n'est pas un conseil fiscal : consulter un comptable.
 
+## Module Cuisine (Snack Gold et plus)
+- Activation : le PDG, dans Réglages → Module Cuisine. Puis ajouter le cuisinier dans Équipe avec le rôle « Cuisine ».
+- Les plats sont les produits de catégorie « Cuisine » (ou vendus au plat / à la portion). La serveuse les ajoute au ticket comme une boisson ; à l'envoi, chaque plat part sur l'écran Cuisine avec un numéro de bon, la table, la serveuse (bande de couleur à son nom) et le temps d'attente (rouge après 15 min).
+- Le cuisinier touche « Commencer » puis « Prêt ✓ ». Seule la serveuse de la table est prévenue (son et notification) ; sur son ticket, elle touche « Je l'ai récupéré ». La caisse et la direction voient aussi l'écran Cuisine.
+- Recettes : dans Stock, ouvrir un plat (Modifier) → Recette : ajouter les ingrédients (catégorie « Ingrédients », unité g, ml ou pièce) et la quantité pour 1 plat. À chaque plat envoyé, les ingrédients sortent du stock ; le prix d'achat du plat est calculé par la recette (marge affichée).
+- Annulation : un plat annulé avant que la cuisine l'ait commencé rend ses ingrédients au stock automatiquement. Un plat déjà en préparation ne peut plus être retiré par la serveuse : la caisse doit annuler.
+- Les ingrédients n'apparaissent pas chez les serveuses ; ils sont dans le réapprovisionnement intelligent (consommation de la cuisine comprise).
+
 ## Donner son avis
 - Menu de l'application → « Donner mon avis » : note de 1 à 5 étoiles, sujets (facile, rapide, il manque une fonction, bug…) et message libre. L'avis est lu par BISMO Agency, pas par le patron du bar. Possible même si l'abonnement est expiré.
 
 ## Notifications
-- Caisse : nouvelle commande, annulation demandée, Mobile Money à vérifier, paiement reçu. Serveuse : commande validée, monnaie prête, bon émis. Directeur : pointages, demandes de permission. PDG : journée clôturée, demande du directeur.
+- Caisse : nouvelle commande, annulation demandée, Mobile Money à vérifier, paiement reçu. Serveuse : commande validée, monnaie prête, bon émis. Cuisine : nouvelle commande de plat. Serveuse : plat prêt en cuisine (seulement pour ses tables). Directeur : pointages, demandes de permission. PDG : journée clôturée, demande du directeur.
 - Son : toucher l'écran une fois après l'ouverture (le téléphone bloque le son sinon) ; « Tester le son » dans le menu ; activer les notifications quand l'application le propose ; vérifier que le téléphone n'est pas en silencieux.
 - Limite actuelle : les notifications arrivent quand l'application est ouverte ou en arrière-plan, pas quand elle est complètement fermée.
 
@@ -73,7 +87,7 @@ Elle fonctionne aussi sans réseau pour les gestes de la serveuse (tickets, quan
 - Android (Chrome) : ouvrir le lien, menu ⋮ → « Ajouter à l'écran d'accueil » ou « Installer l'application ».
 - iPhone (Safari) : bouton Partager → « Sur l'écran d'accueil ».
 - Le PDG ou le directeur peut montrer le QR d'installation (Équipe) : scanner avec l'appareil photo ouvre l'application avec le code du bar déjà rempli.
-- Après une mise à jour, fermer complètement l'application puis la rouvrir.
+- Mises à jour : elles s'installent toutes seules, l'application se recharge d'elle-même (quand personne n'est en train de saisir). Si un écran semble ancien, fermer complètement l'application puis la rouvrir.
 
 ## Problèmes fréquents
 - « Session expirée » ou écran qui ne charge pas : vérifier le réseau, fermer et rouvrir l'application, se reconnecter.

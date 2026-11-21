@@ -53,10 +53,11 @@ Modifier l'application : éditez `app/src/app.html`, puis `python3 app/build.py`
 | **Directeur** | Supervision des commandes (prises et servies, retards de service), présences, retards, absences, permissions, planning (téléchargeable en image et partageable sur WhatsApp), ajout des caissières et serveuses. Ne valide aucun paiement |
 | **Caisse** | Commandes en direct, versements, Mobile Money, reliquats, bons, stock, inventaire, approvisionnement, vente au comptoir, clôture de journée |
 | **Serveuse** | Ses tickets, « commande servie », son planning, pointage, demandes de permission, ses fiches de paie |
+| **Cuisine** (module Cuisine, Snack Gold et plus) | Écran des bons de cuisine : à préparer, en préparation, prêts ; son planning, pointage |
 
 Chaque espace a une barre de navigation en bas, un menu complet et une recherche (clients, tickets, boissons, employés, bons). Le planning est visible par tout le monde.
 
-Démo : code DEMO ; PIN serveuses 1111 / 2222 / 3333, caisse 0000, directeur 5555, PDG 9999.
+Démo : code DEMO ; PIN serveuses 1111 / 2222 / 3333, caisse 0000, directeur 5555, PDG 9999, cuisinier (Paul) 4444.
 
 ## Carte des produits
 
@@ -141,3 +142,17 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Stock (caisse, PDG) : rythme de vente réel des 14 derniers jours (verres convertis en bouteilles), stock comptoir + bouteilles chez les serveuses → jours restants, niveau (Urgent / Bientôt / À prévoir), quantité conseillée arrondie au casier ou au pack, pour tenir 3, 7 ou 14 jours.
 - Bon de commande : enregistré (`purchase_orders`), envoyé au dépôt sur WhatsApp ; « Livraison reçue » met le stock et le prix d'achat à jour automatiquement (mouvements « appro »).
 - Pastille « Urgent » sur l'onglet Stock, recalcul toutes les 10 minutes. Migration 016 : `gb_reappro`, `gb_po_create`, `gb_po_receive`, `gb_po_cancel`.
+- Règles par produit (migration 017) : stock minimum et taille du casier/pack, alerte rouge sous la moitié du minimum.
+
+## v4.9 — Module Cuisine (inclus à partir de Snack Gold)
+- Activation par le PDG (Réglages). Plats = catégorie « Cuisine » ou unité plat/portion. Rôle « Cuisine » (Équipe), écran Cuisine en 3 colonnes (À préparer / En préparation / Prêts), bon numéroté, bande à la couleur de la serveuse, minuteur (rouge après 15 min). Caisse, directeur et PDG voient aussi l'écran.
+- « Prêt » ne prévient que la serveuse de la table ; elle confirme « Je l'ai récupéré » sur son ticket.
+- Recettes (Stock → plat → Recette) : ingrédients (catégorie « Ingrédients », unités g / ml / pièce) déduits à l'envoi, rendus si le plat est annulé avant d'être commencé ; un plat commencé ne peut plus être retiré par la serveuse. Le prix d'achat du plat = coût de la recette (marge affichée).
+- Réapprovisionnement : les plats en sont exclus ; les ingrédients y entrent avec la consommation de la cuisine.
+- Migrations 018 (`kitchen_orders`, `recipes`, `gb_kitchen_step`, `gb_kitchen_toggle`, `gb_recipe_set`, tickets réécrits) et 019.
+
+## v4.10 — Planning intelligent
+- Planning → « Générer la semaine automatiquement » (directeur, PDG) : horaires d'ouverture par jour (ou fermé), serveuses par jour proposées selon l'affluence réelle des 8 dernières semaines (`gb_plan_load`), 1 ou 2 repos par employé, équipe d'ouverture / de fermeture pour les soirées de plus de 9 h.
+- Repos tournants et équitables (pas le même jour que la semaine d'avant, de préférence les jours calmes, directeur / caisse / cuisine pas de repos le même jour), permissions accordées respectées, une personne à la caisse et en cuisine chaque jour d'ouverture ; points à surveiller affichés.
+- Aperçu avant d'appliquer ; enregistrement en une fois (`gb_shift_bulk`, réglages gardés dans `bars.plan_cfg`) ; chaque case reste modifiable.
+- Mise à jour automatique de l'application et ouverture sur le premier onglet de chaque rôle.
