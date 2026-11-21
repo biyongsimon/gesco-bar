@@ -165,3 +165,9 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Poste caisse (écran ≥ 1200 px) : menu latéral, Commandes en 3 colonnes avec la cuisine en direct, raccourcis clavier.
 - Migration 020.
 
+## v4.12 — Écran mural cuisine, plat gardé au choix, tablettes et Windows
+- Plat gardé : plus de reprise automatique ; la nouvelle commande arrive en « À préparer » avec l'alerte ♻ et le bouton « Servir le plat gardé » (`gb_kitchen_reuse`, migration 021) ; notification au cuisinier et à la caisse.
+- Écran mural (KDS) : plein écran, gros caractères, horloge, son, jamais verrouillé, verrou d'écran (Wake Lock), mémorisé sur l'appareil (`?kds=1`). Téléphone du cuisinier : onglets À préparer / En cours / Prêts.
+- Responsive : poste caisse dès 900 px (tablette paysage, 2 colonnes), ordinateur et grand écran (3 colonnes) ; vérifié de 360 à 1920 px pour les 5 rôles.
+- Windows : application installable (PWA) via Edge / Chrome, bouton « Installer GesCo sur cet appareil » dans le menu, manifeste sans blocage en portrait, raccourcis (Commandes, Écran mural cuisine, Planning).
+

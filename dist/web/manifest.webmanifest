@@ -1,12 +1,12 @@
 {
   "name": "GesCo Bar",
   "short_name": "GesCo Bar",
-  "description": "Gestion de bar : tickets par serveuse, caisse, stock et reliquats.",
+  "description": "Gestion de bar et de restaurant : tickets par serveuse, caisse, cuisine, stock et planning.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#f3f6f3",
   "theme_color": "#0f5c3c",
   "icons": [
@@ -26,6 +26,48 @@
       "src": "icon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
+    }
+  ],
+  "id": "./",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "categories": [
+    "business",
+    "productivity",
+    "food"
+  ],
+  "shortcuts": [
+    {
+      "name": "Commandes (caisse)",
+      "url": "./?tab=direct",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Écran mural cuisine",
+      "url": "./?kds=1",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Planning",
+      "url": "./?tab=planning",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
