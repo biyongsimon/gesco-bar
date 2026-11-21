@@ -1274,7 +1274,7 @@ async function enterApp() {
     if (e.net && snap) { S = snap; V.online = false; V.outbox.forEach(applyLocal); toast("Hors ligne : dernières données affichées. Vos tickets seront envoyés au retour du réseau."); }
     else { await logout(true); toast(e.message, "err"); return; }
   }
-  V.tab = LS.get("gesco-tab-" + ROLE(), navFor()[0]); if (!navFor().includes(V.tab)) V.tab = navFor()[0]; V.secT = Date.now(); V.menu = false; notifyNew(); lazyLoad();
+  V.tab = navFor()[0]; V.secT = Date.now(); V.menu = false; notifyNew(); lazyLoad();
   render(); flush(); setTimeout(avisCheck, 6000);
   try { const sp = (S.subs || []).find(x => x.status === "en_attente" && x.channel === "notchpay"); if (sp && B.subStatus) subWatch(sp.id); } catch (e) {}
 }
@@ -1338,6 +1338,12 @@ async function pinHash(id, pin) { const t = "gesco|" + id + "|" + pin;
   catch (e) { let h = 5381; for (const c of t) h = ((h << 5) + h + c.charCodeAt(0)) | 0; return "d" + (h >>> 0).toString(16); } }
 const touchAct = () => { if (!V.locked) lastAct = Date.now(); };
 ["pointerdown", "keydown", "touchstart", "wheel", "scroll"].forEach(ev => addEventListener(ev, touchAct, { passive: true, capture: true }));
+// Application rouverte après plus d'une minute en arrière-plan : retour à la première rubrique de l'espace
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { V.hidAt = Date.now(); return; }
+  if (V.screen === "app" && S && V.hidAt && Date.now() - V.hidAt > 60000 && !(V.modal && /^(qr|momo)/.test(V.modal.type || ""))) {
+    const first = navFor()[0]; if (V.tab !== first) { V.tab = first; V.secT = Date.now(); V.menu = false; lazyLoad(); render(); try { scrollTo({ top: 0 }); } catch (e) {} } }
+  V.hidAt = 0; });
 function lockNow() { if (V.screen !== "app" || !S || V.locked) return; V.locked = true; V.lpin = ""; V.ltries = 0; V.menu = false; V.modal = null; render(); }
 setInterval(() => { if (V.screen === "app" && S && !V.locked && Date.now() - lastAct > IDLE_MS) lockNow(); }, 5000);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && V.screen === "app" && Date.now() - lastAct > IDLE_MS) lockNow(); });
@@ -1373,7 +1379,7 @@ A.logout = () => ask("Se déconnecter ?", V.outbox.length ? `${V.outbox.length} 
 A.logoutGo = () => logout();
 A.close = () => { V.modal = null; render(); };
 A.okModal = () => { const m = V.modal; V.modal = null; render(); if (m && A[m.a]) A[m.a](m.d || {}); };
-A.go = d => { V.menu = false; V.modal = null; V.f.gq = ""; if (V.tab !== d.v) { V.tab = d.v; V.secT = Date.now(); LS.set("gesco-tab-" + ROLE(), d.v); V.top = 1; } lazyLoad(); render(); if (V.top) { V.top = 0; try { scrollTo({ top: 0 }); } catch (e) {} } };
+A.go = d => { V.menu = false; V.modal = null; V.f.gq = ""; if (V.tab !== d.v) { V.tab = d.v; V.secT = Date.now(); V.top = 1; } lazyLoad(); render(); if (V.top) { V.top = 0; try { scrollTo({ top: 0 }); } catch (e) {} } };
 A.tab = A.go;
 function lazyLoad() { const k = V.tab; if ((k === "rev" || k === "home") && isPdg()) A.loadRev(); if (k === "acc") A.loadAcc(); if ((k === "pres" || k === "paie") && isMgr()) A.loadStats(); }
 A.wf = d => { V.wf = d.v; render(); };
