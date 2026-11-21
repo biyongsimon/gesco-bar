@@ -1561,7 +1561,7 @@ const CATALOG = [
   ["guinness-grande", "Grande Guinness 65 cl", "Bières", ["guinness", "guiness", "grande guinness", "guinness grande", "guinness 65"], 1],
   ["guinness-petite", "Petite Guinness 33 cl", "Bières", ["petite guinness", "guinness petite", "guinness 33", "guinness 33cl"], 1],
   ["beaufort-light", "Beaufort Light", "Bières", ["beaufort light"], 1], ["beaufort", "Beaufort Lager", "Bières", ["beaufort", "beaufort ordinaire", "beaufort lager"], 1],
-  ["isenbeck", "Isenbeck", "Bières", ["isenbeck", "isembeck"], 1], ["kadji", "Kadji Beer", "Bières", ["kadji"], 0, "biere", "#a8322c"],
+  ["isenbeck", "Isenbeck", "Bières", ["isenbeck", "isembeck"], 1], ["kadji", "Kadji Beer", "Bières", ["kadji"], 1],
   ["booster-whisky-cola", "Booster Whisky Cola", "Bières", ["booster whisky", "whisky cola"], 1], ["booster-mangue-orange", "Booster Mangue Orange", "Bières", ["booster mangue", "mangue orange"], 1],
   ["booster-gin-tonic", "Booster Gin Tonic", "Bières", ["booster gin", "gin tonic"], 1],
   ["malta", "Malta Guinness", "Sucreries", ["malta", "malta guinness"], 1],
@@ -1573,7 +1573,7 @@ const CATALOG = [
   ["planet-orange", "Planet Orange", "Sucreries", ["planet", "planete", "planète", "planet orange", "planete orange"], 1],
   ["planet-ananas", "Planet Ananas", "Sucreries", ["planet ananas", "planete ananas"], 1], ["planet-pomme", "Planet Pomme", "Sucreries", ["planet pomme", "planete pomme"], 1],
   ["planet-cocktail", "Planet Cocktail", "Sucreries", ["planet cocktail", "planete cocktail"], 1],
-  ["tangui", "Tangui", "Eaux", ["tangui"], 0, "eau", "#1d74c8"], ["supermont", "Supermont", "Eaux", ["supermont"], 1],
+  ["tangui", "Tangui", "Eaux", ["tangui"], 1], ["supermont", "Supermont", "Eaux", ["supermont"], 1],
   ["opur", "Opur", "Eaux", ["opur"], 1], ["vitale", "Eau Vitale", "Eaux", ["vitale", "eau vitale"], 1]
 ].map(([k, n, c, kw, ph, sh, col]) => ({ k, n, c, kw, ph: !!ph, sh, col }));
 const CAT_BY = Object.fromEntries(CATALOG.map(x => [x.k, x])); CAT_BY.guinness = CAT_BY["guinness-grande"]; CAT_BY.planete = CAT_BY["planet-orange"];
