@@ -1433,11 +1433,17 @@ A.saveP = d => run(async () => { const p = S.products.find(x => x.id === d.p), k
   ["n", "c", "pr", "st", "u", "par", "dz", "lo", "co"].forEach(s => delete V.f[k(s)]); V.open["p_" + d.p] = false; toast("Produit enregistré."); await refresh(); });
 A.togP = d => run(async () => { const p = S.products.find(x => x.id === d.p);
   await call("gb_product_save", { p_id: p.id, p_name: p.name, p_category: p.category, p_price: p.price, p_stock: null, p_active: !p.active, ...PFIELDS(p) }); toast(p.active ? "Produit masqué de la carte." : "Produit remis sur la carte."); await refresh(); });
+A.npCat = d => { V.f.np_fc = d.v; render(); };
+A.npPick = d => { const c = CAT_BY[d.v]; if (!c) return; V.f.np_k = c.k; V.f.np_n = c.n; V.f.np_c = c.c; V.f.np_u = "bouteille"; render();
+  setTimeout(() => { const e = document.getElementById("np_pr"); if (e) { e.scrollIntoView({ block: "center", behavior: "smooth" }); e.focus({ preventScroll: true }); } }, 60); };
 A.addP = () => run(async () => { const unit = V.f.np_u || "bouteille", parent = unit === "verre" ? (V.f.np_par || "") : "";
   if (unit === "verre" && !parent) throw bizErr("Choisissez la bouteille d’où sont servis les verres.");
-  await call("gb_product_save", { p_id: null, p_name: V.f.np_n, p_category: V.f.np_c || "Bières", p_price: num("np_pr"), p_stock: num("np_st") || 0, p_active: true,
+  if (!(num("np_pr") > 0)) throw bizErr("Indiquez le prix de vente.");
+  const pk = V.f.np_k && CAT_BY[V.f.np_k] && unit !== "verre" ? V.f.np_k : null;
+  const nid = await call("gb_product_save", { p_id: null, p_name: V.f.np_n, p_category: V.f.np_c || "Bières", p_price: num("np_pr"), p_stock: num("np_st") || 0, p_active: true,
     p_unit: unit, p_parent: parent || null, p_doses: parent ? num("np_dz") : null });
-  ["np_n", "np_pr", "np_st", "np_par", "np_dz"].forEach(k => delete V.f[k]); toast("Produit ajouté à la carte."); await refresh(); });
+  if (pk && nid) { try { await B.productImage(nid, "c:" + pk); } catch (e) {} }
+  ["np_n", "np_pr", "np_st", "np_par", "np_dz", "np_k"].forEach(k => delete V.f[k]); toast("Produit ajouté à la carte."); await refresh(); });
 A.openB = d => run(async () => { const n = await call("gb_open_bottle", { p_glass: d.p, p_count: num("ob_" + d.p) || 1 }); delete V.f["ob_" + d.p];
   toast(`${n} verre(s) de ${prodName(d.p)} ajoutés au stock.`); await refresh(); });
 A.invToggle = () => { V.inv = !V.inv; render(); };
@@ -2322,7 +2328,12 @@ function cStock() {
       <input class="grow" id="aq" type="number" inputmode="numeric" data-k="aq" value="${val("aq")}" placeholder="Quantité reçue">
       <input class="grow" id="auc" type="number" inputmode="numeric" data-k="auc" value="${val("auc")}" placeholder="Prix d’achat unitaire (${Fs((S.products.find(p => p.id === (V.f.ap || (S.products.find(x => !x.parent_id) || {}).id)) || {}).cost || 0)} FCFA)" aria-label="Prix d’achat unitaire">
       <button class="btn" data-a="appro">Ajouter au stock</button></div><p class="mu" style="margin:0">Le prix d’achat sert à calculer automatiquement la comptabilité du PDG.</p></div>
-    <div class="card stack"><h3>Ajouter un produit à la carte</h3><p class="mu" style="margin:0">Bières, vins, whisky, sucreries, cuisine : chaque bar crée sa propre carte. Pour vendre au verre, créez d’abord la bouteille, puis le verre rattaché.</p>
+    <div class="card stack" id="np_card"><h3>Ajouter un produit à la carte</h3><p class="mu" style="margin:0">Touchez une bouteille de la photothèque GesCo : le nom, la catégorie et la photo se remplissent. Il ne reste que le prix. Pour un produit absent, écrivez son nom vous-même.</p>
+      ${(() => { const have = new Set(S.products.map(p => (pVis(p).c || {}).k).filter(Boolean)), cats = [...new Set(CATALOG.map(c => c.c))], fc = V.f.np_fc || "";
+        const list = CATALOG.filter(c => !have.has(c.k) && (!fc || c.c === fc));
+        return `<div class="catsc" role="group" aria-label="Catégories de la photothèque">${[["", "Tout"], ...cats.map(c => [c, c])].map(([v, l]) => `<button type="button" data-a="npCat" data-v="${esc(v)}" class="${fc === v ? "on" : ""}">${esc(l)}</button>`).join("")}</div>
+          ${list.length ? `<div class="ptiles" style="max-height:300px">${list.map(c => `<button type="button" class="pt ${V.f.np_k === c.k ? "on" : ""}" data-a="npPick" data-v="${c.k}"><span class="pi">${c.ph ? `<img src="${photoUrl(c.k)}" alt="" loading="lazy">` : drawn({ name: c.n, category: c.c }, c)}</span><small>${esc(c.n)}</small></button>`).join("")}</div>`
+            : `<p class="mu" style="margin:0">Toutes les bouteilles de cette catégorie sont déjà sur votre carte.</p>`}`; })()}
       <div class="row"><label class="f grow" for="np_n">Nom<input id="np_n" data-k="np_n" value="${val("np_n")}" placeholder="Ex. Vin rouge Bordeaux, Whisky Chivas 12 ans"></label>
       <label class="f" style="flex:1 1 150px" for="np_c">Catégorie<input id="np_c" data-k="np_c" value="${val("np_c")}" list="gb-cats" placeholder="Bières"></label></div>
       <div class="row"><label class="f grow" for="np_pr">Prix (FCFA)<input id="np_pr" type="number" inputmode="numeric" data-k="np_pr" value="${val("np_pr")}"></label>
