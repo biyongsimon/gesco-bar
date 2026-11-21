@@ -570,7 +570,7 @@ const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentC
 
 /* ═══════════════ Moteur DÉMO (données locales, mêmes règles que le serveur) ═══════════════ */
 function DemoBackend() {
-  const KEY = "gesco-demo-v9";
+  const KEY = "gesco-demo-v10";
   let db = LS.get(KEY), sess = LS.get(KEY + "-sess");
   const listeners = [];
   const save = () => LS.set(KEY, db);
@@ -949,7 +949,9 @@ function DemoBackend() {
       products: [["Castel Beer 65cl", "Bières", 650, 48], ["33 Export 65cl", "Bières", 650, 36], ["Mützig 65cl", "Bières", 650, 24], ["Beaufort 65cl", "Bières", 650, 24],
         ["Guinness 65cl", "Bières", 1000, 18], ["Orijin", "Bières", 650, 24], ["Heineken 33cl", "Bières", 800, 24], ["Doppel Munich 65cl", "Bières", 700, 12], ["Booster Whisky Cola", "Bières", 700, 12], ["Booster Mangue Orange", "Bières", 700, 12], ["Booster Gin Tonic", "Bières", 700, 12],
         ["Coca-Cola 1L", "Sucreries", 600, 24], ["World Cola 1L", "Sucreries", 500, 12], ["Top Pamplemousse", "Sucreries", 500, 24], ["Top Grenadine", "Sucreries", 500, 24], ["Top Orange", "Sucreries", 500, 12], ["Top Ananas", "Sucreries", 500, 12],
-        ["Vimto 1L", "Sucreries", 600, 12], ["Orangina 1L", "Sucreries", 700, 12], ["D’jino Cocktail 1L", "Jus", 600, 12], ["Tangui 1,5 L", "Eaux", 600, 10], ["Supermont 1,5 L", "Eaux", 500, 10],
+        ["Vimto 1L", "Sucreries", 600, 12], ["Orangina 1L", "Sucreries", 700, 12], ["D’jino Cocktail 1L", "Jus", 600, 12], ["Tangui 1,5 L", "Eaux", 600, 10], ["Supermont 1,5 L", "Eaux", 500, 10], ["Opur 50 cl", "Eaux", 300, 12], ["Vitale 1,5 L", "Eaux", 500, 10],
+        ["Petite Guinness 33cl", "Bières", 600, 24], ["Beaufort Light 33cl", "Bières", 600, 24], ["Isenbeck 65cl", "Bières", 650, 24], ["Malta Guinness", "Sucreries", 500, 12], ["Fanta 1L", "Sucreries", 600, 12],
+        ["Planet Orange", "Sucreries", 400, 12], ["Planet Ananas", "Sucreries", 400, 12], ["Planet Pomme", "Sucreries", 400, 12], ["Planet Cocktail", "Sucreries", 400, 12],
         ["Vin rouge Bordeaux", "Vins rouges", 6000, 6], ["Vin rouge (verre)", "Vins rouges", 1000, 6, "verre"], ["Vin blanc Côtes de Gascogne", "Vins blancs", 6000, 4],
         ["Whisky J&B 75cl", "Spiritueux", 15000, 3], ["Whisky J&B (verre)", "Spiritueux", 1500, 15, "verre"], ["Jack Daniel’s 70cl", "Spiritueux", 25000, 2]]
         .map(([name, category, price, stock, unit], i) => ({ id: uuid(), name, category, price, stock, active: true, sort: i + 1, unit: unit || "bouteille", parent_id: null, doses: null })),
@@ -957,7 +959,7 @@ function DemoBackend() {
     const link = (g, b, n) => { const G = db.products.find(p => p.name === g); G.parent_id = db.products.find(p => p.name === b).id; G.doses = n; };
     link("Vin rouge (verre)", "Vin rouge Bordeaux", 6); link("Whisky J&B (verre)", "Whisky J&B 75cl", 15);
     db.products.forEach(p => { p.low_at = p.parent_id ? 3 : /Vins|Spiritueux/.test(p.category) ? 2 : null; });
-    const COST = { "Castel": 450, "33 Export": 450, "Mützig": 450, "Beaufort": 450, "Guinness": 750, "Orijin": 450, "Coca": 300, "Top": 300, "Heineken": 600, "Doppel": 500, "Booster": 500, "World": 350, "Vimto": 400, "Orangina": 500, "D’jino": 400, "Tangui": 400, "Supermont": 350, "Vin rouge Bordeaux": 3500, "Vin rouge (verre)": 600, "Vin blanc": 3500, "Whisky J&B 75cl": 9000, "Whisky J&B (verre)": 600, "Jack": 16000 };
+    const COST = { "Castel": 450, "33 Export": 450, "Mützig": 450, "Beaufort": 450, "Guinness": 750, "Orijin": 450, "Coca": 300, "Top": 300, "Petite Guinness": 420, "Isenbeck": 450, "Malta": 350, "Fanta": 400, "Planet": 280, "Opur": 200, "Vitale": 350, "Heineken": 600, "Doppel": 500, "Booster": 500, "World": 350, "Vimto": 400, "Orangina": 500, "D’jino": 400, "Tangui": 400, "Supermont": 350, "Vin rouge Bordeaux": 3500, "Vin rouge (verre)": 600, "Vin blanc": 3500, "Whisky J&B 75cl": 9000, "Whisky J&B (verre)": 600, "Jack": 16000 };
     db.products.forEach(p => { const k = Object.keys(COST).find(x => p.name.startsWith(x)); p.cost = k ? COST[k] : 0; });
     db.expenses = [];
     const ex = (dAgo, category, label, amount, method) => db.expenses.push({ id: uuid(), day: new Date(Date.now() - 6 * 3600e3 - dAgo * 86400e3).toLocaleDateString("sv-SE"), category, label, amount, method });
@@ -1556,22 +1558,25 @@ function changeBlock(t) {
 const CATALOG = [
   ["castel", "Castel Beer 65 cl", "Bières", ["castel"], 1], ["33-export", "33 Export", "Bières", ["33 export", "33"], 1], ["mutzig", "Mützig", "Bières", ["mutzig", "mützig"], 1],
   ["doppel-munich", "Doppel Munich", "Bières", ["doppel"], 1], ["heineken", "Heineken", "Bières", ["heineken"], 1], ["orijin", "Orijin", "Bières", ["orijin"], 1],
-  ["guinness", "Guinness", "Bières", ["guinness", "guiness"], 1],
-  ["beaufort-light", "Beaufort Light", "Bières", ["beaufort light"], 0, "biere", "#c9b25e"], ["beaufort", "Beaufort", "Bières", ["beaufort"], 0, "biere", "#a5761c"],
-  ["isenbeck", "Isenbeck", "Bières", ["isenbeck", "isembeck"], 0, "biere", "#1f5fa8"], ["kadji", "Kadji Beer", "Bières", ["kadji"], 0, "biere", "#a8322c"],
+  ["guinness-grande", "Grande Guinness 65 cl", "Bières", ["guinness", "guiness", "grande guinness", "guinness grande", "guinness 65"], 1],
+  ["guinness-petite", "Petite Guinness 33 cl", "Bières", ["petite guinness", "guinness petite", "guinness 33", "guinness 33cl"], 1],
+  ["beaufort-light", "Beaufort Light", "Bières", ["beaufort light"], 1], ["beaufort", "Beaufort Lager", "Bières", ["beaufort", "beaufort ordinaire", "beaufort lager"], 1],
+  ["isenbeck", "Isenbeck", "Bières", ["isenbeck", "isembeck"], 1], ["kadji", "Kadji Beer", "Bières", ["kadji"], 0, "biere", "#a8322c"],
   ["booster-whisky-cola", "Booster Whisky Cola", "Bières", ["booster whisky", "whisky cola"], 1], ["booster-mangue-orange", "Booster Mangue Orange", "Bières", ["booster mangue", "mangue orange"], 1],
   ["booster-gin-tonic", "Booster Gin Tonic", "Bières", ["booster gin", "gin tonic"], 1],
-  ["malta", "Malta Guinness", "Sucreries", ["malta"], 0, "biere33", "#4a2410"],
+  ["malta", "Malta Guinness", "Sucreries", ["malta", "malta guinness"], 1],
   ["top-orange", "Top Orange", "Sucreries", ["top orange"], 1], ["top-pamplemousse", "Top Pamplemousse", "Sucreries", ["top pamplemousse", "top pample"], 1],
   ["top-ananas", "Top Ananas", "Sucreries", ["top ananas"], 1], ["top-grenadine", "Top Grenadine", "Sucreries", ["top grenadine"], 1],
   ["coca-cola", "Coca-Cola", "Sucreries", ["coca"], 1], ["world-cola", "World Cola", "Sucreries", ["world cola"], 1], ["vimto", "Vimto", "Sucreries", ["vimto"], 1],
   ["orangina", "Orangina", "Sucreries", ["orangina"], 1], ["djino", "D’jino Cocktail", "Jus", ["djino", "d’jino", "d'jino", "d jino"], 1],
-  ["fanta", "Fanta", "Sucreries", ["fanta"], 0, "pet", "#f08a1d"], ["sprite", "Sprite", "Sucreries", ["sprite"], 0, "pet", "#2a9d4a"],
-  ["planete", "Planète", "Sucreries", ["planete", "planète"], 0, "pet", "#e04a2a"],
-  ["tangui", "Tangui", "Eaux", ["tangui"], 0, "eau", "#1d74c8"], ["supermont", "Supermont", "Eaux", ["supermont"], 0, "eau", "#2a9bd6"],
-  ["opur", "Opur", "Eaux", ["opur"], 0, "eau", "#56a9e2"]
+  ["fanta", "Fanta Orange", "Sucreries", ["fanta"], 1], ["sprite", "Sprite", "Sucreries", ["sprite"], 0, "pet", "#2a9d4a"],
+  ["planet-orange", "Planet Orange", "Sucreries", ["planet", "planete", "planète", "planet orange", "planete orange"], 1],
+  ["planet-ananas", "Planet Ananas", "Sucreries", ["planet ananas", "planete ananas"], 1], ["planet-pomme", "Planet Pomme", "Sucreries", ["planet pomme", "planete pomme"], 1],
+  ["planet-cocktail", "Planet Cocktail", "Sucreries", ["planet cocktail", "planete cocktail"], 1],
+  ["tangui", "Tangui", "Eaux", ["tangui"], 0, "eau", "#1d74c8"], ["supermont", "Supermont", "Eaux", ["supermont"], 1],
+  ["opur", "Opur", "Eaux", ["opur"], 1], ["vitale", "Eau Vitale", "Eaux", ["vitale", "eau vitale"], 1]
 ].map(([k, n, c, kw, ph, sh, col]) => ({ k, n, c, kw, ph: !!ph, sh, col }));
-const CAT_BY = Object.fromEntries(CATALOG.map(x => [x.k, x]));
+const CAT_BY = Object.fromEntries(CATALOG.map(x => [x.k, x])); CAT_BY.guinness = CAT_BY["guinness-grande"]; CAT_BY.planete = CAT_BY["planet-orange"];
 const KW = CATALOG.flatMap(x => x.kw.map(w => [w, x])).sort((a, b) => b[0].length - a[0].length);
 const nrm = s => " " + String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’']/g, "'").replace(/[^a-z0-9']+/g, " ").trim() + " ";
 const autoCat = name => { const n = nrm(name); const hit = KW.find(([w]) => n.includes(" " + nrm(w).trim() + " ")); return hit ? hit[1] : null; };
