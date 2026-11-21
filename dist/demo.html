@@ -209,6 +209,7 @@ kbd{font:600 11px/1 var(--body);padding:2px 5px;border:1px solid var(--line);bor
 .list>*+*{border-top:1px solid var(--line)}
 .li{padding:10px 0;display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap}
 .li .grow{flex:1 1 180px;min-width:0}
+.between>.grow{flex:1 1 auto;min-width:0}
 .scroll{overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:14px}
 th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -521,7 +522,13 @@ details summary{cursor:pointer}
   .bnav button.on{background:color-mix(in srgb,var(--brand) 13%,transparent)}
   .bnav button.on::before{display:none}
   .bnav .bd{top:50%;right:12px;transform:translateY(-50%)}
-  .kbd-hint{display:block;margin:auto 6px 0;padding-top:16px;font-size:12px;color:var(--muted);line-height:1.9}
+  .bnav,.hb .bnav{padding-top:14px}
+  .sb-who{display:flex;align-items:center;gap:10px;padding:8px 8px 14px;margin-bottom:10px;border-bottom:1px solid var(--line);min-width:0}
+  .sb-who b,.sb-who .mu{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sb-who .mu{font-size:12.5px}
+  .sb-foot{margin-top:auto;padding:14px 6px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:9px;font-size:13px}
+  .sb-foot .btn{width:100%;justify-content:center}.sb-foot .row .btn{width:auto;flex:1}
+  .top .who{visibility:hidden}
+  .kbd-hint{display:block;margin:0;font-size:12px;color:var(--muted);line-height:1.9}
   .kpis{grid-template-columns:repeat(6,minmax(0,1fr))}
   .kpi b,.kpi .v{font-size:22px}
 }
@@ -1602,7 +1609,8 @@ A.cash = d => { const t = S.tickets.find(x => x.id === d.t); const r = num("rcv_
   toast(r > t.total ? `Encaissé. Reliquat de ${F(r - t.total)} à rendre au client.` : "Encaissé en espèces."); };
 A.momo = d => { V.open[d.t] = false; call("gb_ticket_cash", { p_ticket: d.t, p_method: "momo", p_received: null }); toast("Paiement Mobile Money déclaré à la caisse."); };
 A.del = d => { const t = S.tickets.find(x => x.id === d.t);
-  const txt = isCaisse() ? `Le ticket « ${t.client_label} » (${F(t.total)}) sera supprimé et les bouteilles rendues à ${staffName(t.waitress_id)}. L’action reste visible dans le journal.`
+  const hasDish = (S.kitchen || []).some(o => o.ticket_id === t.id && ["prep", "pret"].includes(o.status));
+  const txt = isCaisse() ? `Le ticket « ${t.client_label} » (${F(t.total)}) sera supprimé et les bouteilles rendues à ${staffName(t.waitress_id)}.${hasDish ? " Les plats déjà commencés en cuisine passeront « à décider » (revendre, repas du personnel ou perte)." : ""} L’action reste visible dans le journal.`
     : t.status === "draft" ? `Le ticket « ${t.client_label} » sera supprimé et ses bouteilles reviendront dans vos bouteilles en main.`
     : `La commande a déjà été envoyée. La caisse doit valider l’annulation du ticket « ${t.client_label} ».`;
   ask(isCaisse() || t.status === "draft" ? "Supprimer ce ticket ?" : "Demander l’annulation ?", txt, isCaisse() || t.status === "draft" ? "Supprimer" : "Demander l’annulation", "delGo", d, true); };
@@ -2177,13 +2185,13 @@ function kDecide() {
   if (dec.length) h += `<div class="card stack kdec"><h3>Plats annulés après préparation · ${dec.length}</h3><p class="mu" style="margin:0">Un plat commencé ne revient jamais en stock comme une bière. Décidez ce qu’il devient :</p>
     ${dec.map(o => `<div class="stack" style="gap:8px;padding-top:10px;border-top:1px solid var(--line)"><div><b>${o.qty}× ${esc(prodName(o.product_id))}</b> <span class="mu">· bon ${o.bon} · ${esc(o.label || "")} · ${esc(staffName(o.waitress_id))}${o.note ? " · " + esc(o.note) : ""}</span></div>
       <div class="row"><button class="btn sm" data-a="kDec" data-id="${o.id}" data-v="revente">Revendre</button><button class="btn soft sm" data-a="kDec" data-id="${o.id}" data-v="personnel">Repas du personnel</button><button class="btn bad sm" data-a="kDec" data-id="${o.id}" data-v="perte">Perte</button></div></div>`).join("")}</div>`;
-  if (rv.length) h += `<div class="card stack"><h3>Plats gardés pour la revente · ${rv.length}</h3><p class="mu" style="margin:0">La prochaine commande du même plat les prend automatiquement : ils arrivent directement dans « Prêts à servir ». Après 6 h ils ne sont plus proposés.</p>
+  if (rv.length) h += `<div class="card stack"><h3>Plats gardés pour la revente · ${rv.length}</h3><p class="mu" style="margin:0">Quand une serveuse commande le même plat, son bon est signalé ♻ : touchez « Servir le plat gardé » pour le donner tout de suite. Après 6 h, ils ne sont plus proposés.</p>
     <div class="list">${rv.map(o => `<div class="li"><div class="grow"><b>${o.qty}× ${esc(prodName(o.product_id))}</b><div class="mu">gardé depuis ${hm(o.decided_at)} · bon ${o.bon}</div></div><button class="btn ghost sm" data-a="kDec" data-id="${o.id}" data-v="personnel">Personnel</button><button class="btn ghost sm" data-a="kDec" data-id="${o.id}" data-v="perte">Perte</button></div>`).join("")}</div></div>`;
   if (lost.length) h += `<div class="card"><div class="between"><h3>Pertes et repas du personnel (journée)</h3><b class="num">${F(sum(lost, valO))}</b></div><div class="list">${lost.map(o => `<div class="li"><div class="grow">${o.qty}× ${esc(prodName(o.product_id))} <span class="mu">· ${o.status === "perte" ? "perte" : "repas du personnel"}${o.note ? " · " + esc(o.note) : ""}</span></div><span class="mu num">${valO(o) ? F(valO(o)) : ""}</span></div>`).join("")}</div></div>`;
   return h;
 }
 const kDecGo = (id, v, note) => run(async () => { await B.rpc("gb_kitchen_decide", { p_id: id, p_choice: v, p_note: note }); V.modal = null; await refresh();
-  toast(v === "revente" ? "Plat gardé : la prochaine commande identique le prend tout de suite." : v === "personnel" ? "Noté : repas du personnel." : "Perte enregistrée avec son coût."); });
+  toast(v === "revente" ? "Plat gardé : il sera proposé (♻) dès qu’une serveuse commande le même plat." : v === "personnel" ? "Noté : repas du personnel." : "Perte enregistrée avec son coût."); });
 A.kDec = d => { if (d.v === "perte") { V.f.kd_note = ""; V.modal = { type: "kloss", id: d.id }; render(); return; } kDecGo(d.id, d.v, ""); };
 A.kLossGo = () => kDecGo(V.modal.id, "perte", V.f.kd_note || "");
 const vKloss = () => `<h2>Plat perdu</h2><p class="mu" style="margin:0">Le coût du plat (prix de revient) est compté dans les pertes du jour.</p>
@@ -2497,9 +2505,14 @@ function header(b) {
 function bnav(nav, b) {
   const D = desk(), prim = D ? nav : nav.slice(0, 4), more = D ? [] : nav.slice(4), mb = more.reduce((x, k) => x + (b[k] || 0), 0);
   const btn = k => `<button class="${V.tab === k ? "on" : ""}" data-a="go" data-v="${k}" ${V.tab === k ? 'aria-current="page"' : ""}>${ico(SEC[k][1])}<span>${k === "moi" ? "Moi" : SEC[k][0]}</span>${b[k] ? `<i class="bd">${b[k]}</i>` : ""}</button>`;
-  return `<nav class="bnav" aria-label="Navigation principale" style="--el:${elapsed(V.secT)}ms"><div class="in">${prim.map(btn).join("")}
+  return `<nav class="bnav" aria-label="Navigation principale" style="--el:${elapsed(V.secT)}ms">${D ? `<div class="sb-who"><div class="avatar">${esc(S.me.name[0])}</div><div style="min-width:0"><b>${esc(S.me.name)}</b><span class="mu">${ROLES[ROLE()]}${S.me.head ? " · ★ Cheffe" : ""} · ${esc(S.bar.name)}</span></div></div>` : ""}<div class="in">${prim.map(btn).join("")}
     <button class="${more.includes(V.tab) ? "on" : ""}" data-a="menu" aria-label="Toutes les rubriques">${ico("menu")}<span>Menu</span>${mb ? `<i class="bd">${mb}</i>` : ""}</button></div>
-    ${D ? `<p class="kbd-hint">Raccourcis : <kbd>/</kbd> chercher${ROLE() === "caisse" ? " · <kbd>N</kbd> vente au comptoir" : ""} · <kbd>1</kbd>–<kbd>9</kbd> rubriques · <kbd>Échap</kbd> fermer</p>` : ""}</nav>`;
+    ${D ? `<div class="sb-foot"><div class="between"><span class="mu">Code du bar</span><b class="num" style="letter-spacing:.12em">${esc(S.bar.code)}</b></div>
+      <div class="between"><span class="mu">Connexion</span><span class="net ${V.online ? "" : "off"}"><i></i>${V.online ? "En ligne" : "Hors ligne"}${V.outbox.length ? ` · ${V.outbox.length} en attente` : ""}</span></div>
+      <div class="row" style="gap:6px">${themeBtn()}<button class="btn ghost sm" data-a="notifTest">${ico("alert")} Son</button></div>
+      ${window.__install ? `<button class="btn soft sm" data-a="install">${ico("dl")} Installer sur cet ordinateur</button>` : ""}
+      <p class="kbd-hint">Raccourcis : <kbd>/</kbd> chercher${ROLE() === "caisse" ? " · <kbd>N</kbd> vente au comptoir" : ""} · <kbd>1</kbd>–<kbd>9</kbd> rubriques · <kbd>Échap</kbd> fermer</p>
+      <button class="btn bad sm sb-out" data-a="logout">${ico("out")} Se déconnecter</button></div>` : ""}</nav>`;
 }
 function drawer(nav, b) {
   const q = V.f.gq || "";
