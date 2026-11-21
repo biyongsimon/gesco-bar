@@ -1500,14 +1500,28 @@ async function enterApp() {
     if (e.net && snap) { S = snap; V.online = false; V.outbox.forEach(applyLocal); toast("Hors ligne : dernières données affichées. Vos tickets seront envoyés au retour du réseau."); }
     else { await logout(true); toast(e.message, "err"); return; }
   }
-  V.tab = navFor()[0];
+  V.tab = navFor()[0]; setTimeout(pushSub, 1500);
   try { const qp = new URLSearchParams(location.search); if (qp.get("kds")) LS.set("gesco-kds", 1); const qt = qp.get("tab"); if (qt && navFor().includes(qt)) V.tab = qt; } catch (e) {}
   V.kds = !!LS.get("gesco-kds", 0) && KDS_OK() && !!S.bar.kitchen_on; if (V.kds) { V.tab = "kitchen"; setTimeout(kdsWake, 500); }
   V.secT = Date.now(); V.menu = false; notifyNew(); lazyLoad(); V.rea = null; A.reaLoad(true);
   render(); flush(); setTimeout(avisCheck, 6000);
   try { const sp = (S.subs || []).find(x => x.status === "en_attente" && x.channel === "notchpay"); if (sp && B.subStatus) subWatch(sp.id); } catch (e) {}
 }
+async function pushSub() {
+  try {
+    if (CFG.mode !== "live" || !("PushManager" in window) || !navigator.serviceWorker || Notification.permission !== "granted" || !S) return;
+    const reg = await navigator.serviceWorker.ready; let sub = await reg.pushManager.getSubscription();
+    if (!sub) { const r = await fetch(CFG.url + "/functions/v1/gesco-push", { method: "POST", headers: { "Content-Type": "application/json", apikey: CFG.key }, body: JSON.stringify({ action: "key" }) }).then(x => x.json());
+      const k = r.key.replace(/-/g, "+").replace(/_/g, "/"), raw = atob(k + "=".repeat((4 - k.length % 4) % 4));
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: Uint8Array.from(raw, c => c.charCodeAt(0)) }); }
+    const j = sub.toJSON(); await B.rpc("gb_push_register", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_ua: navigator.userAgent.slice(0, 200) });
+    V.pushOk = true;
+  } catch (e) { V.pushOk = false; console.warn("push", e); }
+}
+async function pushUnsub() { try { if (CFG.mode !== "live" || !navigator.serviceWorker) return; const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
+  if (sub) { await B.rpc("gb_push_unregister", { p_endpoint: sub.endpoint }).catch(() => {}); await sub.unsubscribe(); } } catch (e) {} }
 async function logout(silent) {
+  await pushUnsub();
   try { await B.logout(); } catch (e) {}
   V.screen = "login"; S = null; LS.del(SNAP); LS.del(LKH); V.locked = false; ANIM.login = 0; ANIM.app = 0; V.open = {}; V.f = {}; V.modal = null; V.rev = null; V.vres = null; V.outbox = []; saveOutbox();
   V.pin = ""; V.pick = null; V.list = null; V.ltab = "staff"; V.menu = false; V.stats = null; V.acc = null; V.wk = 0; V.ntf = null; SEEN = null; if (!silent) toast("Vous êtes déconnecté.");
@@ -1565,7 +1579,7 @@ let lastAct = Date.now();
 async function pinHash(id, pin) { const t = "gesco|" + id + "|" + pin;
   try { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join(""); }
   catch (e) { let h = 5381; for (const c of t) h = ((h << 5) + h + c.charCodeAt(0)) | 0; return "d" + (h >>> 0).toString(16); } }
-const touchAct = () => { if (!V.locked) lastAct = Date.now(); };
+const touchAct = () => { if (!V.locked) { lastAct = Date.now(); if (!touchAct.t || lastAct - touchAct.t > 10000) { touchAct.t = lastAct; LS.set("gesco-la", lastAct); } } };
 ["pointerdown", "keydown", "touchstart", "wheel", "scroll"].forEach(ev => addEventListener(ev, touchAct, { passive: true, capture: true }));
 // Application rouverte après plus d'une minute en arrière-plan : retour à la première rubrique de l'espace
 document.addEventListener("visibilitychange", () => {
@@ -3310,8 +3324,9 @@ function cSettings() {
 /* ═══════════════ Actions : menu, recherche, planning, présences, paie ═══════════════ */
 A.menu = () => { V.menu = !V.menu; if (V.menu) V.menuT = Date.now(); render(); };
 A.ntfClose = () => { V.ntf = null; render(); };
-A.notifOn = async () => { LS.set("gesco-ntf-ask", 1); try { const p = await Notification.requestPermission(); chime("ok");
-  toast(p === "granted" ? "Notifications activées sur ce téléphone." : "Notifications refusées : vous les entendrez seulement application ouverte.", p === "granted" ? "" : "err"); } catch (e) { toast("Notifications système indisponibles ici : le son et l’alerte restent actifs dans l’application.", "err"); } render(); };
+A.notifOn = async () => { LS.set("gesco-ntf-ask", 1); if (/iPhone|iPad/.test(navigator.userAgent) && !("PushManager" in window)) return toast("Sur iPhone : installez d’abord GesCo (Partager → « Sur l’écran d’accueil »), ouvrez-le depuis l’icône, puis activez les notifications.", "err");
+  try { const p = await Notification.requestPermission(); chime("ok"); if (p === "granted") pushSub();
+  toast(p === "granted" ? "Notifications activées : elles arrivent même application fermée." : "Notifications refusées : vous les entendrez seulement application ouverte.", p === "granted" ? "" : "err"); } catch (e) { toast("Notifications système indisponibles ici : le son et l’alerte restent actifs dans l’application.", "err"); } render(); };
 A.notifLater = () => { LS.set("gesco-ntf-ask", 1); render(); };
 A.notifTest = () => notify("ok", "Test du générique", "Voici le son de vos notifications GesCo Bar.");
 A.menuClose = () => { V.menu = false; V.f.gq = ""; render(); };
@@ -3604,7 +3619,9 @@ if (/\.netlify\.app$/.test(location.hostname)) document.body.classList.add("hb")
   if (barParam) { V.code = barParam.trim().toUpperCase(); LS.set("gesco-code", V.code); V.ltab = "staff";
     try { history.replaceState(null, "", location.pathname); } catch (e) {} }
   try { V.screen = (await B.init()) ? "app" : "login"; } catch (e) { V.screen = "login"; }
-  if (V.screen === "app") await enterApp(); else { render(); if (barParam) A.loadStaff(); }
+  if (V.screen === "app") { const la = +LS.get("gesco-la", 0); await enterApp(); if (S && LS.get(LKH, null) && la && Date.now() - la > IDLE_MS && !kdsActive()) lockNow(); }
+  else { render(); if (barParam) A.loadStaff(); }
+  try { if (location.search) history.replaceState(null, "", location.pathname); } catch (e) {}
 })();
 </script>
 
