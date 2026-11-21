@@ -150,6 +150,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
 .pt.on{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 10%,var(--surface));box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 25%,transparent)}
 .pthumb{width:44px;height:58px;flex:none;display:flex;align-items:flex-end;justify-content:center;border-radius:10px;background:var(--sunk);padding:3px;border:0;cursor:pointer}.pthumb img,.pthumb svg{height:100%;width:auto;max-width:100%;object-fit:contain}
 @media (prefers-reduced-motion:reduce){.pcard.bump,.pcard.bump .pi img,.pcard.bump .pi svg,.pcard.bump .pn,.pcard.bump::after,.pcard .fly{animation:none!important}}
+.rea{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);align-items:flex-start}.rea:last-child{border-bottom:0}.rea .pthumb{cursor:default}
 .prow{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:10px}
 .prow.on{background:color-mix(in srgb,var(--amber) 14%,transparent)}
 .prow .pn{flex:1;min-width:0}
@@ -702,6 +703,29 @@ function DemoBackend() {
       const p = prod(p_product); if (p_unit_cost != null) p.cost = +p_unit_cost; p.stock += p_qty; move(c, p.id, null, p_qty, "appro"); db.moves[0].unit_cost = p.cost || 0;
       log(c, "approvisionnement", { produit: p.name, quantite: p_qty, montant: p_qty * (p.cost || 0) });
     },
+    gb_reappro({ p_days }) { const c = ctx(); if (!["caisse", "pdg", "directeur"].includes(c.role)) E("Action réservée à la caisse et à la direction.");
+      const days = Math.min(60, Math.max(1, +p_days || 7)), since = Date.now() - 14 * 864e5, win = 3; // démo : rythme d'exemple + ventes réelles du jour
+      const sold = {}; db.tickets.filter(t => !["draft", "cancelled"].includes(t.status) && new Date(t.created_at) > since).forEach(t => t.items.forEach(i => { sold[i.product_id] = (sold[i.product_id] || 0) + i.qty; }));
+      const RY = { "Castel": 9, "33 Export": 7, "Guinness": 5, "Mützig": 3, "Beaufort": 3, "Orijin": 4, "Coca": 5, "Top": 2, "Heineken": 2, "Petite Guinness": 3, "Tangui": 3, "Supermont": 2, "Booster": 1.5, "Vimto": 1, "Planet": 1.5, "Malta": 1 };
+      const items = db.products.filter(p => !p.parent_id && p.active).map(p => { const kids = db.products.filter(g => g.parent_id === p.id), rk = Object.keys(RY).find(k => p.name.startsWith(k));
+        const vendu = (sold[p.id] || 0) + kids.reduce((a, g) => a + (sold[g.id] || 0) / (g.doses || 1), 0) + (rk ? RY[rk] * win : 0);
+        const en_main = db.holdings.filter(h => h.product_id === p.id).reduce((a, h) => a + Math.max(0, h.qty), 0), verres = kids.reduce((a, g) => a + g.stock / (g.doses || 1), 0);
+        const dispo = p.stock + en_main + verres, pj = vendu / win;
+        return { id: p.id, stock: p.stock, en_main, vendu: Math.round(vendu * 10) / 10, par_jour: Math.round(pj * 100) / 100, dispo: Math.round(dispo * 10) / 10,
+          jours: vendu > 0 ? Math.round(dispo / pj * 10) / 10 : null, conseil: Math.max(0, Math.ceil(pj * days - dispo)), cout: p.cost || 0 }; });
+      return { items, fenetre: win, jours_couverts: days }; },
+    gb_po_create({ p_supplier, p_phone, p_items }) { const c = ctx(); caisse(c); db.pos = db.pos || [];
+      const items = (p_items || []).filter(i => +i.q > 0).map(i => { const p = prod(i.p); return { p: p.id, n: p.name, q: Math.round(+i.q), c: Math.max(0, +(i.c ?? p.cost) || 0) }; });
+      if (!items.length) E("Ajoutez au moins une quantité.");
+      const po = { id: uuid(), number: db.pos.length + 1, supplier: (p_supplier || "").trim() || null, supplier_phone: String(p_phone || "").replace(/[^0-9+]/g, "") || null, status: "envoye", items, total: items.reduce((a, i) => a + i.q * i.c, 0), created_by: c.id, created_at: now() };
+      db.pos.push(po); log(c, "bon_commande", { numero: po.number, fournisseur: po.supplier, montant: po.total }); return { id: po.id, number: po.number }; },
+    gb_po_receive({ p_id, p_items }) { const c = ctx(); caisse(c); const po = (db.pos || []).find(x => x.id === p_id) || E("Bon de commande introuvable.");
+      if (po.status !== "envoye") E("Ce bon de commande est déjà traité."); const got = [];
+      (p_items || po.items).forEach(i => { const q = Math.round(+i.q || 0); if (q <= 0) return; const p = prod(i.p), uc = +i.c > 0 ? +i.c : (p.cost || 0);
+        p.stock += q; if (+i.c > 0) p.cost = +i.c; move(c, p.id, null, q, "appro"); db.moves[0].unit_cost = uc; got.push({ p: p.id, n: p.name, q, c: uc }); });
+      Object.assign(po, { status: "recu", items: got, total: got.reduce((a, i) => a + i.q * i.c, 0), received_at: now() });
+      log(c, "livraison_recue", { numero: po.number, fournisseur: po.supplier, montant: po.total }); },
+    gb_po_cancel({ p_id }) { const c = ctx(); caisse(c); const po = (db.pos || []).find(x => x.id === p_id && x.status === "envoye") || E("Bon de commande introuvable ou déjà traité."); po.status = "annule"; log(c, "bon_commande_annule", { numero: po.number }); },
     gb_product_save({ p_id, p_name, p_category, p_price, p_stock, p_active, p_unit, p_parent, p_doses }) {
       const c = ctx(); caisse(c); p_name = (p_name || "").trim(); if (!p_name) E("Donnez un nom au produit.");
       if (p_price === "" || p_price == null || +p_price < 0) E("Indiquez un prix valide.");
@@ -1076,6 +1100,7 @@ function DemoBackend() {
     async assistHistory() { return { thread: "demo-thread", status: null, messages: LS.get(KEY + "-help-" + (S && S.me ? S.me.id : "anon"), []) }; },
     async uploadProof(file) { const c = ctx(); mgr(c); return db.bar.id + "/abonnement-demo-" + (file.name || "capture"); },
     async uploadProductPhoto(blob) { const c = ctx(); caisse(c); return await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ko(new Error("Photo illisible.")); r.readAsDataURL(blob); }); },
+    async listPO() { db = LS.get(KEY) || db; return JSON.parse(JSON.stringify((db.pos || []).slice().reverse())); },
     async productImage(id, image) { const c = ctx(); caisse(c); const p = db.products.find(x => x.id === id); if (!p) E("Produit introuvable."); p.image = image || null; save(); log(c, "produit_photo", { produit: p.name }); },
     async uploadDoc(file) { const c = ctx(); pdg(c); return db.bar.id + "/demo-" + (file.name || "piece"); },
     async staffCreate(name, role, pin) {
@@ -1168,6 +1193,7 @@ function LiveBackend() {
       const { error } = await sb.storage.from("produits").upload(path, blob, { contentType: "image/webp", upsert: false });
       if (error) throw bizErr("Envoi de la photo impossible : " + error.message); return path; },
     async productImage(id, image) { return this.rpc("gb_product_image", { p_id: id, p_image: image }); },
+    async listPO() { const { data, error } = await sb.from("purchase_orders").select("*").order("created_at", { ascending: false }).limit(20); if (error) throw toErr(error); return data || []; },
     async uploadProof(file) {
       const { data: bars } = await sb.from("bars").select("id").limit(1); if (!bars || !bars.length) throw bizErr("Bar introuvable.");
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, ""), path = `${bars[0].id}/abonnement-${Date.now()}.${ext}`;
@@ -1261,6 +1287,7 @@ async function refresh() {
   render();
 }
 B.onChange(() => refreshSoon());
+setInterval(() => { if (V.screen === "app" && document.visibilityState === "visible") A.reaLoad(true); }, 600000);
 setInterval(() => { if (V.screen === "app" && document.visibilityState === "visible") { V.outbox.length ? flush() : refresh(); } }, 25000);
 addEventListener("online", () => { V.online = true; flush(); refreshSoon(10); });
 addEventListener("offline", () => { V.online = false; render(); });
@@ -1274,7 +1301,7 @@ async function enterApp() {
     if (e.net && snap) { S = snap; V.online = false; V.outbox.forEach(applyLocal); toast("Hors ligne : dernières données affichées. Vos tickets seront envoyés au retour du réseau."); }
     else { await logout(true); toast(e.message, "err"); return; }
   }
-  V.tab = navFor()[0]; V.secT = Date.now(); V.menu = false; notifyNew(); lazyLoad();
+  V.tab = navFor()[0]; V.secT = Date.now(); V.menu = false; notifyNew(); lazyLoad(); V.rea = null; A.reaLoad(true);
   render(); flush(); setTimeout(avisCheck, 6000);
   try { const sp = (S.subs || []).find(x => x.status === "en_attente" && x.channel === "notchpay"); if (sp && B.subStatus) subWatch(sp.id); } catch (e) {}
 }
@@ -1381,7 +1408,7 @@ A.close = () => { V.modal = null; render(); };
 A.okModal = () => { const m = V.modal; V.modal = null; render(); if (m && A[m.a]) A[m.a](m.d || {}); };
 A.go = d => { V.menu = false; V.modal = null; V.f.gq = ""; if (V.tab !== d.v) { V.tab = d.v; V.secT = Date.now(); V.top = 1; } lazyLoad(); render(); if (V.top) { V.top = 0; try { scrollTo({ top: 0 }); } catch (e) {} } };
 A.tab = A.go;
-function lazyLoad() { const k = V.tab; if ((k === "rev" || k === "home") && isPdg()) A.loadRev(); if (k === "acc") A.loadAcc(); if ((k === "pres" || k === "paie") && isMgr()) A.loadStats(); }
+function lazyLoad() { const k = V.tab; if (k === "stock" && (!V.rea || !V.rea.at || Date.now() - V.rea.at > 60000)) A.reaLoad(); if ((k === "rev" || k === "home") && isPdg()) A.loadRev(); if (k === "acc") A.loadAcc(); if ((k === "pres" || k === "paie") && isMgr()) A.loadStats(); }
 A.wf = d => { V.wf = d.v; render(); };
 A.tog = d => { V.open[d.id] = !V.open[d.id]; render(); };
 A.togSales = d => { V.salesOpen[d.id] = !V.salesOpen[d.id]; render(); };
@@ -1696,6 +1723,96 @@ document.addEventListener("change", e => { const f = e.target; if (f.id !== "pim
   const file = f.files[0], pid = f.dataset.p;
   run(async () => { if (!/^image\//.test(file.type)) throw bizErr("Choisissez une image."); if (file.size > 15728640) throw bizErr("Photo trop lourde (15 Mo maximum).");
     const blob = await shrinkPhoto(file), path = await B.uploadProductPhoto(blob); await B.productImage(pid, path); V.modal = null; await refresh(); toast("Photo du produit enregistrée."); }); });
+/* ── Réapprovisionnement intelligent : rythme de vente réel → jours restants, quantité conseillée, bon de commande ── */
+const packOf = p => { const u = p.unit || "bouteille", n = nrm(p.name), c = p.category || "";
+  if (u === "canette") return 24; if (u !== "bouteille") return 1;
+  if (/Spiritueux|Liqueur|Vin|Champagne/.test(c)) return 1;
+  if (/Eau/.test(c)) return / 1 5 ?l | 1 5l | 1l5 /.test(n) || / 1 5 /.test(n) ? 6 : 12;
+  if (/ (25|30|33|35) ?cl /.test(n)) return 24;
+  return 12; };
+const packName = p => /Bière/.test(p.category || "") ? "casier" : "pack";
+const packTxt = (p, q) => { const k = packOf(p); if (k <= 1 || !q) return ""; const n = Math.floor(q / k), r = q % k;
+  return (n ? `${n} ${packName(p)}${n > 1 ? "s" : ""} de ${k}` : "") + (r ? `${n ? " + " : ""}${r} bouteille${r > 1 ? "s" : ""}` : ""); };
+const REA_LV = [["ok", "Suffisant"], ["sky", "À prévoir"], ["warn", "Bientôt"], ["bad", "Urgent"]];
+function reaRows() {
+  const d = V.rea && V.rea.data; if (!d) return [];
+  return d.items.map(x => ({ ...x, p: S.products.find(p => p.id === x.id) })).filter(x => x.p).map(x => {
+    const pk = packOf(x.p), sug = x.conseil > 0 ? Math.ceil(x.conseil / pk) * pk : 0;
+    const lvl = x.par_jour > 0 && x.dispo <= 0 ? 3 : x.jours != null && x.jours <= 2 ? 3 : x.jours != null && x.jours <= 5 ? 2 : sug ? 1 : 0;
+    return { ...x, pack: pk, sug, lvl }; }).sort((a, b) => b.lvl - a.lvl || (a.jours ?? 1e9) - (b.jours ?? 1e9) || a.p.name.localeCompare(b.p.name));
+}
+A.reaLoad = async quiet => { if (!S || !["caisse", "pdg"].includes(ROLE())) return; V.rea = V.rea || { days: 7 };
+  try { const [r, pos] = await Promise.all([B.rpc("gb_reappro", { p_days: V.rea.days }), B.listPO()]); V.rea.data = r; V.rea.err = ""; V.pos = pos || [];
+    V.rea.urgent = reaRows().filter(x => x.lvl === 3).length; V.rea.at = Date.now(); }
+  catch (e) { V.rea.err = e.message; }
+  if (!quiet || V.tab === "stock") render(); };
+A.reaDays = d => { V.rea.days = +d.v; Object.keys(V.f).filter(k => k.startsWith("rq_")).forEach(k => delete V.f[k]); V.rea.data = null; render(); A.reaLoad(); };
+A.reaAll = () => { V.rea.all = !V.rea.all; render(); };
+const supKey = () => "gesco-sup-" + (S.bar ? S.bar.id : "");
+function vReappro() {
+  const R = V.rea || {}, rows = reaRows(), d = R.data;
+  if (!d) return `<div class="card stack"><h3>Réapprovisionnement intelligent</h3><div class="mu">${R.err ? esc(R.err) : '<span class="spin"></span> Calcul du rythme de vente…'}</div></div>`;
+  const need = rows.filter(x => x.sug > 0), shown = R.all ? rows : need, sup = LS.get(supKey(), {});
+  const when = j => j == null ? "pas de vente récente" : j < 1 ? "rupture aujourd’hui" : `rupture ${j < 7 ? "vers " + new Date(Date.now() + j * 864e5).toLocaleDateString("fr-FR", { weekday: "long" }) + ` (dans ${Math.round(j)} j)` : `dans ${Math.round(j)} jours`}`;
+  const nb = n => (+n).toLocaleString("fr-FR", { maximumFractionDigits: 1 });
+  const row = x => { const q = V.f["rq_" + x.id] ?? x.sug;
+    return `<div class="rea"><span class="pthumb">${pImg(x.p)}</span><div class="grow" style="min-width:0">
+      <div class="between" style="gap:8px"><b>${esc(x.p.name)}</b><span class="pill ${REA_LV[x.lvl][0]}">${REA_LV[x.lvl][1]}</span></div>
+      <div class="mu" style="font-size:13px">${nb(x.stock)} en stock${x.en_main ? ` + ${nb(x.en_main)} chez les serveuses` : ""} · ${x.par_jour > 0 ? `≈ ${nb(x.par_jour)} vendue(s) par jour · ${when(x.jours)}` : "pas de vente ces derniers jours"}</div>
+      <div class="row" style="margin-top:6px;align-items:center"><label class="f" style="flex:0 1 130px" for="rq_${x.id}">À commander<input id="rq_${x.id}" type="number" inputmode="numeric" min="0" data-k="rq_${x.id}" value="${esc(q)}"></label>
+        <span class="mu" style="font-size:12.5px;flex:1 1 120px">${x.sug ? `Conseil : ${x.sug}${packTxt(x.p, x.sug) ? " = " + packTxt(x.p, x.sug) : ""}` : x.pack > 1 ? `${packName(x.p)} de ${x.pack}` : ""}</span></div></div></div>`; };
+  return `<div class="card stack" id="rea_card"><div class="between"><h3>Réapprovisionnement intelligent</h3><button class="btn ghost sm" data-a="reaLoad">↻ Recalculer</button></div>
+    <p class="mu" style="margin:0">GesCo calcule le rythme de vente réel de chaque boisson (${nb(d.fenetre)} derniers jours), le stock du comptoir et celui des serveuses, puis propose quoi commander pour tenir ${d.jours_couverts} jours. Les quantités sont arrondies au casier ou au pack.</p>
+    <div class="catsc" role="group" aria-label="Durée à couvrir">${[3, 7, 14].map(n => `<button type="button" data-a="reaDays" data-v="${n}" class="${d.jours_couverts === n ? "on" : ""}">Tenir ${n} jours</button>`).join("")}</div>
+    ${need.length ? `<div class="note ${need.some(x => x.lvl === 3) ? "bad" : "warn"}"><b>${need.length} produit(s) à commander</b>${need.filter(x => x.lvl === 3).length ? ` · dont ${need.filter(x => x.lvl === 3).length} urgent(s)` : ""}</div>`
+      : `<div class="note ok">Le stock suffit pour ${d.jours_couverts} jours au rythme actuel. 👍</div>`}
+    <div class="list">${shown.map(row).join("") || ""}</div>
+    <button class="btn ghost sm" data-a="reaAll">${R.all ? "Ne montrer que les produits à commander" : `Voir tous les produits (${rows.length})`}</button>
+    <div class="sub stack"><b>Bon de commande</b>
+      <div class="row"><label class="f grow" for="po_sup">Fournisseur (dépôt)<input id="po_sup" data-k="po_sup" value="${esc(V.f.po_sup ?? sup.n ?? "")}" placeholder="Ex. Dépôt Ngousso"></label>
+      <label class="f grow" for="po_tel">WhatsApp du fournisseur<input id="po_tel" type="tel" inputmode="tel" data-k="po_tel" value="${esc(V.f.po_tel ?? sup.t ?? "")}" placeholder="6XX XX XX XX"></label></div>
+      <button class="btn" data-a="poCreate">Créer le bon de commande</button>
+      <p class="mu" style="margin:0">Le bon est enregistré, puis envoyé au fournisseur sur WhatsApp. À la livraison, touchez « Livraison reçue » : le stock se met à jour tout seul.</p></div></div>
+    ${vPOs()}`;
+}
+const PO_ST = { envoye: ["warn", "Envoyé"], recu: ["ok", "Reçu"], annule: ["", "Annulé"] };
+function poText(po) {
+  const lines = (po.items || []).map(i => { const p = S.products.find(x => x.id === i.p) || { name: i.n, category: "" }, pt = packTxt(p, i.q); return `• ${i.n} : ${i.q}${pt ? ` (${pt})` : ""}`; });
+  return `Bonjour${po.supplier ? " " + po.supplier : ""}, voici le bon de commande N°${po.number} de ${S.bar.name}${S.bar.city ? " (" + S.bar.city + ")" : ""} :\n${lines.join("\n")}\nMerci de nous confirmer la livraison.`;
+}
+const waLink = (tel, txt) => { let t = String(tel || "").replace(/\D/g, ""); if (/^6\d{8}$/.test(t)) t = "237" + t; return `https://wa.me/${t}?text=${encodeURIComponent(txt)}`; };
+function vPOs() {
+  const pos = V.pos || []; if (!pos.length) return "";
+  return `<div class="card stack"><h3>Bons de commande</h3><div class="list">${pos.slice(0, 15).map(po => { const st = PO_ST[po.status] || ["", po.status], rcv = V.poR === po.id;
+    return `<div class="stack" style="padding:10px 0;gap:6px"><div class="between"><div><b>N°${po.number}${po.supplier ? " · " + esc(po.supplier) : ""}</b>
+      <div class="mu" style="font-size:13px">${new Date(po.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} · ${(po.items || []).length} produit(s) · ${(po.items || []).slice(0, 3).map(i => `${i.q} ${esc(i.n)}`).join(", ")}${(po.items || []).length > 3 ? "…" : ""}${po.total ? " · " + F(po.total) : ""}</div></div>
+      <span class="pill ${st[0]}">${st[1]}</span></div>
+      ${po.status === "envoye" && !rcv ? `<div class="row"><a class="btn soft sm" href="${waLink(po.supplier_phone, poText(po))}" target="_blank" rel="noopener">${ico("send")} Envoyer sur WhatsApp</a><button class="btn sm" data-a="poRecv" data-id="${po.id}">Livraison reçue</button><button class="btn ghost sm" data-a="poCancel" data-id="${po.id}">Annuler</button></div>` : ""}
+      ${rcv ? `<div class="sub stack"><b>Ce qui a été livré</b><p class="mu" style="margin:0">Corrigez si le fournisseur a livré une autre quantité ou un autre prix. Le stock et la compta sont mis à jour automatiquement.</p>
+        ${(po.items || []).map((i, k) => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;padding:8px 0;border-top:1px dashed var(--line)"><b style="grid-column:1/-1">${esc(i.n)}</b>
+          <label class="f" for="pr_q_${k}">Quantité<input id="pr_q_${k}" type="number" inputmode="numeric" min="0" data-k="pr_q_${k}" value="${esc(V.f["pr_q_" + k] ?? i.q)}"></label>
+          <label class="f" for="pr_c_${k}">Prix d’achat (FCFA)<input id="pr_c_${k}" type="number" inputmode="numeric" min="0" data-k="pr_c_${k}" value="${esc(V.f["pr_c_" + k] ?? (i.c || ""))}" placeholder="FCFA"></label></div>`).join("")}
+        <div class="row"><button class="btn ghost sm" data-a="poRecvX">Fermer</button><span class="grow"></span><button class="btn" data-a="poRecvGo" data-id="${po.id}">Valider la livraison</button></div></div>` : ""}</div>`; }).join("")}</div></div>`;
+}
+A.poCreate = () => run(async () => {
+  const rows = reaRows(), shown = V.rea.all ? rows : rows.filter(x => x.sug > 0);
+  const items = shown.map(x => ({ p: x.id, q: Math.max(0, Math.round(num("rq_" + x.id) ?? x.sug)), c: x.cout || null })).filter(i => i.q > 0);
+  if (!items.length) throw bizErr("Indiquez au moins une quantité à commander.");
+  const sup = (V.f.po_sup ?? LS.get(supKey(), {}).n ?? "").trim(), tel = (V.f.po_tel ?? LS.get(supKey(), {}).t ?? "").trim();
+  LS.set(supKey(), { n: sup, t: tel });
+  const r = await B.rpc("gb_po_create", { p_supplier: sup, p_phone: tel, p_items: items });
+  Object.keys(V.f).filter(k => k.startsWith("rq_")).forEach(k => delete V.f[k]);
+  await A.reaLoad(true); toast(`Bon de commande N°${r.number} créé. Touchez « Envoyer sur WhatsApp ».`);
+  setTimeout(() => { const e = document.querySelector('#rea_card ~ .card'); if (e) e.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80); });
+A.poRecv = d => { V.poR = d.id; Object.keys(V.f).filter(k => /^pr_[qc]_/.test(k)).forEach(k => delete V.f[k]); render(); };
+A.poRecvX = () => { V.poR = null; render(); };
+A.poRecvGo = d => run(async () => { const po = (V.pos || []).find(x => x.id === d.id); if (!po) return;
+  const items = po.items.map((i, k) => ({ p: i.p, q: Math.max(0, Math.round(num("pr_q_" + k) ?? i.q)), c: num("pr_c_" + k) ?? (i.c || null) }));
+  if (!items.some(i => i.q > 0)) throw bizErr("Indiquez au moins une quantité livrée.");
+  await B.rpc("gb_po_receive", { p_id: po.id, p_items: items }); V.poR = null;
+  await refresh(); await A.reaLoad(true); toast(`Livraison N°${po.number} enregistrée : stock mis à jour.`); });
+A.poCancel = d => ask("Annuler ce bon de commande ?", "Il restera visible dans la liste comme annulé. Le stock ne change pas.", "Annuler le bon", "poCancelGo", { id: d.id }, true);
+A.poCancelGo = d => run(async () => { await B.rpc("gb_po_cancel", { p_id: d.id }); await A.reaLoad(true); toast("Bon de commande annulé."); });
 function payBox(t) {
   const r = num("rcv_" + t.id), bills = [...new Set([t.total, ...[500, 1000, 2000, 5000, 10000].map(b => Math.ceil(t.total / b) * b)])].filter(b => b >= t.total).sort((a, b) => a - b).slice(0, 5);
   const ch = r != null && r >= t.total ? r - t.total : null;
@@ -1916,7 +2033,7 @@ function badges() {
   const act = S.tickets.filter(t => t.status !== "cancelled"), b = {};
   const alerts = act.filter(t => t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo") || t.change_status === "pending").length;
   const pend = leavesToDecide().length;
-  b.direct = ROLE() === "caisse" ? alerts : 0; b.pres = isMgr() ? pend : 0;
+  b.direct = ROLE() === "caisse" ? alerts : 0; b.stock = V.rea && V.rea.urgent || 0; b.pres = isMgr() ? pend : 0;
   b.sup = lateOrders().length + pend; b.home = pend;
   if (isMgr() && typeof planState === "function") { const ps = planState(); b.abo = ps.expired || (ps.days != null && ps.days <= 7) ? 1 : 0; }
   const sh = shiftOf(S.me.id, today()), a = attOf(S.me.id, today());
@@ -2319,6 +2436,7 @@ function cStock() {
         <div class="row"><button class="btn soft sm" data-a="pimg" data-p="${p.id}">${ico("camera")} Photo</button><button class="btn ghost sm" data-a="togP" data-p="${p.id}">${p.active ? "Masquer de la carte" : "Remettre sur la carte"}</button><span class="grow"></span><button class="btn sm" data-a="saveP" data-p="${p.id}">Enregistrer</button></div></div>` : ""}</div>`; };
   const npUnit = V.f.np_u || "bouteille";
   return `<div class="stack"><datalist id="gb-cats">${[...new Set([...CATS, ...cats])].map(c => `<option value="${esc(c)}"></option>`).join("")}</datalist>
+    ${["caisse", "pdg"].includes(ROLE()) ? vReappro() : ""}
     <div class="card stack"><div class="between"><h3>Inventaire (frigo et réserve)</h3><button class="btn ${V.inv ? "ghost" : "soft"} sm" data-a="invToggle">${V.inv ? "Fermer" : "Faire l’inventaire"}</button></div>
       <p class="mu" style="margin:0">Comptez ce qu’il reste réellement (hors bouteilles chez les serveuses) et saisissez-le. Les écarts sont corrigés et tracés dans le journal.</p>
       ${V.inv ? `<div class="list">${S.products.filter(p => p.active).map(p => `<div class="between" style="padding:6px 0"><span>${esc(p.name)} <span class="mu">· prévu ${p.stock}</span></span>
@@ -2657,7 +2775,7 @@ function cDay(DT) {
 }
 const ACT = { ticket_supprime: "Ticket supprimé", ticket_modifie: "Ticket modifié après envoi", annulation_demandee: "Annulation demandée", annulation_refusee: "Annulation refusée", ticket_rouvert: "Ticket rouvert",
   versement: "Versement reçu", momo_confirme: "Mobile Money confirmé", monnaie_remise: "Monnaie remise", bon_emis: "Bon émis", bon_verifie: "Bon vérifié", bon_utilise: "Bon utilisé",
-  approvisionnement: "Approvisionnement", produit_ajoute: "Boisson ajoutée", produit_modifie: "Boisson modifiée", produit_photo: "Photo de produit changée", equipe_modifiee: "Équipe modifiée", pin_change: "PIN modifié",
+  approvisionnement: "Approvisionnement", produit_ajoute: "Boisson ajoutée", produit_modifie: "Boisson modifiée", produit_photo: "Photo de produit changée", bon_commande: "Bon de commande envoyé", livraison_recue: "Livraison reçue (stock mis à jour)", bon_commande_annule: "Bon de commande annulé", equipe_modifiee: "Équipe modifiée", pin_change: "PIN modifié",
   reglages_modifies: "Réglages modifiés", journee_cloturee: "Journée clôturée", bar_cree: "Bar créé", membre_ajoute: "Membre ajouté", pin_bloque: "PIN bloqué après 5 essais", bouteille_ouverte: "Bouteille ouverte au verre", depense_ajoutee: "Dépense ajoutée", depense_supprimee: "Dépense supprimée", inventaire: "Inventaire du stock", identite_bar: "Identité légale mise à jour", presence: "Présence pointée", permission_demandee: "Permission demandée",
   permission_acceptee: "Permission acceptée", permission_refusee: "Permission refusée", planning_copie: "Planning copié", salaire_paye: "Salaire payé", salaire_annule: "Paiement de salaire annulé" };
 const KEYS = { ticket: "N°", client: "client", total: "total", produit: "boisson", variation: "variation", serveuse: "serveuse", attendu: "attendu", recu: "reçu", ecart: "écart", tickets: "tickets",

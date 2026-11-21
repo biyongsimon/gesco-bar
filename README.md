@@ -136,3 +136,8 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Photothèque GesCo (`app/public/produits/*.webp`, 19 photos détourées et améliorées) + bouteilles dessinées (Beaufort, Isenbeck, Tangui, Supermont, Opur, Fanta…) ; reconnaissance automatique d'après le nom du produit.
 - Stock → vignette du produit : choisir une photo de la photothèque ou prendre une photo (réduite en WebP 480 px sur le téléphone, stockage public `produits/<bar>/…`).
 - Migration 015 : `products.image`, `gb_product_image`, compartiment `produits`.
+
+## v4.8 — Réapprovisionnement intelligent et bons de commande
+- Stock (caisse, PDG) : rythme de vente réel des 14 derniers jours (verres convertis en bouteilles), stock comptoir + bouteilles chez les serveuses → jours restants, niveau (Urgent / Bientôt / À prévoir), quantité conseillée arrondie au casier ou au pack, pour tenir 3, 7 ou 14 jours.
+- Bon de commande : enregistré (`purchase_orders`), envoyé au dépôt sur WhatsApp ; « Livraison reçue » met le stock et le prix d'achat à jour automatiquement (mouvements « appro »).
+- Pastille « Urgent » sur l'onglet Stock, recalcul toutes les 10 minutes. Migration 016 : `gb_reappro`, `gb_po_create`, `gb_po_receive`, `gb_po_cancel`.
