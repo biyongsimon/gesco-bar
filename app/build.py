@@ -29,7 +29,16 @@ doc = f"""<!doctype html>
 </head>
 <body>
 <div id="app">{body}
-<script>if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {{}});</script>
+<script>
+// Mise à jour automatique : dès qu'une nouvelle version est publiée, l'application se recharge toute seule (les tickets non envoyés restent gardés sur le téléphone).
+if ("serviceWorker" in navigator && location.protocol === "https:") {{
+  const had = !!navigator.serviceWorker.controller; let done = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {{ if (!had || done) return; done = true;
+    const go = () => {{ const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return setTimeout(go, 4000); location.reload(); }}; go(); }});
+  navigator.serviceWorker.register("sw.js").then(r => {{ setInterval(() => r.update().catch(() => {{}}), 15 * 60000);
+    document.addEventListener("visibilitychange", () => {{ if (document.visibilityState === "visible") r.update().catch(() => {{}}); }}); }}).catch(() => {{}});
+}}
+</script>
 </body>
 </html>
 """
