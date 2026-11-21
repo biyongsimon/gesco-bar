@@ -698,8 +698,9 @@ function DemoBackend() {
         const vendu = (sold[p.id] || 0) + kids.reduce((a, g) => a + (sold[g.id] || 0) / (g.doses || 1), 0) + (rk ? RY[rk] * win : 0);
         const en_main = db.holdings.filter(h => h.product_id === p.id).reduce((a, h) => a + Math.max(0, h.qty), 0), verres = kids.reduce((a, g) => a + g.stock / (g.doses || 1), 0);
         const dispo = p.stock + en_main + verres, pj = vendu / win;
-        return { id: p.id, stock: p.stock, en_main, vendu: Math.round(vendu * 10) / 10, par_jour: Math.round(pj * 100) / 100, dispo: Math.round(dispo * 10) / 10,
-          jours: vendu > 0 ? Math.round(dispo / pj * 10) / 10 : null, conseil: Math.max(0, Math.ceil(pj * days - dispo)), cout: p.cost || 0 }; });
+        const mini = p.reorder_min || 0;
+        return { id: p.id, stock: p.stock, en_main, vendu: Math.round(vendu * 10) / 10, par_jour: Math.round(pj * 100) / 100, dispo: Math.round(dispo * 10) / 10, min: mini,
+          jours: vendu > 0 ? Math.round(dispo / pj * 10) / 10 : null, conseil: Math.max(0, Math.ceil(pj * days + mini - dispo)), cout: p.cost || 0 }; });
       return { items, fenetre: win, jours_couverts: days }; },
     gb_po_create({ p_supplier, p_phone, p_items }) { const c = ctx(); caisse(c); db.pos = db.pos || [];
       const items = (p_items || []).filter(i => +i.q > 0).map(i => { const p = prod(i.p); return { p: p.id, n: p.name, q: Math.round(+i.q), c: Math.max(0, +(i.c ?? p.cost) || 0) }; });
@@ -712,6 +713,9 @@ function DemoBackend() {
         p.stock += q; if (+i.c > 0) p.cost = +i.c; move(c, p.id, null, q, "appro"); db.moves[0].unit_cost = uc; got.push({ p: p.id, n: p.name, q, c: uc }); });
       Object.assign(po, { status: "recu", items: got, total: got.reduce((a, i) => a + i.q * i.c, 0), received_at: now() });
       log(c, "livraison_recue", { numero: po.number, fournisseur: po.supplier, montant: po.total }); },
+    gb_product_rule({ p_id, p_min, p_pack }) { const c = ctx(); caisse(c); const p = prod(p_id);
+      if (p_min != null && (p_min < 0 || p_min > 100000)) E("Stock minimum invalide."); if (p_pack != null && (p_pack < 1 || p_pack > 500)) E("Taille du casier invalide.");
+      p.reorder_min = p_min || null; p.pack = p_pack || null; log(c, "regle_reappro", { produit: p.name, minimum: p_min, casier: p_pack }); },
     gb_po_cancel({ p_id }) { const c = ctx(); caisse(c); const po = (db.pos || []).find(x => x.id === p_id && x.status === "envoye") || E("Bon de commande introuvable ou déjà traité."); po.status = "annule"; log(c, "bon_commande_annule", { numero: po.number }); },
     gb_product_save({ p_id, p_name, p_category, p_price, p_stock, p_active, p_unit, p_parent, p_doses }) {
       const c = ctx(); caisse(c); p_name = (p_name || "").trim(); if (!p_name) E("Donnez un nom au produit.");
@@ -1711,7 +1715,7 @@ document.addEventListener("change", e => { const f = e.target; if (f.id !== "pim
   run(async () => { if (!/^image\//.test(file.type)) throw bizErr("Choisissez une image."); if (file.size > 15728640) throw bizErr("Photo trop lourde (15 Mo maximum).");
     const blob = await shrinkPhoto(file), path = await B.uploadProductPhoto(blob); await B.productImage(pid, path); V.modal = null; await refresh(); toast("Photo du produit enregistrée."); }); });
 /* ── Réapprovisionnement intelligent : rythme de vente réel → jours restants, quantité conseillée, bon de commande ── */
-const packOf = p => { const u = p.unit || "bouteille", n = nrm(p.name), c = p.category || "";
+const packOf = p => { if (+p.pack > 0) return +p.pack; const u = p.unit || "bouteille", n = nrm(p.name), c = p.category || "";
   if (u === "canette") return 24; if (u !== "bouteille") return 1;
   if (/Spiritueux|Liqueur|Vin|Champagne/.test(c)) return 1;
   if (/Eau/.test(c)) return / 1 5 ?l | 1 5l | 1l5 /.test(n) || / 1 5 /.test(n) ? 6 : 12;
@@ -1725,7 +1729,8 @@ function reaRows() {
   const d = V.rea && V.rea.data; if (!d) return [];
   return d.items.map(x => ({ ...x, p: S.products.find(p => p.id === x.id) })).filter(x => x.p).map(x => {
     const pk = packOf(x.p), sug = x.conseil > 0 ? Math.ceil(x.conseil / pk) * pk : 0;
-    const lvl = x.par_jour > 0 && x.dispo <= 0 ? 3 : x.jours != null && x.jours <= 2 ? 3 : x.jours != null && x.jours <= 5 ? 2 : sug ? 1 : 0;
+    let lvl = x.par_jour > 0 && x.dispo <= 0 ? 3 : x.jours != null && x.jours <= 2 ? 3 : x.jours != null && x.jours <= 5 ? 2 : sug ? 1 : 0;
+    if (x.min > 0 && x.dispo < x.min) lvl = Math.max(lvl, x.dispo <= x.min / 2 ? 3 : 2);
     return { ...x, pack: pk, sug, lvl }; }).sort((a, b) => b.lvl - a.lvl || (a.jours ?? 1e9) - (b.jours ?? 1e9) || a.p.name.localeCompare(b.p.name));
 }
 A.reaLoad = async quiet => { if (!S || !["caisse", "pdg"].includes(ROLE())) return; V.rea = V.rea || { days: 7 };
@@ -1735,6 +1740,11 @@ A.reaLoad = async quiet => { if (!S || !["caisse", "pdg"].includes(ROLE())) retu
   if (!quiet || V.tab === "stock") render(); };
 A.reaDays = d => { V.rea.days = +d.v; Object.keys(V.f).filter(k => k.startsWith("rq_")).forEach(k => delete V.f[k]); V.rea.data = null; render(); A.reaLoad(); };
 A.reaAll = () => { V.rea.all = !V.rea.all; render(); };
+A.ruleOpen = d => { V.ruleOpen = d.id; render(); };
+A.ruleX = () => { V.ruleOpen = null; render(); };
+A.ruleSave = d => run(async () => { const mn = num("rmin_" + d.id), pk = num("rpk_" + d.id);
+  await B.rpc("gb_product_rule", { p_id: d.id, p_min: mn && mn > 0 ? mn : null, p_pack: pk && pk > 0 ? pk : null }); V.ruleOpen = null;
+  ["rmin_", "rpk_"].forEach(k => delete V.f[k + d.id]); await refresh(); await A.reaLoad(true); toast("Règle enregistrée : elle s’applique au calcul de la commande."); });
 const supKey = () => "gesco-sup-" + (S.bar ? S.bar.id : "");
 function vReappro() {
   const R = V.rea || {}, rows = reaRows(), d = R.data;
@@ -1747,7 +1757,12 @@ function vReappro() {
       <div class="between" style="gap:8px"><b>${esc(x.p.name)}</b><span class="pill ${REA_LV[x.lvl][0]}">${REA_LV[x.lvl][1]}</span></div>
       <div class="mu" style="font-size:13px">${nb(x.stock)} en stock${x.en_main ? ` + ${nb(x.en_main)} chez les serveuses` : ""} · ${x.par_jour > 0 ? `≈ ${nb(x.par_jour)} vendue(s) par jour · ${when(x.jours)}` : "pas de vente ces derniers jours"}</div>
       <div class="row" style="margin-top:6px;align-items:center"><label class="f" style="flex:0 1 130px" for="rq_${x.id}">À commander<input id="rq_${x.id}" type="number" inputmode="numeric" min="0" data-k="rq_${x.id}" value="${esc(q)}"></label>
-        <span class="mu" style="font-size:12.5px;flex:1 1 120px">${x.sug ? `Conseil : ${x.sug}${packTxt(x.p, x.sug) ? " = " + packTxt(x.p, x.sug) : ""}` : x.pack > 1 ? `${packName(x.p)} de ${x.pack}` : ""}</span></div></div></div>`; };
+        <span class="mu" style="font-size:12.5px;flex:1 1 120px">${x.sug ? `Conseil : ${x.sug}${packTxt(x.p, x.sug) ? " = " + packTxt(x.p, x.sug) : ""}` : x.pack > 1 ? `${packName(x.p)} de ${x.pack}` : ""}</span></div>
+      ${V.ruleOpen === x.id ? `<div class="sub stack" style="margin-top:8px"><b>Règle pour ${esc(x.p.name)}</b>
+        <div class="row"><label class="f grow" for="rmin_${x.id}">Toujours garder au moins<input id="rmin_${x.id}" type="number" inputmode="numeric" min="0" data-k="rmin_${x.id}" value="${esc(V.f["rmin_" + x.id] ?? (x.p.reorder_min || ""))}" placeholder="Ex. 24 bouteilles"></label>
+        <label class="f grow" for="rpk_${x.id}">Bouteilles par ${packName(x.p)}<input id="rpk_${x.id}" type="number" inputmode="numeric" min="1" data-k="rpk_${x.id}" value="${esc(V.f["rpk_" + x.id] ?? (x.p.pack || packOf(x.p)))}"></label></div>
+        <div class="row"><button class="btn ghost sm" data-a="ruleX">Fermer</button><span class="grow"></span><button class="btn sm" data-a="ruleSave" data-id="${x.id}">Enregistrer la règle</button></div></div>`
+        : `<button class="lnk" data-a="ruleOpen" data-id="${x.id}" style="padding:4px 0;font-size:13px">${x.p.reorder_min ? `Règle : garder au moins ${x.p.reorder_min}` : "Ajouter une règle (stock minimum, casier)"}</button>`}</div></div>`; };
   return `<div class="card stack" id="rea_card"><div class="between"><h3>Réapprovisionnement intelligent</h3><button class="btn ghost sm" data-a="reaLoad">↻ Recalculer</button></div>
     <p class="mu" style="margin:0">GesCo calcule le rythme de vente réel de chaque boisson (${nb(d.fenetre)} derniers jours), le stock du comptoir et celui des serveuses, puis propose quoi commander pour tenir ${d.jours_couverts} jours. Les quantités sont arrondies au casier ou au pack.</p>
     <div class="catsc" role="group" aria-label="Durée à couvrir">${[3, 7, 14].map(n => `<button type="button" data-a="reaDays" data-v="${n}" class="${d.jours_couverts === n ? "on" : ""}">Tenir ${n} jours</button>`).join("")}</div>
@@ -2762,7 +2777,7 @@ function cDay(DT) {
 }
 const ACT = { ticket_supprime: "Ticket supprimé", ticket_modifie: "Ticket modifié après envoi", annulation_demandee: "Annulation demandée", annulation_refusee: "Annulation refusée", ticket_rouvert: "Ticket rouvert",
   versement: "Versement reçu", momo_confirme: "Mobile Money confirmé", monnaie_remise: "Monnaie remise", bon_emis: "Bon émis", bon_verifie: "Bon vérifié", bon_utilise: "Bon utilisé",
-  approvisionnement: "Approvisionnement", produit_ajoute: "Boisson ajoutée", produit_modifie: "Boisson modifiée", produit_photo: "Photo de produit changée", bon_commande: "Bon de commande envoyé", livraison_recue: "Livraison reçue (stock mis à jour)", bon_commande_annule: "Bon de commande annulé", equipe_modifiee: "Équipe modifiée", pin_change: "PIN modifié",
+  approvisionnement: "Approvisionnement", produit_ajoute: "Boisson ajoutée", produit_modifie: "Boisson modifiée", produit_photo: "Photo de produit changée", bon_commande: "Bon de commande envoyé", livraison_recue: "Livraison reçue (stock mis à jour)", bon_commande_annule: "Bon de commande annulé", regle_reappro: "Règle de réapprovisionnement", equipe_modifiee: "Équipe modifiée", pin_change: "PIN modifié",
   reglages_modifies: "Réglages modifiés", journee_cloturee: "Journée clôturée", bar_cree: "Bar créé", membre_ajoute: "Membre ajouté", pin_bloque: "PIN bloqué après 5 essais", bouteille_ouverte: "Bouteille ouverte au verre", depense_ajoutee: "Dépense ajoutée", depense_supprimee: "Dépense supprimée", inventaire: "Inventaire du stock", identite_bar: "Identité légale mise à jour", presence: "Présence pointée", permission_demandee: "Permission demandée",
   permission_acceptee: "Permission acceptée", permission_refusee: "Permission refusée", planning_copie: "Planning copié", salaire_paye: "Salaire payé", salaire_annule: "Paiement de salaire annulé" };
 const KEYS = { ticket: "N°", client: "client", total: "total", produit: "boisson", variation: "variation", serveuse: "serveuse", attendu: "attendu", recu: "reçu", ecart: "écart", tickets: "tickets",
