@@ -156,3 +156,12 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Repos tournants et équitables (pas le même jour que la semaine d'avant, de préférence les jours calmes, directeur / caisse / cuisine pas de repos le même jour), permissions accordées respectées, une personne à la caisse et en cuisine chaque jour d'ouverture ; points à surveiller affichés.
 - Aperçu avant d'appliquer ; enregistrement en une fois (`gb_shift_bulk`, réglages gardés dans `bars.plan_cfg`) ; chaque case reste modifiable.
 - Mise à jour automatique de l'application et ouverture sur le premier onglet de chaque rôle.
+
+## v4.11 — Salle, relève jour / nuit, cuisine réaliste, poste caisse
+- Cheffe de salle (`staff.head`, `gb_staff_head`) : voit toutes les tables (RLS élargie), prend ou confie une table (`gb_ticket_transfer`, les bons cuisine suivent). Badge ★ partout, bandeau « Cheffe de salle » côté caisse, direction et serveuses.
+- Relève de caisse (`cash_handovers`, `gb_handover`, `gb_handover_confirm`) : bilan par service dans la même journée, confirmation par la caissière suivante, services repris dans la clôture. Départ d'une serveuse bloqué tant qu'il reste une table ouverte ou de l'argent non versé (`gb_clock_out`).
+- Planning automatique : mode deux équipes (heure de relève, serveuses de jour / de nuit, alternance hebdomadaire).
+- Cuisine : un plat commencé puis annulé passe « à décider » → revendre (repris automatiquement par la commande suivante du même plat, 6 h max), repas du personnel ou perte (`gb_kitchen_decide`) ; pertes dans la clôture. Courses du marché (`gb_market_add/list/delete`, dépenses « Courses du marché »), recette facultative, prix de revient estimé, catalogue de 35 plats.
+- Poste caisse (écran ≥ 1200 px) : menu latéral, Commandes en 3 colonnes avec la cuisine en direct, raccourcis clavier.
+- Migration 020.
+

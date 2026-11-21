@@ -150,6 +150,17 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
 .apbar{flex:1;height:6px;border-radius:99px;background:var(--sunk);margin:0 10px;overflow:hidden;max-width:120px}.apbar i{display:block;height:100%;background:var(--brand);border-radius:99px}
 .apstep{display:flex;align-items:center;gap:4px;flex:0 0 auto}.apstep span{display:flex;flex-direction:column;align-items:center;line-height:1;min-width:34px}.apstep small{font-size:10.5px;color:var(--muted)}
 .apcta{border:1.5px solid color-mix(in srgb,var(--brand) 40%,var(--line))}
+.hbadge{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 8px;border-radius:99px;font-size:11.5px;font-weight:700;background:var(--amber-soft);color:var(--warn);vertical-align:middle;white-space:nowrap}
+.headline{display:flex;align-items:center;gap:8px;margin:0 0 14px;padding:9px 14px;border-radius:14px;background:var(--amber-soft);color:var(--warn);font-size:14px}.headline .ico{width:18px;height:18px}
+.salle .sl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--line)}
+.gpick{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px;cursor:pointer;margin-bottom:6px}
+.gpick:hover{border-color:var(--brand)}
+.kdec{border:1.5px solid color-mix(in srgb,var(--warn) 45%,var(--line))}
+.mkrow input{min-width:0}
+.desk3{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1.1fr) minmax(0,.85fr);gap:16px;align-items:start}
+.kpanel .li{padding:8px 0}
+.kbd-hint{display:none}
+kbd{font:600 11px/1 var(--body);padding:2px 5px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--surface)}
 .kboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px;align-items:start}
 .kcol{display:flex;flex-direction:column;gap:10px;background:var(--sunk);border-radius:18px;padding:12px;min-width:0}
 .kcol h3{display:flex;align-items:center;gap:8px;margin:2px 4px}
@@ -501,6 +512,19 @@ details summary{cursor:pointer}
 @keyframes ring{0%,100%{transform:rotate(0)}20%{transform:rotate(-14deg)}40%{transform:rotate(12deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(5deg)}}
 @media print{.slip.printable{width:100%;padding:12mm;border:0}}
 @media (prefers-reduced-motion:reduce){.dcard.today::after,.live-dot{animation:none}}
+/* Poste caisse : grand écran */
+@media (min-width:1200px){
+  #app{max-width:1760px;padding-left:calc(232px + 28px);padding-right:28px;padding-block:12px 28px}
+  .bnav,.hb .bnav{top:0;bottom:0;left:0;right:auto;width:232px;flex-direction:column;justify-content:flex-start;align-items:stretch;border-top:0;border-right:1px solid var(--line);padding:84px 12px 16px;overflow:auto}
+  .bnav .in{flex-direction:column;max-width:none;gap:4px}
+  .bnav button{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;padding:11px 14px;font-size:14.5px;border-radius:12px}
+  .bnav button.on{background:color-mix(in srgb,var(--brand) 13%,transparent)}
+  .bnav button.on::before{display:none}
+  .bnav .bd{top:50%;right:12px;transform:translateY(-50%)}
+  .kbd-hint{display:block;margin:auto 6px 0;padding-top:16px;font-size:12px;color:var(--muted);line-height:1.9}
+  .kpis{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .kpi b,.kpi .v{font-size:22px}
+}
 </style>
 
 <div id="app"><div class="empty"><span class="spin"></span></div></div>
@@ -569,6 +593,8 @@ function notifyNew() { // chacun est prévenu de ce qui le concerne, avec un gé
   if (r === "caisse") S.tickets.filter(t => !isCounter(t) && (t.status === "sent" || t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo")))
     .forEach(t => K.set(`t:${t.id}:${t.status}:${t.cancel_requested ? 1 : 0}`, ["order", t.cancel_requested ? "Annulation demandée" : t.status === "cashed" ? "Mobile Money à vérifier" : "Nouvelle commande", `${staffName(t.waitress_id)} · ${t.client_label} · ${F(t.total)}`]));
   if (r === "caisse") S.tickets.filter(t => t.status === "paid" && t.pay_method === "momo" && !isCounter(t)).forEach(t => K.set("m:" + t.id, ["ok", "Paiement Mobile Money reçu", `${staffName(t.waitress_id)} · ${t.client_label} · ${F(t.total)}`]));
+  if (["cuisine", "caisse"].includes(r)) (S.kitchen || []).filter(o => o.status === "a_decider").forEach(o => K.set("kd:" + o.id, ["info", "Plat annulé après préparation", `${o.qty}× ${prodName(o.product_id)} · bon ${o.bon} : revendre, repas du personnel ou perte ?`]));
+  if (r === "caisse") (S.handovers || []).filter(h => !h.confirmed_at && h.from_staff !== me).forEach(h => K.set("hv:" + h.id, ["info", "Relève de caisse", `${staffName(h.from_staff)} vous passe la caisse avec ${F(h.counted)} : vérifiez et confirmez.`]));
   if (r === "cuisine") (S.kitchen || []).filter(o => o.status === "attente").forEach(o => K.set("k:" + o.id, ["order", "Nouvelle commande en cuisine", `Bon ${o.bon} · ${o.qty}× ${prodName(o.product_id)} · ${o.label || ""} · ${staffName(o.waitress_id)}`]));
   if (r === "serveuse") (S.kitchen || []).filter(o => o.status === "pret" && o.waitress_id === me).forEach(o => K.set("kr:" + o.id, ["ok", "Plat prêt en cuisine 🍽", `${o.qty}× ${prodName(o.product_id)} · ${o.label || ""} · bon ${o.bon} : allez le récupérer`]));
   if (r === "serveuse") S.tickets.filter(t => t.waitress_id === me).forEach(t => {
@@ -589,7 +615,7 @@ const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentC
 
 /* ═══════════════ Moteur DÉMO (données locales, mêmes règles que le serveur) ═══════════════ */
 function DemoBackend() {
-  const KEY = "gesco-demo-v12";
+  const KEY = "gesco-demo-v13";
   let db = LS.get(KEY), sess = LS.get(KEY + "-sess");
   const listeners = [];
   const save = () => LS.set(KEY, db);
@@ -618,6 +644,10 @@ function DemoBackend() {
   // Cuisine (démo) : mêmes règles que le serveur
   const isDish = p => !!(db.bar.kitchen_on && p && (p.category === "Cuisine" || ["plat", "portion"].includes(p.unit)));
   const kTake = (t, pid, q, c) => { if (q <= 0) return; db.kitchen = db.kitchen || []; db.bar.next_bon = db.bar.next_bon || 1;
+    for (const rv of db.kitchen.filter(o => o.product_id === pid && o.status === "revente" && Date.now() - new Date(o.decided_at) < 6 * 3600e3)) { if (q <= 0) break; const k = Math.min(rv.qty, q);
+      if (k === rv.qty) rv.status = "reutilise"; else rv.qty -= k;
+      db.kitchen.push({ id: uuid(), ticket_id: t.id, product_id: pid, waitress_id: t.waitress_id, label: t.client_label, ticket_no: t.number, bon: db.bar.next_bon++, qty: k, status: "pret", created_at: now(), started_at: now(), ready_at: now(), served_at: null, note: "Plat déjà prêt (revente du bon " + rv.bon + ")" }); q -= k; }
+    if (q <= 0) return;
     db.kitchen.push({ id: uuid(), ticket_id: t.id, product_id: pid, waitress_id: t.waitress_id, label: t.client_label, ticket_no: t.number, bon: db.bar.next_bon++, qty: q, status: "attente", created_at: now(), started_at: null, ready_at: null, served_at: null });
     (db.recipes || []).filter(r => r.dish_id === pid).forEach(r => { const n = Math.ceil(r.qty * q); prod(r.ingredient_id).stock -= n; move(c, r.ingredient_id, null, -n, "cuisine"); }); };
   const kRelease = (o, q, c) => (db.recipes || []).filter(r => r.dish_id === o.product_id).forEach(r => { const n = Math.ceil(r.qty * q); prod(r.ingredient_id).stock += n; move(c, r.ingredient_id, null, n, "cuisine_retour"); });
@@ -627,7 +657,7 @@ function DemoBackend() {
     let left = q; pend.reverse().forEach(o => { if (left <= 0) return; const k = Math.min(o.qty, left); kRelease(o, k, c); if (k === o.qty) o.status = "annule"; else o.qty -= k; left -= k; }); };
   function cancel(t, c) {
     t.items.forEach(i => { if (isDish(prod(i.product_id))) return; counter(t) ? (prod(i.product_id).stock += i.qty) : hold(t.waitress_id, i.product_id, i.qty); });
-    (db.kitchen || []).filter(o => o.ticket_id === t.id && ["attente", "prep", "pret"].includes(o.status)).forEach(o => { if (o.status === "attente") kRelease(o, o.qty, c); o.status = "annule"; });
+      (db.kitchen || []).filter(o => o.ticket_id === t.id && ["attente", "prep", "pret"].includes(o.status)).forEach(o => { if (o.status === "attente") { kRelease(o, o.qty, c); o.status = "annule"; } else { o.status = "a_decider"; o.note = "Table annulée"; } });
     db.vouchers.forEach(v => { if (v.ticket_id === t.id && v.status === "active") v.status = "void"; });
     log(c, "ticket_supprime", { ticket: t.number, client: t.client_label, total: t.total, statut_avant: t.status });
     t.status = "cancelled"; t.cancel_requested = false; t.updated_at = now();
@@ -760,11 +790,47 @@ function DemoBackend() {
       if (p_min != null && (p_min < 0 || p_min > 100000)) E("Stock minimum invalide."); if (p_pack != null && (p_pack < 1 || p_pack > 500)) E("Taille du casier invalide.");
       p.reorder_min = p_min || null; p.pack = p_pack || null; log(c, "regle_reappro", { produit: p.name, minimum: p_min, casier: p_pack }); },
     gb_kitchen_step({ p_id, p_status }) { const c = ctx(), o = (db.kitchen || []).find(x => x.id === p_id) || E("Bon cuisine introuvable.");
-      if (["servi", "annule"].includes(o.status)) E("Ce bon est déjà " + (o.status === "servi" ? "servi." : "annulé."));
-      if (p_status === "servi") { if (o.waitress_id !== c.id && !["caisse", "pdg", "directeur"].includes(c.role)) E("Seule la serveuse de la table récupère ce plat.");
+      if (!["attente", "prep", "pret"].includes(o.status)) E("Ce bon n’est plus en cours.");
+      if (p_status === "servi") { if (o.waitress_id !== c.id && !["caisse", "pdg", "directeur"].includes(c.role) && !c.head) E("Seule la serveuse de la table récupère ce plat.");
         if (o.status !== "pret") E("Le plat n’est pas encore prêt."); o.status = "servi"; o.served_at = now(); return; }
       if (!["prep", "pret", "attente"].includes(p_status)) E("Étape inconnue."); if (!["cuisine", "caisse", "pdg", "directeur"].includes(c.role)) E("Action réservée à la cuisine.");
       Object.assign(o, { status: p_status, started_at: ["prep", "pret"].includes(p_status) ? (o.started_at || now()) : null, ready_at: p_status === "pret" ? now() : null, cook_id: c.id }); },
+    gb_kitchen_decide({ p_id, p_choice, p_note }) { const c = ctx(); if (!["cuisine", "caisse", "pdg", "directeur"].includes(c.role)) E("Action réservée à la cuisine et à la caisse.");
+      const o = (db.kitchen || []).find(x => x.id === p_id) || E("Bon cuisine introuvable."); if (!["a_decider", "revente"].includes(o.status)) E("Ce plat n’attend pas de décision.");
+      if (!["revente", "personnel", "perte"].includes(p_choice)) E("Choix inconnu."); Object.assign(o, { status: p_choice, decided_at: now(), decided_by: c.id, note: (p_note || "").trim() || o.note });
+      const p = prod(o.product_id); log(c, "plat_" + p_choice, { plat: p.name, qte: o.qty, bon: o.bon, valeur: o.qty * (p.cost || 0), motif: p_note }); },
+    gb_staff_head({ p_staff, p_on }) { const c = ctx(); mgr(c); const x = member(p_staff); if (p_on && x.role !== "serveuse") E("Seule une serveuse peut être cheffe de salle."); x.head = !!p_on; log(c, "cheffe_de_salle", { nom: x.name, active: !!p_on }); },
+    gb_ticket_transfer({ p_ticket, p_to }) { const c = ctx(), t = tk(p_ticket); if (!["draft", "sent"].includes(t.status)) E("Cette table est déjà encaissée : la serveuse verse d’abord l’argent à la caisse.");
+      const d = db.staff.find(x => x.id === p_to && x.active && x.role === "serveuse") || E("Serveuse introuvable."); if (d.id === t.waitress_id) E("Cette table est déjà à " + d.name + ".");
+      if (!(["caisse", "directeur", "pdg"].includes(c.role) || c.head || t.waitress_id === c.id)) E("Seules la cheffe de salle, la caisse ou la serveuse de la table peuvent la confier.");
+      const f = (db.staff.find(x => x.id === t.waitress_id) || {}).name; t.waitress_id = p_to; t.updated_at = now();
+      (db.kitchen || []).filter(o => o.ticket_id === t.id && ["attente", "prep", "pret"].includes(o.status)).forEach(o => o.waitress_id = p_to);
+      log(c, "table_transferee", { ticket: t.number, client: t.client_label, de: f, vers: d.name }); },
+    gb_handover({ p_counted, p_note }) { const c = ctx(); caisse(c); if (p_counted == null || p_counted < 0) E("Saisissez les espèces comptées dans la caisse.");
+      const d = db.days.find(x => x.status === "open") || E("Aucune journée de service ouverte."); db.handovers = db.handovers || [];
+      const hs = db.handovers.filter(h => h.day_id === d.id); if (hs.some(h => !h.confirmed_at)) E("Une relève attend déjà la confirmation de la caisse suivante.");
+      const prev = hs[hs.length - 1], t0 = prev ? prev.created_at : d.opened_at, T = db.tickets.filter(t => t.day_id === d.id), at = t => t.cashed_at || t.paid_at || t.updated_at;
+      const sold = T.filter(t => ["cashed", "paid"].includes(t.status) && at(t) >= t0), cashAll = db.remits.filter(r => r.day_id === d.id).reduce((x, r) => x + r.received, 0);
+      const chg = T.filter(t => t.change_status === "given").reduce((x, t) => x + (t.change_due || 0), 0), exp = cashAll - chg, by = {};
+      sold.forEach(t => { const n = (db.staff.find(x => x.id === t.waitress_id) || {}).name || "?"; by[n] = by[n] || { nom: n, ventes: 0, tickets: 0 }; by[n].ventes += t.total; by[n].tickets++; });
+      const sm = { ventes: sold.reduce((x, t) => x + t.total, 0), tickets: sold.length, mobile_money: sold.filter(t => t.status === "paid" && t.pay_method === "momo").reduce((x, t) => x + t.total, 0),
+        especes_versees: db.remits.filter(r => r.day_id === d.id && r.created_at >= t0).reduce((x, r) => x + r.received, 0), attendu: exp, compte: p_counted, ecart: p_counted - exp,
+        ecart_service: (p_counted - exp) - (prev ? prev.diff : 0), debut: t0, fin: now(), serveuses: Object.values(by) };
+      const h = { id: uuid(), day_id: d.id, from_staff: c.id, to_staff: null, period_start: t0, counted: p_counted, expected: exp, diff: p_counted - exp, summary: sm, note: (p_note || "").trim() || null, created_at: now(), confirmed_at: null };
+      db.handovers.push(h); log(c, "releve_caisse", { ventes: sm.ventes, compte: p_counted, ecart_service: sm.ecart_service }); return { ...sm, id: h.id }; },
+    gb_handover_confirm({ p_id }) { const c = ctx(); caisse(c); const h = (db.handovers || []).find(x => x.id === p_id && !x.confirmed_at) || E("Relève introuvable ou déjà confirmée.");
+      if (h.from_staff === c.id && c.role === "caisse") E("C’est la caissière qui prend le service qui confirme la relève."); h.to_staff = c.id; h.confirmed_at = now(); log(c, "releve_confirmee", { fond_de_caisse: h.counted }); },
+    gb_market_add({ p_items, p_method }) { const c = ctx(); if (!["cuisine", "caisse", "pdg", "directeur"].includes(c.role)) E("Action réservée à la cuisine, la caisse et la direction.");
+      if (!(p_items || []).length) E("Ajoutez au moins un article."); let tot = 0;
+      p_items.forEach(it => { const a = String(it.a || "").trim().slice(0, 60), m = Math.round(+it.m); if (!a) E("Indiquez l’article acheté."); if (!(m > 0)) E(`Indiquez le montant de « ${a} ».`);
+        db.expenses.push({ id: uuid(), day: bizDate(), category: "Courses du marché", label: a + (String(it.q || "").trim() ? " · " + String(it.q).trim().slice(0, 40) : ""), amount: m, method: p_method === "momo" ? "momo" : "cash", created_by: c.id, created_at: now() }); tot += m; });
+      log(c, "courses_marche", { articles: p_items.length, total: tot }); return p_items.length; },
+    gb_market_list({ p_day } = {}) { const c = ctx(); if (!["cuisine", "caisse", "pdg", "directeur"].includes(c.role)) E("Action réservée à la cuisine, la caisse et la direction.");
+      const dd = p_day || bizDate(), M = db.expenses.filter(e => e.category === "Courses du marché"), wk = new Date(new Date(dd + "T12:00:00") - 7 * 864e5).toLocaleDateString("sv-SE");
+      return { day: dd, items: M.filter(e => e.day === dd).map(e => ({ id: e.id, label: e.label, amount: e.amount, method: e.method, by: (db.staff.find(x => x.id === e.created_by) || {}).name, at: e.created_at })), week: M.filter(e => e.day > wk && e.day <= dd).reduce((x, e) => x + e.amount, 0) }; },
+    gb_market_delete({ p_id }) { const c = ctx(), e = db.expenses.find(x => x.id === p_id && x.category === "Courses du marché") || E("Achat introuvable.");
+      if (!(["caisse", "pdg"].includes(c.role) || e.created_by === c.id)) E("Seule la personne qui l’a saisi ou la caisse peut le retirer.");
+      db.expenses = db.expenses.filter(x => x !== e); log(c, "courses_retirees", { article: e.label, montant: e.amount }); },
     gb_kitchen_toggle({ p_on }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG active le module Cuisine."); db.bar.kitchen_on = !!p_on; log(c, "module_cuisine", { actif: !!p_on }); },
     gb_recipe_set({ p_dish, p_items }) { const c = ctx(); caisse(c); const d = prod(p_dish); db.recipes = (db.recipes || []).filter(r => r.dish_id !== p_dish);
       (p_items || []).forEach(i => { const q = +i.q; if (!(q > 0)) return; if (i.i === p_dish) E("Un plat ne peut pas être son propre ingrédient."); prod(i.i); db.recipes.push({ dish_id: p_dish, ingredient_id: i.i, qty: q }); });
@@ -943,7 +1009,10 @@ function DemoBackend() {
       Object.assign(attRow(c.id, d), { status: st, arrived_at: now(), late_minutes: late, recorded_by: c.id, left_at: null });
       return { status: st, late, planifie: !!sh };
     },
-    gb_clock_out() { const c = ctx(), a = db.attendance.find(x => x.staff_id === c.id && x.day === bizDate() && x.arrived_at); if (!a) E("Pointez d’abord votre arrivée."); a.left_at = now(); },
+    gb_clock_out() { const c = ctx();
+      if (c.role === "serveuse") { const mt = db.tickets.filter(t => t.waitress_id === c.id), o = mt.filter(t => ["draft", "sent"].includes(t.status) && t.total > 0).length, k = mt.filter(t => t.status === "cashed").length;
+        if (o || k) E("Avant de partir : " + (o ? `confiez vos ${o} table(s) encore ouverte(s) à une autre serveuse` : "") + (k ? `${o ? ", puis " : ""}versez l’argent de ${k} ticket(s) à la caisse` : "") + "."); }
+      const a = db.attendance.find(x => x.staff_id === c.id && x.day === bizDate() && x.arrived_at); if (!a) E("Pointez d’abord votre arrivée."); a.left_at = now(); },
     gb_attendance_set({ p_staff, p_day, p_status, p_late, p_note }) {
       const c = ctx(); mgr(c); const s = member(p_staff);
       if (p_status === "aucun") { db.attendance = db.attendance.filter(x => !(x.staff_id === p_staff && x.day === p_day)); return; }
@@ -1023,7 +1092,7 @@ function DemoBackend() {
         om_code: "123456", mtn_code: "654321", om_ussd: "#150*47*{code}*{montant}#", mtn_ussd: "*126*4*{code}*{montant}#", push_enabled: true, plan: "beta", plan_until: null, suspended: false },
       subs: [], momo: [],
       staff: [["Marcel", "pdg", "9999"], ["Hervé", "directeur", "5555"], ["Mireille", "caisse", "0000"], ["Aline", "serveuse", "1111"], ["Brigitte", "serveuse", "2222"], ["Carine", "serveuse", "3333"]]
-        .map(([name, role, pin]) => ({ id: uuid(), name, role, pin, active: true, fails: 0, lock: 0 })),
+        .map(([name, role, pin]) => ({ id: uuid(), name, role, pin, active: true, fails: 0, lock: 0, head: name === "Aline" })),
       products: [["Castel Beer 65cl", "Bières", 650, 48], ["33 Export 65cl", "Bières", 650, 36], ["Mützig 65cl", "Bières", 650, 24], ["Beaufort 65cl", "Bières", 650, 24],
         ["Guinness 65cl", "Bières", 1000, 18], ["Orijin", "Bières", 650, 24], ["Heineken 33cl", "Bières", 800, 24], ["Doppel Munich 65cl", "Bières", 700, 12], ["Booster Whisky Cola", "Bières", 700, 12], ["Booster Mangue Orange", "Bières", 700, 12], ["Booster Gin Tonic", "Bières", 700, 12],
         ["Coca-Cola 1L", "Sucreries", 600, 24], ["World Cola 1L", "Sucreries", 500, 12], ["Top Pamplemousse", "Sucreries", 500, 24], ["Top Grenadine", "Sucreries", 500, 24], ["Top Orange", "Sucreries", 500, 12], ["Top Ananas", "Sucreries", 500, 12],
@@ -1091,7 +1160,7 @@ function DemoBackend() {
     sess = null; save();
   }
   if (!db || !db.bar) seed();
-  const pub = s => ({ id: s.id, name: s.name, role: s.role, active: s.active });
+  const pub = s => ({ id: s.id, name: s.name, role: s.role, active: s.active, head: !!s.head });
   return {
     mode: "demo",
     async init() { return !!(sess && db.staff.find(x => x.id === sess && x.active)); },
@@ -1111,7 +1180,7 @@ function DemoBackend() {
     async logout() { sess = null; LS.del(KEY + "-sess"); },
     async load() {
       const me = ctx(), cs = me.role !== "serveuse", mg = ["directeur", "pdg"].includes(me.role), pg = me.role === "pdg";
-      const day = db.days.find(d => d.status === "open") || null, mine = x => cs || x.waitress_id === me.id, own = x => x.staff_id === me.id;
+      const day = db.days.find(d => d.status === "open") || null, mine = x => cs || !!me.head || x.waitress_id === me.id, own = x => x.staff_id === me.id;
       const clone = o => JSON.parse(JSON.stringify(o));
       return clone({ bar: db.bar, me: pub(me), staff: db.staff.map(pub), products: [...db.products].sort((a, b) => a.sort - b.sort), day,
         tickets: db.tickets.filter(t => mine(t) && (["draft", "sent", "cashed"].includes(t.status) || t.change_status === "pending" || (day && t.day_id === day.id))),
@@ -1120,7 +1189,7 @@ function DemoBackend() {
         days: cs ? db.days.filter(d => d.status === "closed").sort((a, b) => a.closed_at < b.closed_at ? 1 : -1).slice(0, 30) : [],
         shifts: db.shifts, attendance: db.attendance.filter(a => mg || own(a)).sort((a, b) => a.day < b.day ? 1 : -1), leaves: db.leaves.filter(l => mg || own(l)),
         salaries: db.salaries.filter(x => pg || own(x)), payroll: db.payroll.filter(x => pg || own(x)), subs: mg ? db.subs : [],
-        kitchen: (db.kitchen || []).filter(o => (cs || o.waitress_id === me.id) && (["attente", "prep", "pret"].includes(o.status) || Date.now() - new Date(o.created_at) < 18 * 3600e3)), recipes: db.recipes || [], platform: { holder_name: "BIYONG BIYONG SIMON STEVE (BISMO AGENCY)", om_number: "691468175", mtn_number: "673383951", om_tpl: null, mtn_tpl: null, sub_push: true } });
+        handovers: cs ? (db.handovers || []) : [], kitchen: (db.kitchen || []).filter(o => (cs || me.head || o.waitress_id === me.id) && (["attente", "prep", "pret", "a_decider", "revente"].includes(o.status) || Date.now() - new Date(o.created_at) < 18 * 3600e3)), recipes: db.recipes || [], platform: { holder_name: "BIYONG BIYONG SIMON STEVE (BISMO AGENCY)", om_number: "691468175", mtn_number: "673383951", om_tpl: null, mtn_tpl: null, sub_push: true } });
     },
     async rpc(name, args) { const f = R[name]; if (!f) throw bizErr("Action inconnue."); db = LS.get(KEY) || db; const r = f(args || {}); save(); return r; },
     async momoPush(ticket, phone, operator) { // démo : le client « valide » sur son téléphone au bout de 6 secondes
@@ -1197,7 +1266,7 @@ function LiveBackend() {
   function subscribe(bid) {
     if (channel && barId === bid) return; if (channel) sb.removeChannel(channel); barId = bid;
     channel = sb.channel("bar-" + bid);
-    ["tickets", "ticket_items", "holdings", "vouchers", "remittances", "products", "service_days", "shifts", "attendance", "leave_requests", "kitchen_orders"].forEach(t =>
+    ["tickets", "ticket_items", "holdings", "vouchers", "remittances", "products", "service_days", "shifts", "attendance", "leave_requests", "kitchen_orders", "cash_handovers"].forEach(t =>
       channel.on("postgres_changes", { event: "*", schema: "public", table: t, filter: "bar_id=eq." + bid }, () => listeners.forEach(f => f())));
     channel.subscribe();
   }
@@ -1214,12 +1283,12 @@ function LiveBackend() {
       const { data: sd } = await sb.auth.getSession(); if (!sd.session) { const e = bizErr("Session expirée."); e.auth = true; throw e; }
       const uid = sd.session.user.id;
       const [staff, bars, products, days] = await Promise.all([
-        q(sb.from("staff").select("id,name,role,active,user_id").order("name")),
+        q(sb.from("staff").select("id,name,role,active,user_id,head").order("name")),
         q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status,om_code,mtn_code,om_ussd,mtn_ussd,push_enabled,plan,plan_until,plan_trial_until,trial_plan,suspended,kitchen_on,plan_cfg").limit(1)),
         q(sb.from("products").select("*").order("sort")),
         q(sb.from("service_days").select("*").eq("status", "open").limit(1))]);
       const meRow = staff.find(s => s.user_id === uid && s.active); if (!meRow || !bars.length) { const e = bizErr("Compte non rattaché à un bar ou désactivé."); e.auth = true; throw e; }
-      const me = { id: meRow.id, name: meRow.name, role: meRow.role }, cs = me.role !== "serveuse", day = days[0] || null;
+      const me = { id: meRow.id, name: meRow.name, role: meRow.role, head: !!meRow.head }, cs = me.role !== "serveuse", day = days[0] || null;
       const t0 = new Date(Date.now() - 6 * 3600e3), dd = n => { const x = new Date(t0); x.setDate(x.getDate() + n); return x.toLocaleDateString("sv-SE"); };
       const extra = Promise.all([
         q(sb.from("shifts").select("id,staff_id,day,kind,start_time,end_time,note").gte("day", dd(-49)).lte("day", dd(49)).order("day")),
@@ -1228,8 +1297,8 @@ function LiveBackend() {
         q(sb.from("staff_salaries").select("staff_id,salary")),
         q(sb.from("payroll").select("*").order("paid_at", { ascending: false }).limit(300)),
         q(sb.from("subscriptions").select("*").order("created_at", { ascending: false }).limit(50)), q(sb.from("platform_config").select("om_code,mtn_code,phone,whatsapp,holder_name,om_number,mtn_number,om_tpl,mtn_tpl,sub_push").limit(1)),
-        q(sb.from("kitchen_orders").select("*").or("status.in.(attente,prep,pret),created_at.gte." + new Date(Date.now() - 18 * 3600e3).toISOString()).order("created_at").limit(300)),
-        q(sb.from("recipes").select("dish_id,ingredient_id,qty"))]);
+        q(sb.from("kitchen_orders").select("*").or("status.in.(attente,prep,pret,a_decider,revente),created_at.gte." + new Date(Date.now() - 18 * 3600e3).toISOString()).order("created_at").limit(300)),
+        q(sb.from("recipes").select("dish_id,ingredient_id,qty")), q(sb.from("cash_handovers").select("*").order("created_at", { ascending: false }).limit(20))]);
       extra.catch(() => {});
       let tq = sb.from("tickets").select("*, ticket_items(product_id,qty,unit_price)").order("created_at", { ascending: false }).limit(600);
       tq = tq.or("status.in.(draft,sent,cashed),change_status.eq.pending" + (day ? ",day_id.eq." + day.id : ""));
@@ -1239,11 +1308,11 @@ function LiveBackend() {
         q(sb.from("stock_moves").select("*").order("created_at", { ascending: false }).limit(150)),
         q(sb.from("service_days").select("*").eq("status", "closed").order("closed_at", { ascending: false }).limit(30)));
       const [tickets, holdings, vouchers, remits, audit = [], moves = [], closed = []] = await Promise.all(jobs);
-      const [shifts, attendance, leaves, salaries, payroll, subs, plat, kitchen, recipes] = await extra;
+      const [shifts, attendance, leaves, salaries, payroll, subs, plat, kitchen, recipes, handovers] = await extra;
       subscribe(bars[0].id);
       return { bar: bars[0], me, staff: staff.map(s => ({ id: s.id, name: s.name, role: s.role, active: s.active })), products, day,
         tickets: tickets.map(t => { const { ticket_items, ...r } = t; return { ...r, items: ticket_items || [] }; }), holdings, vouchers, remits, audit, moves, days: closed,
-        shifts, attendance, leaves, salaries, payroll, subs, platform: plat[0] || {}, kitchen: kitchen || [], recipes: recipes || [] };
+        shifts, attendance, leaves, salaries, payroll, subs, platform: plat[0] || {}, kitchen: kitchen || [], recipes: recipes || [], handovers: (handovers || []).reverse() };
     },
     async rpc(name, args) { const { data, error } = await sb.rpc(name, args || {}); if (error) { const e = toErr(error); if (/non soldé/.test(error.message)) e.pending = true; throw e; } return data; },
     staffCreate: (name, role, pin) => fn("staff_create", { name, role, pin }, true),
@@ -1896,7 +1965,7 @@ const isDishP = p => !!(S && S.bar && S.bar.kitchen_on && p && (p.category === "
 const KST = { attente: "en attente", prep: "en préparation", pret: "PRÊT à récupérer", servi: "servi ✓" };
 const kHue = s => [...String(s || "?")].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
 function kStrip(t) {
-  const ks = (S.kitchen || []).filter(o => o.ticket_id === t.id && o.status !== "annule"); if (!ks.length) return "";
+  const ks = (S.kitchen || []).filter(o => o.ticket_id === t.id && ["attente", "prep", "pret", "servi"].includes(o.status)); if (!ks.length) return "";
   return `<div class="kstrip">${ks.map(o => `<span class="kchip ${o.status}">${ico("kitchen")}<b>${o.qty}× ${esc(prodName(o.product_id))}</b> · bon ${o.bon} · ${KST[o.status]}</span>${o.status === "pret" && o.waitress_id === S.me.id ? `<button class="btn amber sm" data-a="kPick" data-id="${o.id}">Je l’ai récupéré</button>` : ""}`).join("")}</div>`;
 }
 function kCard(o) {
@@ -1916,7 +1985,7 @@ function vKitchen() {
   const col = (st, title, empty) => { const l = ks.filter(o => o.status === st).sort((a, b) => a.created_at < b.created_at ? -1 : 1);
     return `<section class="kcol ${st}"><h3>${title} <span class="pill ${st === "pret" ? "ok" : st === "prep" ? "warn" : ""}">${l.length}</span></h3>${l.map(kCard).join("") || `<div class="empty">${empty}</div>`}</section>`; };
   const served = ks.filter(o => o.status === "servi").sort((a, b) => (a.served_at || "") < (b.served_at || "") ? 1 : -1).slice(0, 6);
-  return `<div class="kboard">${col("attente", "À préparer", "Aucune commande en attente.")}${col("prep", "En préparation", "Rien sur le feu.")}${col("pret", "Prêts à servir", "Aucun plat en attente de retrait.")}</div>
+  return `${kDecide()}<div class="kboard">${col("attente", "À préparer", "Aucune commande en attente.")}${col("prep", "En préparation", "Rien sur le feu.")}${col("pret", "Prêts à servir", "Aucun plat en attente de retrait.")}</div>
     <p class="mu" style="margin:6px 4px 12px">Chaque bon porte la couleur et le nom de sa serveuse : seule elle est prévenue quand le plat est prêt, et elle confirme le retrait.</p>
     ${served.length ? `<div class="card"><h3>Derniers plats servis</h3><div class="list">${served.map(o => `<div class="li"><div class="grow"><b>${o.qty}× ${esc(prodName(o.product_id))}</b><div class="mu">Bon ${o.bon} · ${esc(o.label || "")} · ${esc(staffName(o.waitress_id))}</div></div><span class="mu">${o.served_at ? hm(o.served_at) : ""}</span></div>`).join("")}</div></div>` : ""}`;
 }
@@ -1930,7 +1999,7 @@ const fnum = k => { const v = String(V.f[k] ?? "").replace(",", ".").trim(); ret
 function recipeBox(p) {
   const ings = S.products.filter(x => x.id !== p.id && !isDishP(x) && x.category !== "Cuisine");
   const rows = V.rec && V.rec.p === p.id ? V.rec.items : (S.recipes || []).filter(r => r.dish_id === p.id).map(r => ({ i: r.ingredient_id, q: +r.qty }));
-  return `<div class="sub stack"><b>Recette : ingrédients pour 1 ${esc(unitOf(p) || "plat")}</b><p class="mu" style="margin:0">À chaque plat envoyé en cuisine, ces quantités sortent du stock. Plat annulé avant d’être commencé : elles reviennent automatiquement.</p>
+  return `<div class="sub stack"><b>Recette (facultatif) : ce qui se compte, pour 1 ${esc(unitOf(p) || "plat")}</b><p class="mu" style="margin:0">Utile pour ce qui se compte à la pièce : poisson, poulet, gigot, paquets de spaghetti… Le reste (tomate, oignons, piment, condiments) passe par les courses du marché. Ces quantités sortent du stock à l’envoi ; plat annulé avant d’être commencé : elles reviennent.</p>
     ${rows.map((r, k) => { const ip = S.products.find(x => x.id === r.i) || {}; return `<div class="row" style="align-items:center;flex-wrap:nowrap"><span class="grow" style="min-width:0">${esc(ip.name || "?")}</span>
       <input style="flex:0 0 96px" type="number" inputmode="decimal" step="any" min="0" id="rc_${p.id}_${k}" data-k="rc_${p.id}_${k}" value="${esc(V.f["rc_" + p.id + "_" + k] ?? r.q)}" aria-label="Quantité de ${esc(ip.name || "")}">
       <span class="mu" style="flex:0 0 42px">${esc(unitOf(ip) || "u.")}</span><button class="btn ghost sm" data-a="recDel" data-p="${p.id}" data-k="${k}" aria-label="Retirer ${esc(ip.name || "")}">×</button></div>`; }).join("") || `<span class="mu">Aucun ingrédient pour l’instant.</span>`}
@@ -1938,7 +2007,7 @@ function recipeBox(p) {
     ${ings.some(x => x.category === "Ingrédients") ? "" : `<p class="mu" style="margin:0;font-size:13px">Astuce : créez vos ingrédients dans « Ajouter un produit » avec la catégorie « Ingrédients » et l’unité g, ml ou pièce. Ils n’apparaissent pas chez les serveuses.</p>`}
     <button class="btn sm" data-a="recSave" data-p="${p.id}">Enregistrer la recette</button></div>`;
 }
-const dishInfo = p => { const rs = (S.recipes || []).filter(r => r.dish_id === p.id); if (!rs.length) return ` · <span class="warn-t">recette à saisir</span>`;
+const dishInfo = p => { const rs = (S.recipes || []).filter(r => r.dish_id === p.id); if (!rs.length) return p.cost ? ` · revient ≈ ${F(p.cost)} (marge ${Math.round((p.price - p.cost) / Math.max(p.price, 1) * 100)} %)` : ` · <span class="warn-t">prix de revient à estimer</span>`;
   const c = Math.round(sum(rs, r => (+r.qty) * ((S.products.find(x => x.id === r.ingredient_id) || {}).cost || 0))); return ` · recette ${rs.length} ingrédient(s)${c ? ` · coût ≈ ${F(c)} (marge ${Math.round((p.price - c) / Math.max(p.price, 1) * 100)} %)` : ""}`; };
 const recCur = pid => { if (!V.rec || V.rec.p !== pid) V.rec = { p: pid, items: (S.recipes || []).filter(r => r.dish_id === pid).map(r => ({ i: r.ingredient_id, q: +r.qty })) };
   V.rec.items.forEach((r, k) => { const v = fnum("rc_" + pid + "_" + k); if (v != null) r.q = v; }); Object.keys(V.f).filter(k => k.startsWith("rc_" + pid)).forEach(k => delete V.f[k]); return V.rec; };
@@ -1946,6 +2015,168 @@ A.recAdd = d => { const id = V.f["recAdd_" + d.p]; if (!id) return toast("Choisi
   if (!r.items.some(x => x.i === id)) r.items.push({ i: id, q: 1 }); V.f["recAdd_" + d.p] = ""; render(); };
 A.recDel = d => { const r = recCur(d.p); r.items.splice(+d.k, 1); render(); };
 A.recSave = d => run(async () => { const r = recCur(d.p); await B.rpc("gb_recipe_set", { p_dish: d.p, p_items: r.items.filter(x => x.q > 0) }); V.rec = null; await refresh(); toast("Recette enregistrée."); });
+/* ═══════════════ Cheffe de salle et transfert de tables ═══════════════ */
+const isHead = () => !!(S && S.me && S.me.head && ROLE() === "serveuse");
+const headsNow = () => { const h = S.staff.filter(x => x.active && x.head && x.role === "serveuse"), td = today();
+  const on = h.filter(x => (shiftOf(x.id, td) || {}).kind === "travail" && !["absent", "permission"].includes((attOf(x.id, td) || {}).status)); return on.length ? on : h; };
+const headTag = id => (S.staff.find(x => x.id === id) || {}).head ? ` <span class="hbadge" title="Cheffe de salle">★ Cheffe</span>` : "";
+const headLine = () => { const h = headsNow(); return h.length ? `<div class="headline">${ico("star")}<span>Cheffe de salle : <b>${h.map(x => esc(x.name)).join(" · ")}</b></span></div>` : ""; };
+function salleList() {
+  const ws = S.staff.filter(x => x.active && x.role === "serveuse");
+  const open = S.tickets.filter(t => t.waitress_id !== S.me.id && ["draft", "sent", "cashed"].includes(t.status) && !isCounter(t) && t.total > 0);
+  if (!open.length) return `<div class="empty">Aucune autre table ouverte dans la salle.</div>`;
+  return ws.map(w => [w, open.filter(t => t.waitress_id === w.id)]).filter(([, l]) => l.length).map(([w, l]) => `<div class="card stack salle"><div class="between"><b>${esc(w.name)}${headTag(w.id)}</b><span class="mu">${l.length} table(s) · ${F(sum(l, t => t.total))}</span></div>
+    ${l.map(t => { const ks = (S.kitchen || []).filter(o => o.ticket_id === t.id && ["attente", "prep", "pret"].includes(o.status)), late = t.status === "sent" && !t.served_at && Date.now() - new Date(t.sent_at || t.created_at) > 6e5;
+      return `<div class="sl"><div class="grow" style="min-width:0"><b>${esc(t.client_label)}</b> <span class="mu">· N°${t.number || "—"} · ${F(t.total)}</span>
+        <div class="mu">${t.status === "draft" ? "Pas encore envoyée" : t.status === "sent" ? (t.served_at ? "Servie ✓" : `Envoyée il y a ${ago(t.sent_at || t.created_at)}`) : "Encaissée, argent à verser"}${late ? ' · <b class="bad-t">pas encore servie</b>' : ""}</div>
+        ${ks.length ? `<div class="chips" style="margin-top:4px">${ks.map(o => `<span class="kchip ${o.status}">${o.qty}× ${esc(prodName(o.product_id))} · ${KST[o.status]}</span>`).join("")}</div>` : ""}</div>
+        ${["draft", "sent"].includes(t.status) ? `<div class="row" style="flex:none"><button class="btn soft sm" data-a="tkTake" data-t="${t.id}">Prendre</button><button class="btn ghost sm" data-a="tkGive" data-t="${t.id}">Confier à…</button></div>` : ""}</div>`; }).join("")}</div>`).join("");
+}
+function vGive(m) {
+  const t = S.tickets.find(x => x.id === m.t) || {}, td = today();
+  const ws = S.staff.filter(x => x.active && x.role === "serveuse" && x.id !== t.waitress_id).map(x => { const a = attOf(x.id, td) || {};
+    return { x, on: (shiftOf(x.id, td) || {}).kind === "travail", here: !!a.arrived_at && !a.left_at }; }).sort((a, b) => (b.here - a.here) || (b.on - a.on) || a.x.name.localeCompare(b.x.name));
+  return `<h2>Confier « ${esc(t.client_label || "")} »</h2><p class="mu" style="margin:0">Ticket N°${t.number || "—"} · ${F(t.total || 0)} · actuellement à ${esc(staffName(t.waitress_id))}. Le client ne voit rien : la table et ses plats en cuisine passent à la nouvelle serveuse ; le journal garde la trace.</p>
+    <div class="list">${ws.map(({ x, on, here }) => `<button class="li gpick" data-a="tkGiveGo" data-s="${x.id}"><div class="grow" style="text-align:left"><b>${esc(x.name)}</b>${headTag(x.id)}<div class="mu">${here ? "Présente maintenant" : on ? "Planifiée aujourd’hui" : "Pas planifiée aujourd’hui"}</div></div>${here ? '<span class="pill ok">En service</span>' : ""}</button>`).join("") || '<div class="empty">Aucune autre serveuse active.</div>'}</div>
+    <button class="btn ghost" data-a="close">Annuler</button>`;
+}
+A.tkTake = d => run(async () => { await B.rpc("gb_ticket_transfer", { p_ticket: d.t, p_to: S.me.id }); await refresh(); toast("Table reprise : elle est maintenant dans vos tickets."); });
+A.tkGive = d => { V.modal = { type: "give", t: d.t }; render(); };
+A.tkGiveGo = d => run(async () => { const t = S.tickets.find(x => x.id === V.modal.t) || {}; await B.rpc("gb_ticket_transfer", { p_ticket: V.modal.t, p_to: d.s }); V.modal = null; await refresh();
+  toast(`${t.client_label || "Table"} confiée à ${staffName(d.s)}.`); });
+A.headTog = d => run(async () => { const x = S.staff.find(y => y.id === d.s); await B.rpc("gb_staff_head", { p_staff: d.s, p_on: !x.head }); await refresh();
+  toast(!x.head ? `${x.name} est cheffe de salle : elle voit toute la salle et peut prendre ou confier une table.` : `${x.name} n’est plus cheffe de salle.`); });
+// Départ d'une serveuse : rien d'ouvert derrière elle
+A.clockOut = () => { const mine = S.tickets.filter(t => t.waitress_id === S.me.id && ["draft", "sent"].includes(t.status) && t.total > 0), cash = S.tickets.filter(t => t.waitress_id === S.me.id && t.status === "cashed");
+  if (ROLE() === "serveuse" && (mine.length || cash.length)) { V.modal = { type: "depart" }; render(); return; }
+  run(async () => { await call("gb_clock_out", {}); toast("Départ pointé. Bonne fin de journée !"); await refresh(); }); };
+function vDepart() {
+  const mine = S.tickets.filter(t => t.waitress_id === S.me.id && ["draft", "sent"].includes(t.status) && t.total > 0), cash = S.tickets.filter(t => t.waitress_id === S.me.id && t.status === "cashed");
+  const hold = S.holdings.filter(h => h.waitress_id === S.me.id && h.qty > 0);
+  return `<h2>Avant de partir</h2><p class="mu" style="margin:0">Pour que l’équipe suivante reprenne sans trou, réglez ces points puis pointez votre départ.</p>
+    ${mine.length ? `<div class="stack" style="gap:6px"><b>1. Confiez vos tables ouvertes (${mine.length})</b>${mine.map(t => `<div class="li"><div class="grow"><b>${esc(t.client_label)}</b><div class="mu">N°${t.number || "—"} · ${F(t.total)}</div></div><button class="btn soft sm" data-a="tkGive" data-t="${t.id}">Confier à…</button></div>`).join("")}</div>` : ""}
+    ${cash.length ? `<div class="note warn"><b>${mine.length ? "2" : "1"}. Versez vos espèces à la caisse</b> : ${cash.length} ticket(s), ${F(sum(cash, cashOf))}. La caissière valide le versement.</div>` : ""}
+    ${hold.length ? `<div class="note info">Bouteilles encore en main : ${hold.map(h => `${h.qty} × ${esc(prodName(h.product_id))}`).join(", ")}. Rendez-les à la caisse.</div>` : ""}
+    <button class="btn ghost" data-a="close">Fermer</button>`;
+}
+
+/* ═══════════════ Relève de caisse (équipe de jour → équipe de nuit) ═══════════════ */
+const curHand = () => (S.handovers || []).filter(h => S.day && h.day_id === S.day.id);
+const hovPending = () => curHand().find(h => !h.confirmed_at);
+function relCard(exp) {
+  const hs = curHand(), pend = hovPending(), r = ROLE(), cnt = num("hov_c");
+  const rows = hs.map(h => { const s = h.summary || {}; return `<div class="li"><div class="grow"><b>Service de ${esc(staffName(h.from_staff))}</b> · ${hm(h.period_start)} → ${hm(h.created_at)}
+     <div class="mu">Ventes ${F(s.ventes || 0)} · ${s.tickets || 0} ticket(s) · compté ${F(h.counted)}${h.to_staff ? ` · relayée par ${esc(staffName(h.to_staff))}` : " · en attente de la caisse suivante"}</div></div>
+     <span class="pill ${(s.ecart_service || 0) === 0 ? "ok" : "bad"}">Écart ${F(s.ecart_service || 0)}</span></div>`; }).join("");
+  let act = "";
+  if (pend && ["caisse", "pdg"].includes(r)) act = pend.from_staff === S.me.id && r === "caisse"
+    ? `<div class="note info">Relève enregistrée. La caissière qui prend le service confirme le fond de caisse de <b>${F(pend.counted)}</b> sur son téléphone.</div>`
+    : `<div class="note warn stack" style="gap:8px"><span><b>${esc(staffName(pend.from_staff))}</b> vous passe la caisse avec <b>${F(pend.counted)}</b> comptés. Recomptez avant de confirmer.</span><button class="btn" data-a="hovOk" data-id="${pend.id}">Je prends le service : fond de caisse vérifié</button></div>`;
+  else if (!pend && r === "caisse") act = `<p class="mu" style="margin:0">Fin de votre service (équipe de jour → équipe de nuit) : comptez le tiroir et passez la main. Votre bilan est enregistré ; la clôture de la journée reste à la fin de la nuit.</p>
+      <div class="row"><label class="f grow" for="hov_c">Espèces comptées dans le tiroir<input id="hov_c" type="number" inputmode="numeric" data-k="hov_c" value="${val("hov_c")}" placeholder="Attendu : ${F(exp)}"></label>
+      <label class="f grow" for="hov_n">Note (facultatif)<input id="hov_n" data-k="hov_n" value="${val("hov_n")}" placeholder="Ex. 2 bouteilles cassées"></label></div>
+      ${cnt != null ? `<div class="note ${cnt - exp === 0 ? "ok" : "bad"} between"><span>Écart à ce moment</span><b class="num">${F(cnt - exp)}</b></div>` : ""}
+      <button class="btn soft" data-a="hovGo">Passer la main à la caisse suivante</button>`;
+  if (!rows && !act) return "";
+  return `<div class="card stack"><div class="between"><h3>Relève de caisse</h3><span class="pill">${hs.length} service(s) passé(s)</span></div>${rows ? `<div class="list">${rows}</div>` : ""}${act}</div>`;
+}
+const hovBanner = () => { const p = hovPending(); return p && ROLE() === "caisse" && p.from_staff !== S.me.id
+  ? `<div class="note warn between" style="margin-bottom:14px;flex-wrap:wrap;gap:8px"><span><b>Relève :</b> ${esc(staffName(p.from_staff))} vous passe la caisse avec ${F(p.counted)}.</span><button class="btn sm" data-a="hovOk" data-id="${p.id}">Fond vérifié : je prends le service</button></div>` : ""; };
+A.hovGo = () => run(async () => { const n = num("hov_c"); if (n == null) throw bizErr("Saisissez les espèces comptées dans le tiroir.");
+  const s = await B.rpc("gb_handover", { p_counted: n, p_note: V.f.hov_n || "" }); V.f.hov_c = ""; V.f.hov_n = ""; await refresh(); V.modal = { type: "hov", s }; });
+A.hovOk = d => run(async () => { await B.rpc("gb_handover_confirm", { p_id: d.id }); await refresh(); toast("Relève confirmée : vous êtes responsable de la caisse."); });
+function vHov(m) { const s = m.s || {};
+  return `<h2>Bilan de votre service</h2><p class="mu" style="margin:0">${s.debut ? `De ${hm(s.debut)} à ${hm(s.fin)}` : ""}. La caissière suivante doit confirmer le fond de caisse.</p>
+    <div class="list">${[["Ventes du service", F(s.ventes || 0)], ["Tickets", s.tickets || 0], ["Espèces versées par les serveuses", F(s.especes_versees || 0)], ["Mobile Money", F(s.mobile_money || 0)],
+      ["Espèces attendues dans le tiroir", F(s.attendu || 0)], ["Espèces comptées", F(s.compte || 0)], ["Écart de votre service", `<b class="${(s.ecart_service || 0) < 0 ? "bad-t" : ""}">${F(s.ecart_service || 0)}</b>`]]
+      .map(([l, v]) => `<div class="between" style="padding:6px 0"><span class="mu">${l}</span><span class="num">${v}</span></div>`).join("")}</div>
+    ${(s.serveuses || []).length ? `<h3>Par serveuse</h3><div class="list">${s.serveuses.map(w => `<div class="between" style="padding:5px 0"><span>${esc(w.nom)}</span><span class="num">${F(w.ventes)} · ${w.tickets} ticket(s)</span></div>`).join("")}</div>` : ""}
+    <button class="btn" data-a="close">Fermer</button>`; }
+
+/* ═══════════════ Cuisine : plats annulés après préparation, courses du marché ═══════════════ */
+Object.assign(KST, { a_decider: "annulé : à décider", revente: "à revendre", reutilise: "revendu", personnel: "repas du personnel", perte: "perte" });
+function kDecide() {
+  if (!["cuisine", "caisse", "pdg", "directeur"].includes(ROLE())) return "";
+  const K2 = S.kitchen || [], dec = K2.filter(o => o.status === "a_decider"), rv = K2.filter(o => o.status === "revente" && Date.now() - new Date(o.decided_at) < 6 * 3600e3);
+  const lost = K2.filter(o => ["perte", "personnel"].includes(o.status) && S.day && o.decided_at && new Date(o.decided_at) >= new Date(S.day.opened_at));
+  const valO = o => o.qty * ((S.products.find(p => p.id === o.product_id) || {}).cost || 0);
+  let h = "";
+  if (dec.length) h += `<div class="card stack kdec"><h3>Plats annulés après préparation · ${dec.length}</h3><p class="mu" style="margin:0">Un plat commencé ne revient jamais en stock comme une bière. Décidez ce qu’il devient :</p>
+    ${dec.map(o => `<div class="stack" style="gap:8px;padding-top:10px;border-top:1px solid var(--line)"><div><b>${o.qty}× ${esc(prodName(o.product_id))}</b> <span class="mu">· bon ${o.bon} · ${esc(o.label || "")} · ${esc(staffName(o.waitress_id))}${o.note ? " · " + esc(o.note) : ""}</span></div>
+      <div class="row"><button class="btn sm" data-a="kDec" data-id="${o.id}" data-v="revente">Revendre</button><button class="btn soft sm" data-a="kDec" data-id="${o.id}" data-v="personnel">Repas du personnel</button><button class="btn bad sm" data-a="kDec" data-id="${o.id}" data-v="perte">Perte</button></div></div>`).join("")}</div>`;
+  if (rv.length) h += `<div class="card stack"><h3>Plats gardés pour la revente · ${rv.length}</h3><p class="mu" style="margin:0">La prochaine commande du même plat les prend automatiquement : ils arrivent directement dans « Prêts à servir ». Après 6 h ils ne sont plus proposés.</p>
+    <div class="list">${rv.map(o => `<div class="li"><div class="grow"><b>${o.qty}× ${esc(prodName(o.product_id))}</b><div class="mu">gardé depuis ${hm(o.decided_at)} · bon ${o.bon}</div></div><button class="btn ghost sm" data-a="kDec" data-id="${o.id}" data-v="personnel">Personnel</button><button class="btn ghost sm" data-a="kDec" data-id="${o.id}" data-v="perte">Perte</button></div>`).join("")}</div></div>`;
+  if (lost.length) h += `<div class="card"><div class="between"><h3>Pertes et repas du personnel (journée)</h3><b class="num">${F(sum(lost, valO))}</b></div><div class="list">${lost.map(o => `<div class="li"><div class="grow">${o.qty}× ${esc(prodName(o.product_id))} <span class="mu">· ${o.status === "perte" ? "perte" : "repas du personnel"}${o.note ? " · " + esc(o.note) : ""}</span></div><span class="mu num">${valO(o) ? F(valO(o)) : ""}</span></div>`).join("")}</div></div>`;
+  return h;
+}
+const kDecGo = (id, v, note) => run(async () => { await B.rpc("gb_kitchen_decide", { p_id: id, p_choice: v, p_note: note }); V.modal = null; await refresh();
+  toast(v === "revente" ? "Plat gardé : la prochaine commande identique le prend tout de suite." : v === "personnel" ? "Noté : repas du personnel." : "Perte enregistrée avec son coût."); });
+A.kDec = d => { if (d.v === "perte") { V.f.kd_note = ""; V.modal = { type: "kloss", id: d.id }; render(); return; } kDecGo(d.id, d.v, ""); };
+A.kLossGo = () => kDecGo(V.modal.id, "perte", V.f.kd_note || "");
+const vKloss = () => `<h2>Plat perdu</h2><p class="mu" style="margin:0">Le coût du plat (prix de revient) est compté dans les pertes du jour.</p>
+  <div class="bills">${["Brûlé", "Tombé", "Refroidi", "Client parti", "Erreur de commande"].map(r => `<button data-a="setF" data-k2="kd_note" data-v="${r}" class="${V.f.kd_note === r ? "on" : ""}">${r}</button>`).join("")}</div>
+  <label class="f" for="kd_note">Motif<input id="kd_note" data-k="kd_note" value="${val("kd_note")}" placeholder="Ex. brûlé"></label>
+  <div class="row"><button class="btn ghost grow" data-a="close">Annuler</button><button class="btn bad grow" data-a="kLossGo">Enregistrer la perte</button></div>`;
+const MK_QUICK = ["Tomate", "Oignons", "Piment", "Condiments verts", "Ail", "Gingembre", "Riz", "Spaghetti", "Huile", "Viande de bœuf", "Poulet", "Poisson", "Plantain", "Arachide", "Cubes et épices", "Gaz"];
+const mkSync = () => { V.mkl = (V.mkl || [{}]).map((l, i) => ({ a: V.f["mk_a" + i] ?? l.a, q: V.f["mk_q" + i] ?? l.q, m: V.f["mk_m" + i] ?? l.m }));
+  Object.keys(V.f).filter(k => /^mk_[aqm]\d+$/.test(k)).forEach(k => delete V.f[k]); return V.mkl; };
+function marketCard() {
+  if (!["cuisine", "caisse", "pdg", "directeur"].includes(ROLE())) return "";
+  if (V.mk === undefined) { V.mk = null; B.rpc("gb_market_list", {}).then(r => { V.mk = r; render(); }).catch(() => { V.mk = { items: [], week: 0 }; }); }
+  const m = V.mk, lines = V.mkl || (V.mkl = [{}]);
+  return `<div class="card stack"><div class="between" style="flex-wrap:wrap;gap:6px"><h3>Courses du marché</h3>${m ? `<span class="mu">Aujourd’hui <b class="num">${F(sum(m.items, x => x.amount))}</b> · 7 jours ${F(m.week || 0)}</span>` : ""}</div>
+    <p class="mu" style="margin:0">Achats en gros pour la cuisine : tomate, oignons, piment, condiments, riz… Ils entrent dans les dépenses de la compta. Pas besoin de peser chaque plat.</p>
+    <div class="chips">${MK_QUICK.map(a => `<button class="chip" data-a="mkQuick" data-v="${a}">${a}</button>`).join("")}</div>
+    ${lines.map((l, i) => `<div class="row mkrow"><input class="grow" id="mk_a${i}" data-k="mk_a${i}" value="${esc(V.f["mk_a" + i] ?? l.a ?? "")}" placeholder="Article" aria-label="Article">
+      <input style="flex:1 1 120px" id="mk_q${i}" data-k="mk_q${i}" value="${esc(V.f["mk_q" + i] ?? l.q ?? "")}" placeholder="Quantité (2 seaux)" aria-label="Quantité">
+      <input style="flex:1 1 110px" id="mk_m${i}" type="number" inputmode="numeric" data-k="mk_m${i}" value="${esc(V.f["mk_m" + i] ?? l.m ?? "")}" placeholder="Montant FCFA" aria-label="Montant en FCFA">
+      ${lines.length > 1 ? `<button class="btn ghost sm" data-a="mkDel" data-i="${i}" aria-label="Retirer la ligne">×</button>` : ""}</div>`).join("")}
+    <div class="row" style="align-items:center"><button class="btn ghost sm" data-a="mkAdd">+ Ligne</button><span class="grow"></span>
+      <div class="segs">${[["cash", "Espèces"], ["momo", "Mobile Money"]].map(([k, l]) => `<button class="${(V.f.mk_pm || "cash") === k ? "on" : ""}" data-a="setF" data-k2="mk_pm" data-v="${k}" aria-pressed="${(V.f.mk_pm || "cash") === k}">${l}</button>`).join("")}</div>
+      <button class="btn" data-a="mkSave">Enregistrer les courses</button></div>
+    ${m && m.items.length ? `<div class="list">${m.items.map(x => `<div class="li"><div class="grow">${esc(x.label)}<div class="mu">${esc(x.by || "")} · ${hm(x.at)}${x.method === "momo" ? " · Mobile Money" : ""}</div></div><b class="num">${F(x.amount)}</b><button class="btn ghost sm" data-a="mkRm" data-id="${x.id}" aria-label="Retirer ${esc(x.label)}">×</button></div>`).join("")}</div>` : ""}</div>`;
+}
+A.mkAdd = () => { mkSync().push({}); render(); };
+A.mkDel = d => { mkSync().splice(+d.i, 1); render(); };
+A.mkQuick = d => { const l = mkSync(), e = l.find(x => !(x.a || "").trim()); if (e) e.a = d.v; else l.push({ a: d.v }); render(); };
+A.mkSave = () => run(async () => { const l = mkSync().filter(x => (x.a || "").trim() || x.m); if (!l.length) throw bizErr("Ajoutez au moins un article.");
+  const items = l.map(x => ({ a: (x.a || "").trim(), q: (x.q || "").trim(), m: Math.round(+String(x.m || "").replace(/\s/g, "")) || 0 }));
+  const n = await B.rpc("gb_market_add", { p_items: items, p_method: V.f.mk_pm || "cash" }); V.mkl = [{}]; V.mk = await B.rpc("gb_market_list", {}); toast(`${n} achat(s) enregistré(s) dans les dépenses.`); });
+A.mkRm = d => run(async () => { await B.rpc("gb_market_delete", { p_id: d.id }); V.mk = await B.rpc("gb_market_list", {}); toast("Achat retiré."); });
+
+/* Catalogue de plats */
+const DISHES = [["Plats camerounais", ["Poulet DG", "Ndolé", "Eru", "Mbongo tchobi", "Koki", "Okok", "Taro sauce jaune", "Poisson braisé", "Bar braisé", "Porc braisé", "Poulet braisé", "Soya (brochettes)", "Kondre", "Sauce arachide"]],
+  ["Restaurant", ["Spaghetti bolognaise", "Tagliatelles à la carbonara", "Tranches de gigot d’agneau", "Côtelettes d’agneau", "Steak frites", "Brochettes de bœuf", "Émincé de bœuf", "Ailes de poulet", "Escalope de poulet panée", "Burger maison", "Salade composée", "Omelette garnie"]],
+  ["Accompagnements", ["Riz blanc", "Riz sauté", "Frites de pommes", "Frites de plantain", "Plantain mûr frit", "Bâton de manioc", "Miondo", "Pilé pommes", "Haricots"]]];
+function dishCatalog() {
+  if (!S.bar.kitchen_on) return ""; const have = new Set(S.products.map(p => nrm(p.name)));
+  return `<div class="card stack" id="dish_card"><h3>Ajouter un plat à la carte</h3><p class="mu" style="margin:0">Touchez un plat : le nom, la catégorie « Cuisine » et la vente au plat se remplissent. Il reste votre prix de vente, et le prix de revient estimé si vous le connaissez.</p>
+    ${DISHES.map(([g, l]) => `<div class="stack" style="gap:6px"><b class="mu" style="font-size:12px;text-transform:uppercase;letter-spacing:.06em">${g}</b><div class="chips">${l.map(n => { const h = have.has(nrm(n));
+      return `<button class="chip ${h ? "on" : ""}" data-a="dishPick" data-v="${esc(n)}" ${h ? `disabled aria-label="${esc(n)} : déjà sur la carte"` : ""}>${h ? "✓ " : ""}${esc(n)}</button>`; }).join("")}</div></div>`).join("")}</div>`;
+}
+A.dishPick = d => { Object.assign(V.f, { np_n: d.v, np_c: "Cuisine", np_u: "plat", np_st: "0", np_k: "" }); render();
+  setTimeout(() => { const e = document.getElementById("np_pr"); if (e) { e.scrollIntoView({ block: "center", behavior: "smooth" }); e.focus(); } }, 60); toast(`${d.v} : indiquez le prix puis « Ajouter à la carte ».`); };
+
+/* ═══════════════ Poste caisse : grand écran d'ordinateur ═══════════════ */
+const DESK_MQ = window.matchMedia ? matchMedia("(min-width:1200px)") : { matches: false };
+const desk = () => !!DESK_MQ.matches;
+try { DESK_MQ.addEventListener("change", () => { if (V.screen === "app") render(); }); } catch (e) {}
+function kPanel() {
+  if (!S.bar.kitchen_on) return ""; const K2 = S.kitchen || [], ready = K2.filter(o => o.status === "pret"), late = K2.filter(o => ["attente", "prep"].includes(o.status) && Date.now() - new Date(o.created_at) > 9e5);
+  const dec = K2.filter(o => o.status === "a_decider").length, wait = K2.filter(o => ["attente", "prep"].includes(o.status)).length;
+  return `<div class="card stack kpanel"><div class="between"><h3>Cuisine en direct</h3><button class="btn ghost sm" data-a="go" data-v="kitchen">Ouvrir</button></div>
+    <div class="chips"><span class="pill">${wait} en cours</span><span class="pill ok">${ready.length} prêt(s)</span>${late.length ? `<span class="pill bad">${late.length} en retard</span>` : ""}${dec ? `<span class="pill warn">${dec} à décider</span>` : ""}</div>
+    ${ready.length ? `<div class="list">${ready.map(o => `<div class="li"><div class="grow"><b>${o.qty}× ${esc(prodName(o.product_id))}</b><div class="mu">Bon ${o.bon} · ${esc(o.label || "")} · attend ${esc(staffName(o.waitress_id))} depuis ${ago(o.ready_at || o.created_at)}</div></div></div>`).join("")}</div>` : `<span class="mu">Aucun plat en attente de retrait.</span>`}</div>`;
+}
+document.addEventListener("keydown", e => {
+  if (!desk() || V.screen !== "app" || V.locked || e.ctrlKey || e.metaKey || e.altKey) return;
+  const el = document.activeElement, typing = el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
+  if (e.key === "Escape" && (V.modal || V.menu)) { V.modal = null; V.menu = false; render(); return; }
+  if (typing || V.modal) return;
+  if (e.key === "/") { e.preventDefault(); A.search(); return; }
+  if ((e.key === "n" || e.key === "N") && ROLE() === "caisse") { e.preventDefault(); if (V.tab !== "direct") A.go({ v: "direct" }); setTimeout(() => { const i = document.getElementById("cclient"); if (i) { i.scrollIntoView({ block: "center" }); i.focus(); } }, 80); return; }
+  if (/^[1-9]$/.test(e.key)) { const k = navFor()[+e.key - 1]; if (k) { e.preventDefault(); A.go({ v: k }); } }
+});
 function payBox(t) {
   const r = num("rcv_" + t.id), bills = [...new Set([t.total, ...[500, 1000, 2000, 5000, 10000].map(b => Math.ceil(t.total / b) * b)])].filter(b => b >= t.total).sort((a, b) => a - b).slice(0, 5);
   const ch = r != null && r >= t.total ? r - t.total : null;
@@ -1964,6 +2195,7 @@ function ticket(t, opts = {}) {
   if (open) {
     if (editable) {
       body = editor(t) + `<div class="total"><span class="mu">Total</span><b>${F(t.total)}</b></div>`;
+      if (!isCounter(t) && t.number && t.total > 0) body += `<div class="row"><button class="btn ghost sm" data-a="tkGive" data-t="${t.id}">Confier cette table à une collègue</button></div>`;
       if (t.cancel_requested) body += `<div class="note bad">Annulation demandée : en attente de la caisse.</div>`;
       if (t.status === "draft" && isCounter(t)) body += (t.total ? payBox(t) : "") + `<div class="row"><span class="mu grow">Vente au comptoir : le paiement est validé directement.</span><button class="btn bad sm" data-a="del" data-t="${t.id}">Supprimer</button></div>`;
       else if (t.status === "draft") body += `<div class="row"><button class="btn grow" data-a="send" data-t="${t.id}" ${t.total ? "" : "disabled"}>Envoyer à la caisse</button><button class="btn bad" data-a="del" data-t="${t.id}">Supprimer</button></div>`;
@@ -1972,6 +2204,7 @@ function ticket(t, opts = {}) {
       body = lines(t) + `<div class="total"><span class="mu">Total${t.pay_method ? " · " + (t.pay_method === "momo" ? "Mobile Money" : "espèces") : ""}</span><b>${F(t.total)}</b></div>` + changeBlock(t) + servedBtn;
       if (ROLE() === "directeur" && !isCounter(t)) body += `<div class="note info">${t.served_at ? `Servie au client à ${hm(t.served_at)}.` : `Envoyée ${ago(t.sent_at || t.created_at)}, pas encore marquée servie.`} La validation reste à la caisse.</div>`;
       if (isCaisse() && t.status === "sent" && !isCounter(t)) body += `<div class="note info">Commande de ${esc(staffName(t.waitress_id))}. Seule la serveuse peut la modifier ; la caisse suit son évolution ici.</div>`;
+      if (["caisse", "directeur", "pdg"].includes(ROLE()) && ["draft", "sent"].includes(t.status) && !isCounter(t)) body += `<div class="row"><button class="btn ghost sm" data-a="tkGive" data-t="${t.id}">Confier la table à une autre serveuse</button></div>`;
       if (isCaisse() && t.status !== "cancelled") body += `<div class="row">${sold(t) ? `<button class="btn soft sm" data-a="reopen" data-t="${t.id}">Rouvrir pour modifier</button>` : ""}<button class="btn bad sm" data-a="del" data-t="${t.id}">Supprimer</button></div>`;
     }
   }
@@ -1987,16 +2220,16 @@ function wService() {
   const hold = S.holdings.filter(h => h.waitress_id === S.me.id && h.qty !== 0);
   const inHand = sum(hold, h => Math.max(0, h.qty)), owe = sum(hold, h => Math.max(0, -h.qty));
   const lists = { open: mine.filter(t => ["draft", "sent"].includes(t.status)), cash: mine.filter(t => t.status === "cashed" || (t.status === "paid" && t.change_status === "pending")), done: mine.filter(t => t.status === "paid" && t.change_status !== "pending") };
-  const L = lists[V.wf] || lists.open;
-  return shiftBanner() +
+  const L = lists[V.wf] || lists.open, salle = isHead() ? S.tickets.filter(t => t.waitress_id !== S.me.id && ["draft", "sent", "cashed"].includes(t.status) && !isCounter(t) && t.total > 0).length : 0;
+  return shiftBanner() + headLine() +
     `<div class="kpis">${kpi("Mes ventes du jour", F(sum(today.filter(sold), t => t.total)), "", `${today.filter(sold).length} ticket(s)`)}
     ${kpi("Espèces à remettre", F(cashHand), cashHand ? "hl" : "", cashHand ? "À verser à la caisse" : "Rien à verser")}
     ${kpi("Tickets en cours", lists.open.length)}${kpi("Bouteilles en main", inHand, owe ? "hl" : "", owe ? `${owe} à prendre à la caisse` : "")}</div>
     ${hold.length ? `<div class="card stack" style="margin-bottom:14px"><h3>Bouteilles en main</h3><div class="chips">${hold.map(h => h.qty > 0 ? `<span class="chip"><b class="num">${h.qty}</b> ${esc(prodName(h.product_id))}</span>`
       : `<span class="chip owe">À prendre à la caisse : <b class="num">${-h.qty}</b> ${esc(prodName(h.product_id))}</span>`).join("")}</div></div>` : ""}
     <div class="card" style="margin-bottom:14px"><label class="f" for="client">Nouveau ticket</label><div class="row" style="margin-top:6px"><input id="client" class="grow" data-k="client" value="${val("client")}" placeholder="Nom du client ou repère (ex. Table du fond)" data-enter="newT" autocomplete="off"><button class="btn" data-a="newT">Ouvrir le ticket</button></div></div>
-    <div class="seg">${[["open", "En cours", lists.open.length], ["cash", "À remettre", lists.cash.length], ["done", "Terminés", lists.done.length]].map(([k, l, n]) => `<button class="${V.wf === k ? "on" : ""}" data-a="wf" data-v="${k}">${l} (${n})</button>`).join("")}</div>
-    <div class="stack">${L.map(t => ticket(t)).join("") || `<div class="empty">${V.wf === "open" ? "Aucun ticket en cours. Saisissez le nom du client ci-dessus pour commencer." : "Rien ici pour le moment."}</div>`}</div>`;
+    <div class="seg">${[["open", "En cours", lists.open.length], ["cash", "À remettre", lists.cash.length], ["done", "Terminés", lists.done.length], ...(isHead() ? [["salle", "Salle", salle]] : [])].map(([k, l, n]) => `<button class="${V.wf === k ? "on" : ""}" data-a="wf" data-v="${k}">${l} (${n})</button>`).join("")}</div>
+    <div class="stack">${V.wf === "salle" && isHead() ? `<p class="mu" style="margin:0">Vous êtes cheffe de salle : vous voyez toutes les tables. « Prendre » une table la met dans vos tickets ; « Confier à… » la donne à une autre serveuse.</p>${salleList()}` : L.map(t => ticket(t)).join("") || `<div class="empty">${V.wf === "open" ? "Aucun ticket en cours. Saisissez le nom du client ci-dessus pour commencer." : "Rien ici pour le moment."}</div>`}</div>`;
 }
 
 /* ═══════════════ Cadre commun : rubriques par rôle, menu, recherche ═══════════════ */
@@ -2189,10 +2422,11 @@ function header(b) {
     <button class="ib" data-a="menu" aria-label="Ouvrir le menu" aria-expanded="${V.menu}">${ico("menu")}${more ? `<i class="bd">${more}</i>` : ""}</button></div></header>`;
 }
 function bnav(nav, b) {
-  const prim = nav.slice(0, 4), more = nav.slice(4), mb = more.reduce((x, k) => x + (b[k] || 0), 0);
+  const D = desk(), prim = D ? nav : nav.slice(0, 4), more = D ? [] : nav.slice(4), mb = more.reduce((x, k) => x + (b[k] || 0), 0);
   const btn = k => `<button class="${V.tab === k ? "on" : ""}" data-a="go" data-v="${k}" ${V.tab === k ? 'aria-current="page"' : ""}>${ico(SEC[k][1])}<span>${k === "moi" ? "Moi" : SEC[k][0]}</span>${b[k] ? `<i class="bd">${b[k]}</i>` : ""}</button>`;
   return `<nav class="bnav" aria-label="Navigation principale" style="--el:${elapsed(V.secT)}ms"><div class="in">${prim.map(btn).join("")}
-    <button class="${more.includes(V.tab) ? "on" : ""}" data-a="menu" aria-label="Toutes les rubriques">${ico("menu")}<span>Menu</span>${mb ? `<i class="bd">${mb}</i>` : ""}</button></div></nav>`;
+    <button class="${more.includes(V.tab) ? "on" : ""}" data-a="menu" aria-label="Toutes les rubriques">${ico("menu")}<span>Menu</span>${mb ? `<i class="bd">${mb}</i>` : ""}</button></div>
+    ${D ? `<p class="kbd-hint">Raccourcis : <kbd>/</kbd> chercher${ROLE() === "caisse" ? " · <kbd>N</kbd> vente au comptoir" : ""} · <kbd>1</kbd>–<kbd>9</kbd> rubriques · <kbd>Échap</kbd> fermer</p>` : ""}</nav>`;
 }
 function drawer(nav, b) {
   const q = V.f.gq || "";
@@ -2230,9 +2464,9 @@ function vApp() {
   const nav = navFor(); if (!nav.includes(V.tab)) V.tab = nav[0];
   const b = badges(), [l, , d] = SEC[V.tab];
   const VIEW = {
-    service: () => wService(), direct: () => (ROLE() === "caisse" ? shiftBanner() : "") + cOps(), sup: dSup, home: pHome,
+    service: () => wService(), direct: () => (ROLE() === "caisse" ? shiftBanner() : "") + hovBanner() + headLine() + cOps(), sup: () => headLine() + dSup(), home: pHome,
     stock: () => cStock(), vouch: () => cVouch(S.vouchers.filter(v => v.status === "active")), sales: () => cSales(dayT()),
-    rev: cRev, acc: cAcc, paie: pPaie, qr: vQr, abo: vAbo, pres: mPres, planning: vPlanning, team: cTeam, day: () => cDay(dayT()), log: cLog, settings: cSettings, moi: vMoi, kitchen: vKitchen };
+    rev: cRev, acc: cAcc, paie: pPaie, qr: vQr, abo: vAbo, pres: mPres, planning: vPlanning, team: cTeam, day: () => cDay(dayT()), log: cLog, settings: cSettings, moi: vMoi, kitchen: () => vKitchen() + (S.bar.kitchen_on ? marketCard() : "") };
   const ask = "Notification" in window && Notification.permission === "default" && !LS.get("gesco-ntf-ask", 0) ? `<div class="note info between" style="flex-wrap:wrap;margin-bottom:12px"><span>${ico("alert")} Activez les notifications pour être prévenu(e) même quand le téléphone est en veille.</span><span class="row"><button class="btn sm" data-a="notifOn">Activer</button><button class="btn ghost sm" data-a="notifLater">Plus tard</button></span></div>` : "";
   return header(b) + `<main class="sec" style="--el:${elapsed(V.secT)}ms"><div class="ptitle"><h1>${l}</h1><p class="mu">${d}</p></div>${ask}${VIEW[V.tab]()}</main>`
     + bnav(nav, b) + (V.menu ? drawer(nav, b) : "");
@@ -2354,7 +2588,7 @@ function vPlanning() {
   const empty = ppl.length * 7 - ppl.reduce((x, p) => x + days.filter(d => shiftOf(p.id, d)).length, 0), totH = ppl.reduce((x, p) => x + days.reduce((y, d) => y + hours(shiftOf(p.id, d)), 0), 0);
   const grid = `<div class="card"><div class="between" style="flex-wrap:wrap;margin-bottom:10px"><h3>Planning de l’équipe</h3><div class="legend">${["morning", "afternoon", "night", "off"].map(p => `<span><i class="lg-${p}"></i>${PERIOD[p]}</span>`).join("")}</div></div>
     <div class="scroll pgrid"><table><thead><tr><th>Employé</th>${days.map((d, i) => `<th class="${d === td ? "today" : ""}">${DOW[i]}<br><span class="num">${+d.slice(8)}</span></th>`).join("")}</tr></thead>
-    <tbody>${ppl.map((x, r) => `<tr><td><b>${esc(x.name)}</b><br><span class="mu">${ROLES[x.role]}</span></td>${days.map((d, i) => { const sh = shiftOf(x.id, d), p = period(sh), a = attOf(x.id, d);
+    <tbody>${ppl.map((x, r) => `<tr><td><b>${esc(x.name)}</b>${x.head ? ' <span class="hbadge" title="Cheffe de salle">★</span>' : ""}<br><span class="mu">${ROLES[x.role]}</span></td>${days.map((d, i) => { const sh = shiftOf(x.id, d), p = period(sh), a = attOf(x.id, d);
       const inner = `${sh ? (sh.kind === "repos" ? "Repos" : `${t5(sh.start_time)}<br>${t5(sh.end_time)}`) : mg ? "+" : "—"}${a && a.status === "permission" ? "<em>Permission</em>" : ""}`;
       return `<td class="${d === td ? "today" : ""}">${mg ? `<button class="pc ${p}" style="--i:${r * 7 + i}" data-a="shiftEd" data-s="${x.id}" data-d="${d}" aria-label="${esc(x.name)}, ${dfr(d)} : ${shTxt(sh)}">${inner}</button>` : `<span class="pc ${p}" style="--i:${r * 7 + i}">${inner}</span>`}</td>`; }).join("")}</tr>`).join("")
       || `<tr><td colspan="8" style="text-align:center">Aucun employé actif.</td></tr>`}</tbody></table></div>
@@ -2369,7 +2603,7 @@ function vPlanning() {
   return `<div class="stack">${isPdg() ? "" : shiftBanner()}${navw}${todayCard}${mine}${grid}${tools}</div>`;
 }
 /* ═══════════════ Planning intelligent : semaine générée selon l’affluence, les permissions et un repos tournant ═══════════════ */
-const AP_DEF = () => ({ h: [["16:00", "00:00"], ["16:00", "00:00"], ["16:00", "00:00"], ["16:00", "01:00"], ["16:00", "03:00"], ["15:00", "03:00"], ["15:00", "23:00"]], n: null, rest: 1, split: true });
+const AP_DEF = () => ({ h: [["16:00", "00:00"], ["16:00", "00:00"], ["16:00", "00:00"], ["16:00", "01:00"], ["16:00", "03:00"], ["15:00", "03:00"], ["15:00", "23:00"]], n: null, nN: null, rest: 1, split: true, two: false, mid: "18:00", rot: true });
 const AP_T = [...Array(48)].map((_, i) => String(Math.floor(i / 2)).padStart(2, "0") + ":" + (i % 2 ? "30" : "00"));
 const apSel = (id, v, lab) => `<select id="${id}" data-k="${id}" aria-label="${lab}">${AP_T.map(t => `<option ${t === v ? "selected" : ""}>${t}</option>`).join("")}</select>`;
 const DOWL = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
@@ -2383,52 +2617,72 @@ function apAutoN(load, cfg) {
   const nS = apWaiters().length; if (!nS) return [0, 0, 0, 0, 0, 0, 0];
   const mx = Math.max(...load), open = i => !!cfg.h[i];
   let n = load.map((l, i) => !open(i) ? 0 : mx > 0 ? Math.max(1, Math.min(nS, Math.round(nS * (0.4 + 0.6 * l / mx)))) : Math.max(1, Math.ceil(nS * (i >= 4 ? 1 : 0.6))));
-  const cap = nS * Math.max(0, 7 - cfg.rest) - 0; // jours de travail disponibles dans la semaine
-  const order = [0, 1, 2, 3, 4, 5, 6].filter(open).sort((a, b) => load[a] - load[b]);
+  const cap = nS * Math.max(0, 7 - cfg.rest), order = [0, 1, 2, 3, 4, 5, 6].filter(open).sort((a, b) => load[a] - load[b]);
   let k = 0; while (n.reduce((a, b) => a + b, 0) > cap && k < 50) { const i = order[k % order.length]; if (n[i] > 1) n[i]--; k++; }
   return n;
 }
 function apGen(cfg, days, load) {
   load = load || [0, 0, 0, 0, 0, 0, 0]; const lmx = Math.max(1, ...load), keyRest = [0, 0, 0, 0, 0, 0, 0];
-  const items = [], warn = [], lastWk = days.map(d => dAdd(d, -7));
+  const items = [], warn = [], lastWk = days.map(d => dAdd(d, -7)), per = {};
   const onLeave = (sid, d) => (S.leaves || []).some(l => l.staff_id === sid && l.status === "acceptee" && l.day_from <= d && l.day_to >= d);
-  const wkN = Math.floor(new Date(days[0] + "T12:00:00") / 6048e5);
-  const roles = [["directeur", () => 1], ["caisse", () => 1], ["serveuse", i => cfg.n[i]], ["cuisine", () => S.bar.kitchen_on ? 1 : 0]];
-  const per = {};
-  roles.forEach(([role, needF]) => {
-    const P = S.staff.filter(x => x.active && x.role === role).sort((a, b) => ((apHash(a.id) + wkN) % 97) - ((apHash(b.id) + wkN) % 97)); if (!P.length) return;
-    const need = days.map((d, i) => cfg.h[i] ? needF(i) : 0), avail = days.map((d, i) => cfg.h[i] ? P.filter(p => !onLeave(p.id, d)).length : 0), taken = [0, 0, 0, 0, 0, 0, 0];
-    const off = {};
-    P.forEach(p => { off[p.id] = new Set(days.map((d, i) => !cfg.h[i] || onLeave(p.id, d) ? i : -1).filter(i => i >= 0));
+  const wkN = Math.floor(new Date(days[0] + "T12:00:00") / 6048e5), two = !!cfg.two, mid = cfg.mid || "18:00";
+  const segOK = h => two && h && apMin(h[0]) !== apMin(mid) && apSpan([h[0], mid]) >= 3 && apSpan([h[0], mid]) < apSpan(h) && apSpan([mid, h[1]]) >= 3;
+  const hJ = i => cfg.h[i] ? (segOK(cfg.h[i]) ? [cfg.h[i][0], mid] : cfg.h[i]) : null, hN = i => cfg.h[i] ? (segOK(cfg.h[i]) ? [mid, cfg.h[i][1]] : cfg.h[i]) : null;
+  const group = (role, P, needF, hoursF, team) => { if (!P.length) return;
+    P = [...P].sort((a, b) => ((apHash(a.id) + wkN) % 97) - ((apHash(b.id) + wkN) % 97));
+    const need = days.map((d, i) => hoursF(i) ? needF(i) : 0), avail = days.map((d, i) => hoursF(i) ? P.filter(p => !onLeave(p.id, d)).length : 0), taken = [0, 0, 0, 0, 0, 0, 0], off = {};
+    P.forEach(p => { off[p.id] = new Set(days.map((d, i) => !hoursF(i) || onLeave(p.id, d) ? i : -1).filter(i => i >= 0));
       let extra = Math.max(0, cfg.rest - off[p.id].size);
       while (extra-- > 0) { let best = -1, bs = -1e9;
         days.forEach((d, i) => { if (off[p.id].has(i)) return; const prev = shiftOf(p.id, lastWk[i]);
           const s = (avail[i] - need[i]) * 10 - taken[i] * 3 - (prev && prev.kind === "repos" ? 4 : 0) - load[i] / lmx * 3 - (role !== "serveuse" ? keyRest[i] * 5 : 0) + (apHash(p.id + i) % 3) * 0.1;
           if (s > bs) { bs = s; best = i; } });
         if (best < 0) break; off[p.id].add(best); avail[best]--; taken[best]++; if (role !== "serveuse") keyRest[best]++; } });
-    days.forEach((d, i) => { const h = cfg.h[i], W = P.filter(p => !off[p.id].has(i));
-      P.filter(p => off[p.id].has(i)).forEach(p => items.push({ s: p.id, d, k: "repos", n: !h ? "Bar fermé" : onLeave(p.id, d) ? "Permission accordée" : "" }));
-      if (!h) return; const sp = apSpan(h), split = role === "serveuse" && cfg.split && sp > 9 && W.length >= 2;
+    const tl = team ? ` (équipe de ${team})` : "";
+    days.forEach((d, i) => { const h = hoursF(i), W = P.filter(p => !off[p.id].has(i));
+      P.filter(p => off[p.id].has(i)).forEach(p => items.push({ s: p.id, d, k: "repos", n: !cfg.h[i] ? "Bar fermé" : onLeave(p.id, d) ? "Permission accordée" : "" }));
+      if (!h) return; const sp = apSpan(h), split = !team && role === "serveuse" && cfg.split && sp > 9 && W.length >= 2;
       W.forEach((p, j) => { const early = split && j % 2 === ((i + wkN) % 2);
         const a = !split ? h[0] : early ? h[0] : apAdd(h[0], (sp / 2 - 1) * 60), b = !split ? h[1] : early ? apAdd(h[0], (sp / 2 + 1) * 60) : h[1];
-        items.push({ s: p.id, d, k: "travail", a, b, n: split ? (early ? "Équipe d’ouverture" : "Équipe de fermeture") : "" }); });
-      if (W.length < need[i] && role !== "directeur") warn.push(role === "serveuse" ? `${DOWL[i]} : ${W.length} serveuse${W.length > 1 ? "s" : ""} au lieu de ${need[i]} (repos ou permissions).`
-        : role === "caisse" ? `${DOWL[i]} : personne à la caisse (repos) · le directeur ou le PDG la tiendra.` : `${DOWL[i]} : le cuisinier est de repos · prévoyez un remplaçant ou fermez la cuisine ce jour-là.`); });
-    P.forEach(p => { per[p.id] = { j: 7 - off[p.id].size, h: days.reduce((x, d, i) => x + (off[p.id].has(i) ? 0 : (it => it ? apSpan([it.a, it.b]) : 0)(items.find(y => y.s === p.id && y.d === d && y.k === "travail"))), 0) }; });
-  });
-  if (!apWaiters().length) warn.push("Aucune serveuse active : ajoutez-les dans Équipe.");
+        items.push({ s: p.id, d, k: "travail", a, b, n: team ? `Équipe de ${team}` : split ? (early ? "Équipe d’ouverture" : "Équipe de fermeture") : "" }); });
+      if (W.length < need[i] && role !== "directeur") warn.push(role === "serveuse" ? `${DOWL[i]}${tl} : ${W.length} serveuse${W.length > 1 ? "s" : ""} au lieu de ${need[i]} (repos ou permissions).`
+        : role === "caisse" ? `${DOWL[i]}${tl} : personne à la caisse (repos) · le directeur ou le PDG la tiendra.` : `${DOWL[i]} : le cuisinier est de repos · prévoyez un remplaçant ou fermez la cuisine ce jour-là.`); });
+    P.forEach(p => { per[p.id] = { team, j: 7 - off[p.id].size, h: days.reduce((x, d, i) => x + (off[p.id].has(i) ? 0 : (it => it ? apSpan([it.a, it.b]) : 0)(items.find(y => y.s === p.id && y.d === d && y.k === "travail"))), 0) }; });
+  };
+  // Répartition jour / nuit : ordre fixe par personne, équipes inversées une semaine sur deux si « alterner »
+  const splitTeams = (P, nNight) => { const s = [...P].sort((a, b) => apHash(a.id) - apHash(b.id)), swap = cfg.rot !== false && wkN % 2 === 1;
+    const night = swap ? s.slice(s.length - nNight) : s.slice(0, nNight); return [s.filter(p => !night.includes(p)), night]; };
+  const of = r => S.staff.filter(x => x.active && x.role === r);
+  // En deux équipes, un rôle tenu par une seule personne travaille l'équipe de nuit (le rush) au lieu d'une journée de 17 h
+  const duo = (role, P, needF, lab) => { if (two && P.length >= 2) { const [J, N] = splitTeams(P, Math.floor(P.length / 2)); group(role, J, needF, hJ, "jour"); group(role, N, needF, hN, "nuit"); }
+    else if (two && P.length === 1) { group(role, P, needF, hN, "nuit"); if (lab) warn.push(lab); } else group(role, P, needF, i => cfg.h[i], ""); };
+  duo("directeur", of("directeur"), () => 1, "");
+  duo("caisse", of("caisse"), () => 1, "Une seule caissière : elle tient l’équipe de nuit ; le jour, le directeur ou le PDG tient la caisse (ou ajoutez une caissière).");
+  const Wt = of("serveuse");
+  if (two && Wt.length >= 2) { const sJ = cfg.n.reduce((a, b) => a + b, 0), sN = (cfg.nN || cfg.n).reduce((a, b) => a + b, 0);
+    const nN = Math.min(Wt.length - 1, Math.max(1, Math.round(Wt.length * sN / Math.max(1, sJ + sN)))), [J, N] = splitTeams(Wt, nN);
+    group("serveuse", J, i => cfg.n[i], hJ, "jour"); group("serveuse", N, i => (cfg.nN || cfg.n)[i], hN, "nuit"); }
+  else group("serveuse", Wt, i => cfg.n[i], i => cfg.h[i], "");
+  if (S.bar.kitchen_on) duo("cuisine", of("cuisine"), () => 1, "Un seul cuisinier : il tient l’équipe de nuit ; prévoyez quelqu’un pour la cuisine de jour.");
+  if (!Wt.length) warn.push("Aucune serveuse active : ajoutez-les dans Équipe.");
   return { items, warn, per };
 }
 A.autoPlan = () => run(async () => { let load = [0, 0, 0, 0, 0, 0, 0]; try { load = (await B.rpc("gb_plan_load", {})) || load; } catch (e) {}
   const cfg = Object.assign(AP_DEF(), S.bar.plan_cfg || {}); if (!Array.isArray(cfg.n) || cfg.n.length !== 7) cfg.n = apAutoN(load, cfg);
+  if (!Array.isArray(cfg.nN) || cfg.nN.length !== 7) cfg.nN = cfg.n.slice();
   V.ap = { load: load.map(Number), cfg, step: "cfg" }; V.modal = { type: "autoplan" }; });
-const apRead = () => { const c = V.ap.cfg; c.h = c.h.map((h, i) => h ? [V.f["ap_o" + i] || h[0], V.f["ap_c" + i] || h[1]] : null);
-  c.n = c.n.map((n, i) => { const v = num("ap_n" + i); return v == null ? n : Math.max(0, Math.min(20, v)); }); for (let i = 0; i < 7; i++) ["ap_o", "ap_c", "ap_n"].forEach(k => delete V.f[k + i]); return c; };
-A.apDay = d => { const c = apRead(), i = +d.i; c.h[i] = c.h[i] ? null : AP_DEF().h[i]; if (c.h[i] && !c.n[i]) c.n[i] = 1; render(); };
-A.apN = d => { const c = apRead(), i = +d.i; c.n[i] = Math.max(0, Math.min(apWaiters().length || 20, (c.n[i] || 0) + +d.v)); render(); };
-A.apAuto = () => { const c = apRead(); c.n = apAutoN(V.ap.load, c); render(); toast("Serveuses recalculées selon l’affluence de vos 8 dernières semaines."); };
+const apRead = () => { const c = V.ap.cfg; c.h = c.h.map((h, i) => h ? [V.f["ap_o" + i] || h[0], V.f["ap_c" + i] || h[1]] : null); if (V.f.ap_mid) c.mid = V.f.ap_mid;
+  for (let i = 0; i < 7; i++) ["ap_o", "ap_c"].forEach(k => delete V.f[k + i]); delete V.f.ap_mid; return c; };
+A.apDay = d => { const c = apRead(), i = +d.i; c.h[i] = c.h[i] ? null : AP_DEF().h[i]; if (c.h[i] && !c.n[i]) c.n[i] = 1; if (c.h[i] && !c.nN[i]) c.nN[i] = 1; render(); };
+A.apN = d => { const c = apRead(), i = +d.i, arr = d.t === "N" ? c.nN : c.n; arr[i] = Math.max(0, Math.min(apWaiters().length || 20, (arr[i] || 0) + +d.v)); render(); };
+A.apAuto = () => { const c = apRead(); c.n = apAutoN(V.ap.load, c); c.nN = c.n.slice(); if (c.two) c.n = c.n.map(x => x ? Math.max(1, Math.ceil(x / 2)) : 0);
+  render(); toast("Serveuses recalculées selon l’affluence de vos 8 dernières semaines."); };
 A.apRest = d => { apRead().rest = +d.v; render(); };
 A.apSplit = () => { const c = apRead(); c.split = !c.split; render(); };
+A.apTwo = () => { const c = apRead(); c.two = !c.two; if (c.two) { c.nN = c.n.slice(); c.n = c.n.map(x => x ? Math.max(1, Math.ceil(x / 2)) : 0); let ch = 0;
+    c.h = c.h.map(h => { if (h && apSpan([h[0], c.mid || "18:00"]) < 3 || h && apSpan([h[0], c.mid || "18:00"]) >= apSpan(h)) { ch++; return ["10:00", h[1]]; } return h; });
+    if (ch) toast("Deux équipes : l’ouverture passe à 10 h les jours concernés pour l’équipe de jour. Ajustez si besoin."); } else c.n = c.nN.map((x, i) => Math.max(x, c.n[i])); render(); };
+A.apRot = () => { const c = apRead(); c.rot = c.rot === false; render(); };
 A.apPreview = () => { const c = apRead(); V.ap.res = apGen(c, weekDays(), V.ap.load); V.ap.step = "preview"; render(); };
 A.apBack = () => { V.ap.step = "cfg"; render(); };
 A.apApply = () => run(async () => { const r = V.ap.res, c = V.ap.cfg;
@@ -2436,28 +2690,33 @@ A.apApply = () => run(async () => { const r = V.ap.res, c = V.ap.cfg;
   toast(`Planning de la semaine créé : ${n} case(s). Touchez une case pour l’ajuster.`); });
 function vAutoPlan() {
   const ap = V.ap, c = ap.cfg, days = weekDays(), wk = `semaine du ${dfr(days[0], { day: "numeric", month: "long" })}`;
-  if (ap.step === "preview") { const r = ap.res, ppl = S.staff.filter(x => x.active && r.per[x.id]).sort(roleSort), filled = ppl.reduce((x, p) => x + days.filter(d => shiftOf(p.id, d)).length, 0);
+  if (ap.step === "preview") { const r = ap.res, ppl = S.staff.filter(x => x.active && r.per[x.id]).sort((a, b) => ((r.per[a.id].team === "nuit") - (r.per[b.id].team === "nuit")) || roleSort(a, b)), filled = ppl.reduce((x, p) => x + days.filter(d => shiftOf(p.id, d)).length, 0);
+    const hh = t => t.replace(":00", "h").replace(":30", "h30");
     const cell = (p, d) => { const it = r.items.find(y => y.s === p.id && y.d === d); if (!it) return "—"; if (it.k === "repos") return `<span class="pc off">${it.n === "Permission accordée" ? "Perm." : it.n === "Bar fermé" ? "Fermé" : "Repos"}</span>`;
-      return `<span class="pc ${period({ kind: "travail", start_time: it.a })}">${it.a.replace(":00", "h").replace(":30", "h30")}<br>${it.b.replace(":00", "h").replace(":30", "h30")}</span>`; };
+      return `<span class="pc ${period({ kind: "travail", start_time: it.a })}">${hh(it.a)}<br>${hh(it.b)}</span>`; };
     return `<h2>Proposition · ${wk}</h2>
       <div class="apgrid"><div class="aphd">${days.map((d, i) => `<span>${DOW[i]}<b class="num">${+d.slice(8)}</b></span>`).join("")}</div>
-      ${ppl.map(p => `<div class="aprow"><div class="between"><b>${esc(p.name)} <span class="mu" style="font-weight:500">· ${ROLES[p.role]}</span></b><span class="mu num">${r.per[p.id].j} j · ${Math.round(r.per[p.id].h)} h</span></div>
+      ${ppl.map(p => `<div class="aprow"><div class="between"><b>${esc(p.name)}${headTag(p.id)} <span class="mu" style="font-weight:500">· ${ROLES[p.role]}${r.per[p.id].team ? " · équipe de " + r.per[p.id].team : ""}</span></b><span class="mu num">${r.per[p.id].j} j · ${Math.round(r.per[p.id].h)} h</span></div>
         <div class="apcells">${days.map(d => cell(p, d)).join("")}</div></div>`).join("")}</div>
       ${r.warn.length ? `<div class="note warn stack" style="gap:4px"><b>À surveiller</b>${r.warn.map(w => `<span>${esc(w)}</span>`).join("")}</div>` : `<div class="note ok">Tous les besoins sont couverts, chacun a ses ${c.rest} jour${c.rest > 1 ? "s" : ""} de repos.</div>`}
       ${filled ? `<p class="mu" style="margin:0">Cette semaine contient déjà ${filled} case(s) remplie(s) : elles seront remplacées pour ces employés.</p>` : ""}
       <div class="row"><button class="btn ghost grow" data-a="apBack">Modifier les réglages</button><button class="btn grow" data-a="apApply">Appliquer au planning</button></div>
       <p class="mu" style="margin:0">Après application, chaque case reste modifiable à la main et chaque employé voit son planning tout de suite.</p>`; }
   const mx = Math.max(1, ...ap.load), hasLoad = ap.load.some(x => x > 0), nS = apWaiters().length;
+  const step = (i, t, v, dn) => `<div class="apstep" role="group" aria-label="Serveuses ${t === "N" ? "de nuit" : c.two ? "de jour" : ""} le ${dn}"><button class="ib" data-a="apN" data-i="${i}" data-t="${t}" data-v="-1" aria-label="Une serveuse de moins">−</button><span><b class="num">${v}</b><small>${c.two ? (t === "N" ? "nuit" : "jour") : "serv."}</small></span><button class="ib" data-a="apN" data-i="${i}" data-t="${t}" data-v="1" aria-label="Une serveuse de plus">+</button></div>`;
   return `<h2>Planning automatique</h2><p class="mu" style="margin:0">GesCo prépare la ${wk} : plus de serveuses les jours chargés, un repos tournant et équitable, les permissions accordées respectées, une personne à la caisse${S.bar.kitchen_on ? " et en cuisine" : ""} chaque jour d’ouverture.</p>
+    <button class="tgl ${c.two ? "on" : ""}" data-a="apTwo" role="switch" aria-checked="${!!c.two}"><i></i><span>Deux équipes : une équipe de jour et une équipe de nuit, avec relève à heure fixe</span></button>
+    ${c.two ? `<div class="row" style="align-items:end"><label class="f" for="ap_mid" style="flex:0 0 150px">Relève à${apSel("ap_mid", V.f.ap_mid ?? c.mid, "Heure de la relève")}</label>
+      <button class="tgl grow ${c.rot !== false ? "on" : ""}" data-a="apRot" role="switch" aria-checked="${c.rot !== false}"><i></i><span>Alterner jour et nuit chaque semaine</span></button></div>` : ""}
     <div class="aplist">${DOWL.map((dn, i) => { const h = c.h[i];
       return `<div class="apday ${h ? "" : "closed"}"><div class="between"><b>${dn}</b>${hasLoad ? `<span class="apbar" title="Affluence moyenne : ${ap.load[i]} tickets"><i style="width:${Math.round(ap.load[i] / mx * 100)}%"></i></span>` : ""}
         <button class="btn ${h ? "soft" : "ghost"} sm" data-a="apDay" data-i="${i}" aria-pressed="${!h}">${h ? "Ouvert" : "Fermé"}</button></div>
-        ${h ? `<div class="row" style="flex-wrap:nowrap;align-items:end;gap:8px"><label class="f grow" for="ap_o${i}">Ouverture${apSel("ap_o" + i, V.f["ap_o" + i] ?? h[0], "Ouverture le " + dn)}</label>
+        ${h ? `<div class="row" style="flex-wrap:${c.two ? "wrap" : "nowrap"};align-items:end;gap:8px"><label class="f grow" for="ap_o${i}">Ouverture${apSel("ap_o" + i, V.f["ap_o" + i] ?? h[0], "Ouverture le " + dn)}</label>
           <label class="f grow" for="ap_c${i}">Fermeture${apSel("ap_c" + i, V.f["ap_c" + i] ?? h[1], "Fermeture le " + dn)}</label>
-          <div class="apstep" role="group" aria-label="Serveuses le ${dn}"><button class="ib" data-a="apN" data-i="${i}" data-v="-1" aria-label="Une serveuse de moins">−</button><span><b class="num">${c.n[i]}</b><small>serv.</small></span><button class="ib" data-a="apN" data-i="${i}" data-v="1" aria-label="Une serveuse de plus">+</button></div></div>` : ""}</div>`; }).join("")}</div>
+          ${step(i, "J", c.n[i], dn)}${c.two ? step(i, "N", c.nN[i], dn) : ""}</div>` : ""}</div>`; }).join("")}</div>
     <div class="row" style="align-items:center"><span class="grow mu">${hasLoad ? "La barre montre l’affluence moyenne de chaque jour (8 dernières semaines)." : "Pas encore assez de ventes : réglage par défaut, plus de monde le week-end."}</span><button class="btn ghost sm" data-a="apAuto">Recalculer selon l’affluence</button></div>
     <div class="stack" style="gap:6px"><b>Jours de repos par employé</b><div class="segs">${[1, 2].map(v => `<button class="${c.rest === v ? "on" : ""}" data-a="apRest" data-v="${v}" aria-pressed="${c.rest === v}">${v} jour${v > 1 ? "s" : ""} par semaine</button>`).join("")}</div></div>
-    <button class="tgl ${c.split ? "on" : ""}" data-a="apSplit" role="switch" aria-checked="${!!c.split}"><i></i><span>Les longues soirées (plus de 9 h) : une équipe d’ouverture et une équipe de fermeture, qui se croisent 2 h au moment du rush</span></button>
+    ${c.two ? "" : `<button class="tgl ${c.split ? "on" : ""}" data-a="apSplit" role="switch" aria-checked="${!!c.split}"><i></i><span>Les longues soirées (plus de 9 h) : une équipe d’ouverture et une équipe de fermeture, qui se croisent 2 h au moment du rush</span></button>`}
     ${nS ? "" : `<div class="note warn">Aucune serveuse active dans l’équipe.</div>`}
     <div class="row"><button class="btn ghost grow" data-a="close">Annuler</button><button class="btn grow" data-a="apPreview">Voir la proposition</button></div>`;
 }
@@ -2577,23 +2836,24 @@ function cDirect(act, toRecv, pend, cancels, momo) {
   const mineC = act.filter(t => t.waitress_id === S.me.id && t.status === "draft");
   const sent = act.filter(t => t.status === "sent" && !isCounter(t)).sort((a, b) => (a.sent_at || a.created_at) < (b.sent_at || b.created_at) ? -1 : 1);
   const opt = (arr, k, sel) => arr.map(x => `<option value="${x.id}" ${sel === x.id ? "selected" : ""}>${esc(x.name)}${k ? ` (stock ${x.stock})` : ""}</option>`).join("");
-  return `<div class="stack">
-    ${todo.length ? `<div class="card"><h3>À traiter maintenant</h3><div class="list">${todo.join("")}</div></div>` : ""}
-    <div class="card"><h3>Versements des serveuses</h3><div class="list">${ws.map(w => {
+  const P1 = `    ${todo.length ? `<div class="card"><h3>À traiter maintenant</h3><div class="list">${todo.join("")}</div></div>` : ""}
+`, P2 = `    <div class="card"><h3>Versements des serveuses</h3><div class="list">${ws.map(w => {
       const c = toRecv.filter(t => t.waitress_id === w.id && t.pay_method === "cash"), amt = sum(c, cashOf), owe = S.holdings.filter(h => h.waitress_id === w.id && h.qty < 0);
       return `<div class="li" style="align-items:flex-start"><div class="grow"><b>${esc(w.name)}</b> <span class="mu">· espèces en main</span> <b class="num">${F(amt)}</b>
         ${c.map(t => `<div class="mu">N°${t.number} ${esc(t.client_label)} · total ${F(t.total)}${t.change_due ? ` · perçu ${F(t.received)}, reliquat ${F(t.change_due)}` : ""}</div>`).join("")}
         ${owe.length ? `<div class="warn-t" style="font-size:13px;margin-top:4px">À remettre : ${owe.map(h => `${-h.qty} × ${esc(prodName(h.product_id))}`).join(", ")}</div>` : ""}</div>
         <div class="stack" style="min-width:min(100%,250px)">${c.length ? `<div class="row"><input class="grow" id="rem_${w.id}" type="number" inputmode="numeric" data-k="rem_${w.id}" value="${val("rem_" + w.id)}" placeholder="Reçu : ${Fs(amt)}" aria-label="Montant reçu de ${esc(w.name)}"><button class="btn sm" data-a="remit" data-w="${w.id}">Valider</button></div>` : ""}
         ${owe.length ? `<button class="btn soft sm" data-a="fill" data-w="${w.id}">Remettre les bouteilles</button>` : ""}</div></div>`; }).join("") || '<div class="empty">Le directeur ajoute les serveuses dans Équipe.</div>'}</div></div>
-    <div class="card"><div class="between"><h3>Commandes en cours · ${sent.length}</h3><span class="mu">Mise à jour en direct</span></div>
+`, P3 = `    <div class="card"><div class="between"><h3>Commandes en cours · ${sent.length}</h3><span class="mu">Mise à jour en direct</span></div>
       <div class="stack" style="margin-top:10px">${sent.map(t => ticket(t, { who: 1 })).join("") || '<div class="empty">Aucune commande envoyée pour le moment.</div>'}</div></div>
-    ${ROLE() !== "caisse" ? "" : `<div class="card stack"><h3>Vente au comptoir</h3><p class="mu" style="margin:0">Pour un client servi directement par la caisse : le stock général et la caisse sont mis à jour tout de suite.</p>
+`, P4 = `    ${ROLE() !== "caisse" ? "" : `<div class="card stack"><h3>Vente au comptoir</h3><p class="mu" style="margin:0">Pour un client servi directement par la caisse : le stock général et la caisse sont mis à jour tout de suite.</p>
       <div class="row"><input class="grow" id="cclient" data-k="cclient" value="${val("cclient")}" placeholder="Nom du client (facultatif)" data-enter="newC" autocomplete="off"><button class="btn" data-a="newC">Nouvelle vente</button></div>
       ${mineC.map(t => ticket(t)).join("")}</div>`}
-    <div class="card stack"><h3>Dotation de bouteilles</h3>
+`, P5 = `    <div class="card stack"><h3>Dotation de bouteilles</h3>
       <div class="row"><select class="grow" id="dw" data-k="dw" aria-label="Serveuse">${opt(ws, 0, V.f.dw)}</select><select class="grow" id="dp" data-k="dp" aria-label="Boisson">${opt(S.products.filter(p => p.active), 1, V.f.dp)}</select></div>
-      <div class="row"><input class="grow" id="dq" type="number" inputmode="numeric" data-k="dq" value="${val("dq")}" placeholder="Quantité (−3 pour reprendre 3 bouteilles)"><button class="btn" data-a="dot">Remettre</button></div></div></div>`;
+      <div class="row"><input class="grow" id="dq" type="number" inputmode="numeric" data-k="dq" value="${val("dq")}" placeholder="Quantité (−3 pour reprendre 3 bouteilles)"><button class="btn" data-a="dot">Remettre</button></div></div>`;
+  if (desk()) return `<div class="desk3"><div class="stack">${P1}${P2}${P5}</div><div class="stack">${P3}</div><div class="stack">${kPanel()}${P4}</div></div>`;
+  return `<div class="stack">${P1}${P2}${P3}${P4}${P5}</div>`;
 }
 function cSales(DT) {
   const s = DT.filter(sold), agg = {};
@@ -2661,7 +2921,7 @@ function cStock() {
       ${par ? `<div class="row"><input style="flex:0 1 110px" id="ob_${p.id}" type="number" inputmode="numeric" data-k="ob_${p.id}" value="${val("ob_" + p.id)}" placeholder="1" aria-label="Nombre de bouteilles à ouvrir"><button class="btn soft sm grow" data-a="openB" data-p="${p.id}">Ouvrir une bouteille (+${p.doses} verres)</button></div>` : ""}
       ${ed ? `<div class="sub stack"><div class="row"><label class="f grow" for="${k("n", p.id)}">Nom<input id="${k("n", p.id)}" data-k="${k("n", p.id)}" value="${fv("n", p, p.name)}"></label>
         <label class="f" style="flex:1 1 140px" for="${k("c", p.id)}">Catégorie<input id="${k("c", p.id)}" data-k="${k("c", p.id)}" value="${fv("c", p, p.category)}" list="gb-cats"></label></div>
-        <div class="row"><label class="f grow" for="${k("co", p.id)}">Prix d’achat<input id="${k("co", p.id)}" type="number" inputmode="numeric" data-k="${k("co", p.id)}" value="${fv("co", p, p.cost || 0)}"></label>
+        <div class="row"><label class="f grow" for="${k("co", p.id)}">${isDishP(p) ? "Prix de revient estimé (1 plat)" : "Prix d’achat"}<input id="${k("co", p.id)}" type="number" inputmode="numeric" data-k="${k("co", p.id)}" value="${fv("co", p, p.cost || 0)}"></label>
         <label class="f grow" for="${k("pr", p.id)}">Prix de vente (FCFA)<input id="${k("pr", p.id)}" type="number" inputmode="numeric" data-k="${k("pr", p.id)}" value="${fv("pr", p, p.price)}"></label>
         <label class="f grow" for="${k("u", p.id)}">Vendu à la${sel(k("u", p.id), UNITS.map(x => [x, x]), unit, "Unité de vente")}</label>
         ${isDishP(p) ? "" : `<label class="f grow" for="${k("st", p.id)}">Stock général<input id="${k("st", p.id)}" type="number" inputmode="numeric" data-k="${k("st", p.id)}" value="${fv("st", p, p.stock)}"></label>`}
@@ -2681,7 +2941,7 @@ function cStock() {
       <input class="grow" id="aq" type="number" inputmode="numeric" data-k="aq" value="${val("aq")}" placeholder="Quantité reçue">
       <input class="grow" id="auc" type="number" inputmode="numeric" data-k="auc" value="${val("auc")}" placeholder="Prix d’achat unitaire (${Fs((S.products.find(p => p.id === (V.f.ap || (S.products.find(x => !x.parent_id) || {}).id)) || {}).cost || 0)} FCFA)" aria-label="Prix d’achat unitaire">
       <button class="btn" data-a="appro">Ajouter au stock</button></div><p class="mu" style="margin:0">Le prix d’achat sert à calculer automatiquement la comptabilité du PDG.</p></div>
-    <div class="card stack" id="np_card"><h3>Ajouter un produit à la carte</h3><p class="mu" style="margin:0">Touchez une bouteille de la photothèque GesCo : le nom, la catégorie et la photo se remplissent. Il ne reste que le prix. Pour un produit absent, écrivez son nom vous-même.</p>
+    ${dishCatalog()}<div class="card stack" id="np_card"><h3>Ajouter un produit à la carte</h3><p class="mu" style="margin:0">Touchez une bouteille de la photothèque GesCo : le nom, la catégorie et la photo se remplissent. Il ne reste que le prix. Pour un produit absent, écrivez son nom vous-même.</p>
       ${(() => { const have = new Set(S.products.map(p => (pVis(p).c || {}).k).filter(Boolean)), cats = [...new Set(CATALOG.map(c => c.c))], fc = V.f.np_fc || "";
         const list = CATALOG.filter(c => !have.has(c.k) && (!fc || c.c === fc));
         return `<div class="catsc" role="group" aria-label="Catégories de la photothèque">${[["", "Tout"], ...cats.map(c => [c, c])].map(([v, l]) => `<button type="button" data-a="npCat" data-v="${esc(v)}" class="${fc === v ? "on" : ""}">${esc(l)}</button>`).join("")}</div>
@@ -2699,14 +2959,14 @@ function cStock() {
 function cTeam() {
   const b = S.bar, me = ROLE(), url = joinUrl(), msg = `Bonjour, voici l’application de ${b.name}. Ouvrez ce lien sur votre téléphone, touchez votre nom et tapez votre PIN : ${url}`;
   const roleOpts = me === "pdg" ? ["directeur", "caisse", "serveuse", "cuisine"] : ["caisse", "serveuse", "cuisine"];
-  const canEdit = x => x.id === S.me.id || (me === "pdg" && x.role !== "pdg") || (me === "directeur" && ["caisse", "serveuse"].includes(x.role));
+  const canEdit = x => x.id === S.me.id || (me === "pdg" && x.role !== "pdg") || (me === "directeur" && ["caisse", "serveuse", "cuisine"].includes(x.role));
   const ns = V.f.ns_r || "serveuse";
-  const row = (x, i) => !canEdit(x) ? `<div class="li rise" style="--i:${i};${x.active ? "" : "opacity:.6"}"><div class="grow"><b>${esc(x.name)}</b><div class="mu">${ROLES[x.role]}</div></div><span class="pill">${x.active ? "Actif" : "Désactivé"}</span></div>`
+  const row = (x, i) => !canEdit(x) ? `<div class="li rise" style="--i:${i};${x.active ? "" : "opacity:.6"}"><div class="grow"><b>${esc(x.name)}</b>${headTag(x.id)}<div class="mu">${ROLES[x.role]}</div></div><span class="pill">${x.active ? "Actif" : "Désactivé"}</span></div>`
     : `<div class="stack rise" style="padding:12px 0;--i:${i};${x.active ? "" : "opacity:.6"}">
       <div class="row"><input class="grow" id="s_n_${x.id}" data-k="s_n_${x.id}" value="${esc(V.f["s_n_" + x.id] ?? x.name)}" aria-label="Nom">
       ${x.id === S.me.id || x.role === "pdg" ? `<span class="pill brand" style="flex:none">${ROLES[x.role]}</span>` : `<select style="flex:1 1 130px" id="s_r_${x.id}" data-k="s_r_${x.id}" aria-label="Rôle">${[...new Set([...roleOpts, x.role])].map(r => `<option value="${r}" ${(V.f["s_r_" + x.id] ?? x.role) === r ? "selected" : ""}>${ROLES[r]}</option>`).join("")}</select>`}
       <input style="flex:1 1 130px" id="s_pin_${x.id}" type="tel" inputmode="numeric" maxlength="6" data-k="s_pin_${x.id}" value="${val("s_pin_" + x.id)}" placeholder="Nouveau PIN" aria-label="Nouveau PIN"></div>
-      <div class="row"><span class="mu grow">${x.id === S.me.id ? "Vous" : x.active ? "Actif" : "Désactivé"}</span>${x.id === S.me.id || x.role === "pdg" ? "" : `<button class="btn ghost sm" data-a="togS" data-s="${x.id}">${x.active ? "Désactiver" : "Réactiver"}</button>`}<button class="btn sm" data-a="saveS" data-s="${x.id}">Enregistrer</button></div></div>`;
+      <div class="row"><span class="mu grow">${x.id === S.me.id ? "Vous" : x.active ? "Actif" : "Désactivé"}</span>${x.role === "serveuse" && x.active && isMgr() ? `<button class="btn ${x.head ? "amber" : "ghost"} sm" data-a="headTog" data-s="${x.id}" aria-pressed="${!!x.head}">★ ${x.head ? "Cheffe de salle" : "Nommer cheffe de salle"}</button>` : ""}${x.id === S.me.id || x.role === "pdg" ? "" : `<button class="btn ghost sm" data-a="togS" data-s="${x.id}">${x.active ? "Désactiver" : "Réactiver"}</button>`}<button class="btn sm" data-a="saveS" data-s="${x.id}">Enregistrer</button></div></div>`;
   return `<div class="stack">
     <div class="card stack"><h3>Ajouter un membre</h3><p class="mu" style="margin:0">${me === "pdg" ? "Vous pouvez ajouter un directeur, une caissière ou une serveuse." : "Vous ajoutez les caissières et les serveuses. Le PDG garde le contrôle sur toute l’équipe."}</p>
       <div class="row"><input class="grow" id="ns_n" data-k="ns_n" value="${val("ns_n")}" placeholder="Prénom" aria-label="Prénom">
@@ -2959,7 +3219,6 @@ A.wk = d => { V.wk = +d.d === 0 ? 0 : (V.wk || 0) + (+d.d); V.secT = Date.now();
 A.pday = d => { const n = dAdd(V.f.pd || today(), +d.d); if (n > today()) return; V.f.pd = n; render(); };
 A.clockIn = () => run(async () => { const r = await call("gb_clock_in", {}); await refresh();
   toast(r.deja ? "Arrivée déjà pointée aujourd’hui." : r.status === "retard" ? `Arrivée pointée avec ${r.late} min de retard.` : "Arrivée pointée. Bon service !", r.status === "retard" && !r.deja ? "err" : ""); });
-A.clockOut = () => run(async () => { await call("gb_clock_out", {}); toast("Départ pointé. Bonne fin de journée !"); await refresh(); });
 const attGo = (sid, day, st, late) => run(async () => { await call("gb_attendance_set", { p_staff: sid, p_day: day, p_status: st, p_late: late || 0, p_note: V.f.att_note || "" });
   V.f.att_note = ""; V.modal = null; toast(st === "aucun" ? "Pointage effacé." : `${staffName(sid)} : ${ATT[st][1].toLowerCase()}${st === "retard" ? ` de ${late} min` : ""}.`); await refresh(); });
 A.att = d => { const day = d.day || today(); if (d.st === "retard") { V.f.late_min = ""; V.f.att_note = ""; V.modal = { type: "late", s: d.s, day }; render(); return; } attGo(d.s, day, d.st, 0); };
@@ -3009,12 +3268,12 @@ function cDay(DT) {
       ${cnt != null ? `<div class="note ${cnt - exp === 0 ? "ok" : "bad"} between"><span>Écart de caisse</span><b class="num">${F(cnt - exp)}</b></div>` : ""}
       <button class="btn amber" data-a="close1">Clôturer la journée</button>`}`
       : `<p class="mu" style="margin:0">La journée s’ouvre automatiquement au premier ticket.</p>`}</div>
-    <div class="card"><h3>Journées clôturées</h3><div class="list">${S.days.map(x => { const e = (x.counted_cash || 0) - (x.expected_cash || 0);
+    ${d ? relCard(exp) : ""}<div class="card"><h3>Journées clôturées</h3><div class="list">${S.days.map(x => { const e = (x.counted_cash || 0) - (x.expected_cash || 0);
       return `<div class="li"><div class="grow"><b>${dfr(x.business_date, { weekday: "long", day: "numeric", month: "long" })}</b><div class="mu">Clôturée par ${esc(staffName(x.closed_by))} · ventes ${F(x.summary && x.summary.ventes)} · écart <span class="${e < 0 ? "bad-t" : e > 0 ? "ok-t" : ""}">${F(e)}</span></div></div><button class="btn soft sm" data-a="showDay" data-id="${x.id}">Rapport</button></div>`; }).join("") || '<div class="empty">Aucune journée clôturée pour le moment.</div>'}</div></div></div>`;
 }
 const ACT = { ticket_supprime: "Ticket supprimé", ticket_modifie: "Ticket modifié après envoi", annulation_demandee: "Annulation demandée", annulation_refusee: "Annulation refusée", ticket_rouvert: "Ticket rouvert",
   versement: "Versement reçu", momo_confirme: "Mobile Money confirmé", monnaie_remise: "Monnaie remise", bon_emis: "Bon émis", bon_verifie: "Bon vérifié", bon_utilise: "Bon utilisé",
-  approvisionnement: "Approvisionnement", produit_ajoute: "Boisson ajoutée", produit_modifie: "Boisson modifiée", produit_photo: "Photo de produit changée", bon_commande: "Bon de commande envoyé", livraison_recue: "Livraison reçue (stock mis à jour)", bon_commande_annule: "Bon de commande annulé", regle_reappro: "Règle de réapprovisionnement", planning_auto: "Planning automatique", module_cuisine: "Module Cuisine", recette_modifiee: "Recette modifiée", equipe_modifiee: "Équipe modifiée", pin_change: "PIN modifié",
+  approvisionnement: "Approvisionnement", produit_ajoute: "Boisson ajoutée", produit_modifie: "Boisson modifiée", produit_photo: "Photo de produit changée", bon_commande: "Bon de commande envoyé", livraison_recue: "Livraison reçue (stock mis à jour)", bon_commande_annule: "Bon de commande annulé", regle_reappro: "Règle de réapprovisionnement", planning_auto: "Planning automatique", cheffe_de_salle: "Cheffe de salle", table_transferee: "Table confiée", releve_caisse: "Relève de caisse", releve_confirmee: "Relève confirmée", plat_revente: "Plat gardé pour la revente", plat_personnel: "Plat : repas du personnel", plat_perte: "Plat perdu", courses_marche: "Courses du marché", courses_retirees: "Courses retirées", module_cuisine: "Module Cuisine", recette_modifiee: "Recette modifiée", equipe_modifiee: "Équipe modifiée", pin_change: "PIN modifié",
   reglages_modifies: "Réglages modifiés", journee_cloturee: "Journée clôturée", bar_cree: "Bar créé", membre_ajoute: "Membre ajouté", pin_bloque: "PIN bloqué après 5 essais", bouteille_ouverte: "Bouteille ouverte au verre", depense_ajoutee: "Dépense ajoutée", depense_supprimee: "Dépense supprimée", inventaire: "Inventaire du stock", identite_bar: "Identité légale mise à jour", presence: "Présence pointée", permission_demandee: "Permission demandée",
   permission_acceptee: "Permission acceptée", permission_refusee: "Permission refusée", planning_copie: "Planning copié", salaire_paye: "Salaire payé", salaire_annule: "Paiement de salaire annulé" };
 const KEYS = { ticket: "N°", client: "client", total: "total", produit: "boisson", variation: "variation", serveuse: "serveuse", attendu: "attendu", recu: "reçu", ecart: "écart", tickets: "tickets",
@@ -3127,7 +3386,10 @@ function vModal() {
         .map(([l, v]) => `<div class="between" style="padding:6px 0"><span class="mu">${l}</span><span class="num">${v}</span></div>`).join("")}</div>
       <h3>Par serveuse</h3><div class="scroll"><table><tr><th>Serveuse</th><th>Ventes</th><th>Tickets</th><th>Corr.</th><th>Écart</th><th>Btl.</th></tr>
         ${(s.serveuses || []).map(w => `<tr><td>${esc(w.nom)}</td><td>${F(w.ventes)}</td><td>${w.tickets}</td><td>${w.corrections}</td><td class="${w.ecart_versements < 0 ? "bad-t" : ""}">${F(w.ecart_versements)}</td><td>${w.bouteilles_en_main}</td></tr>`).join("")}</table></div>
-      <p class="mu" style="margin:0">Btl. : bouteilles encore en main au moment de la clôture.</p><button class="btn" data-a="close">Fermer</button>`; }
+      <p class="mu" style="margin:0">Btl. : bouteilles encore en main au moment de la clôture.</p>
+      ${(s.services || []).length ? `<h3>Services (relèves de caisse)</h3><div class="list">${s.services.map(x => `<div class="between" style="padding:5px 0"><span>${esc(x.caisse || "")}${x.relaye_par ? " → " + esc(x.relaye_par) : ""} <span class="mu">· ${x.heure ? hm(x.heure) : ""}</span></span><span class="num">${F(x.ventes || 0)} · écart ${F(x.ecart_service || 0)}</span></div>`).join("")}</div>` : ""}
+      ${(s.cuisine_pertes || []).length ? `<h3>Cuisine : pertes et repas du personnel</h3><div class="list">${s.cuisine_pertes.map(x => `<div class="between" style="padding:5px 0"><span>${x.qte}× ${esc(x.plat)} <span class="mu">· ${x.issue === "perte" ? "perte" : "personnel"}${x.note ? " · " + esc(x.note) : ""}</span></span><span class="num">${F(x.valeur || 0)}</span></div>`).join("")}</div>` : ""}
+      <button class="btn" data-a="close">Fermer</button>`; }
   if (m.type === "report") c = `${reportHtml(m.r)}<div class="row noprint">${CFG.mode === "live" ? `<button class="btn grow" data-a="printReport">Enregistrer en PDF ou imprimer</button>` : `<p class="mu" style="margin:0">Le PDF s’enregistre depuis l’application en ligne : bouton « Enregistrer en PDF », puis choisissez « Enregistrer au format PDF » comme imprimante.</p>`}<button class="btn ghost grow" data-a="close">Fermer</button></div>`;
   if (m.type === "inventory") { const r = m.r || {};
     c = `<h2>Inventaire enregistré</h2><p style="margin:0">${r.ecarts ? `${r.ecarts} produit(s) corrigé(s).` : "Aucun écart : le stock compté correspond."}</p>
@@ -3163,6 +3425,10 @@ function vModal() {
       <div class="row">${sh ? `<button class="btn bad sm" data-a="shiftSave" data-k="aucun">Effacer la case</button>` : ""}<span class="grow"></span><button class="btn ghost sm" data-a="close">Fermer</button></div>`; }
   if (m.type === "pimg") c = vPimg(m);
   if (m.type === "autoplan") c = vAutoPlan();
+  if (m.type === "give") c = vGive(m);
+  if (m.type === "depart") c = vDepart();
+  if (m.type === "hov") c = vHov(m);
+  if (m.type === "kloss") c = vKloss();
   if (m.type === "plan") c = `<h2>Planning de la semaine</h2>${m.url ? `<img class="planimg" src="${m.url}" alt="Planning de la semaine du ${dfr(wkStart(), { day: "numeric", month: "long" })}">` : `<div class="note bad">Image indisponible sur cet appareil.</div>`}
       <div class="row">${m.url ? `<button class="btn grow" data-a="planShare">${ico("share")} Partager l’image</button><button class="btn soft grow" data-a="planDl">${ico("dl")} Télécharger</button>` : ""}</div>
       <a class="btn soft wide" href="https://wa.me/?text=${encodeURIComponent(planText())}" target="_blank" rel="noopener">Envoyer le planning en texte sur WhatsApp</a>

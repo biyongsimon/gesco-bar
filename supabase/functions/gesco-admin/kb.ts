@@ -10,6 +10,7 @@ Elle fonctionne aussi sans réseau pour les gestes de la serveuse (tickets, quan
 - Directeur : supervise le service. Supervision (commandes envoyées, servies ou en retard de plus de 10 min), Présences (présent, retard, absent, permission, repos), Planning, Équipe (ajoute caissières et serveuses), Ventes, Journal, Abonnement, Mon espace. Il ne valide aucun paiement.
 - Caisse (caissière) : Commandes (commandes envoyées, versements des serveuses, Mobile Money à vérifier, reliquats, annulations, vente au comptoir, dotations de bouteilles), Stock (inventaire, approvisionnement, carte des produits, prix), Bons, Ventes, Journée (clôture), Planning, Mon espace.
 - Serveuse : Service (ses tickets), Paiement QR, Planning, Mon espace (pointage, permissions, fiches de paie).
+- Cheffe de salle : une serveuse nommée par le directeur ou le PDG (Équipe → « Nommer cheffe de salle »). Elle garde ses propres tables, voit toutes les tables de la salle (onglet « Salle » dans Service), peut « Prendre » une table ou la « Confier à… » une autre serveuse. Son nom s'affiche en haut des écrans de la caisse, de la direction et des serveuses (★ Cheffe). On peut en nommer plusieurs (une de jour, une de nuit).
 - Cuisine (cuisinier) : Cuisine (écran des bons), Planning, Mon espace. Rôle disponible quand le module Cuisine est activé (formule Snack Gold et plus).
 - À chaque ouverture de l'application, chacun arrive sur le premier onglet de son espace.
 
@@ -51,6 +52,9 @@ Elle fonctionne aussi sans réseau pour les gestes de la serveuse (tickets, quan
 
 ## Planning, présences, permissions, paie
 - Planning automatique (directeur, PDG) : bouton « Générer la semaine automatiquement » dans Planning. Régler les horaires d'ouverture de chaque jour (ou Fermé), le nombre de serveuses par jour (proposé selon l'affluence réelle des 8 dernières semaines, « Recalculer selon l'affluence »), 1 ou 2 jours de repos par employé, et l'option équipe d'ouverture / équipe de fermeture pour les soirées de plus de 9 h. « Voir la proposition » montre la semaine, les heures de chacun et les points à surveiller ; « Appliquer au planning » l'enregistre. Les permissions accordées sont respectées, les repos tournent d'une semaine à l'autre et tombent de préférence les jours calmes. Chaque case reste modifiable ensuite.
+- Deux équipes (jour et nuit) : dans le planning automatique, activer « Deux équipes », choisir l'heure de relève (ex. 18 h) et le nombre de serveuses de jour et de nuit pour chaque jour ; option « Alterner jour et nuit chaque semaine ». Un rôle tenu par une seule personne (caissière, cuisinier) est placé sur l'équipe de nuit et un point à surveiller s'affiche.
+- Relève entre équipes : la journée de caisse reste de 6 h à 6 h, découpée en services. La caissière qui part va dans Journée → « Relève de caisse », compte le tiroir et touche « Passer la main » : le bilan de son service s'affiche (ventes, versements, Mobile Money, écart de son service). La caissière qui arrive confirme « fond de caisse vérifié » (bandeau dans Commandes). Le rapport de clôture reprend chaque service.
+- Départ d'une serveuse : elle ne peut pas pointer son départ en laissant une table ouverte ou de l'argent non versé. Elle confie ses tables (sur le ticket : « Confier cette table à une collègue », ou par la cheffe de salle), verse ses espèces et rend ses bouteilles. Le client ne voit rien ; les plats en cuisine suivent la table.
 - Planning : fait par le directeur (ou le PDG), visible par tous. Toucher une case pour fixer l'horaire ou le repos ; « Copier la semaine d'avant » ; « Partager sur WhatsApp » (image ou texte).
 - Pointage : chacun pointe son arrivée et son départ (Mon espace ou bandeau du jour). Retard compté au-delà de 10 minutes. Le directeur est notifié.
 - Permissions : serveuses et caisse demandent au directeur ; le directeur demande au PDG. Personne ne valide sa propre demande.
@@ -62,7 +66,9 @@ Elle fonctionne aussi sans réseau pour les gestes de la serveuse (tickets, quan
 - Les plats sont les produits de catégorie « Cuisine » (ou vendus au plat / à la portion). La serveuse les ajoute au ticket comme une boisson ; à l'envoi, chaque plat part sur l'écran Cuisine avec un numéro de bon, la table, la serveuse (bande de couleur à son nom) et le temps d'attente (rouge après 15 min).
 - Le cuisinier touche « Commencer » puis « Prêt ✓ ». Seule la serveuse de la table est prévenue (son et notification) ; sur son ticket, elle touche « Je l'ai récupéré ». La caisse et la direction voient aussi l'écran Cuisine.
 - Recettes : dans Stock, ouvrir un plat (Modifier) → Recette : ajouter les ingrédients (catégorie « Ingrédients », unité g, ml ou pièce) et la quantité pour 1 plat. À chaque plat envoyé, les ingrédients sortent du stock ; le prix d'achat du plat est calculé par la recette (marge affichée).
-- Annulation : un plat annulé avant que la cuisine l'ait commencé rend ses ingrédients au stock automatiquement. Un plat déjà en préparation ne peut plus être retiré par la serveuse : la caisse doit annuler.
+- Annulation : un plat annulé avant que la cuisine l'ait commencé est simplement annulé (ses ingrédients comptés reviennent). Un plat déjà commencé ne revient jamais en stock : il apparaît en haut de l'écran Cuisine (« Plats annulés après préparation ») et la cuisine ou la caisse choisit : Revendre (le plat est gardé ; la prochaine commande du même plat le prend tout de suite, prêt à servir, pendant 6 h), Repas du personnel, ou Perte (avec un motif ; son coût entre dans les pertes du jour et le rapport de clôture). Un plat déjà en préparation ne peut plus être retiré par la serveuse : la caisse annule.
+- Courses du marché (écran Cuisine, pour la cuisine, la caisse et la direction) : on note les achats en gros du jour (article, quantité libre comme « 2 seaux », montant, espèces ou Mobile Money). Ils entrent dans les dépenses de la compta. Pas besoin de peser chaque plat : la recette est facultative et ne sert que pour ce qui se compte à la pièce (poisson, poulet, gigot, paquets de spaghetti). Pour chaque plat on peut saisir un « prix de revient estimé » : la marge s'affiche.
+- Catalogue de plats (Stock → « Ajouter un plat à la carte ») : plats camerounais (poulet DG, ndolé, eru, mbongo tchobi, koki, okok, taro…), plats de restaurant (spaghetti bolognaise, tagliatelles carbonara, tranches de gigot d'agneau, steak frites…) et accompagnements ; on touche un plat, on met son prix et « Ajouter à la carte ».
 - Les ingrédients n'apparaissent pas chez les serveuses ; ils sont dans le réapprovisionnement intelligent (consommation de la cuisine comprise).
 
 ## Donner son avis
@@ -82,6 +88,11 @@ Elle fonctionne aussi sans réseau pour les gestes de la serveuse (tickets, quan
 - Bar suspendu : seul BISMO Agency peut le rétablir.
 - Essai gratuit (formule « Essai gratuit ») : toutes les fonctions sont offertes jusqu'à la date indiquée dans Abonnement. Rappel les 7 derniers jours. À la fin (+3 jours de grâce), l'application se bloque pour l'équipe tant qu'aucune formule n'est payée. On peut payer avant la fin : les jours d'essai restants sont conservés, l'abonnement commence à la fin de l'essai.
 - Reçu d'abonnement : dans Abonnement → Historique, bouton Reçu (imprimable ou WhatsApp).
+
+## Sur ordinateur (poste caisse)
+- Sur un écran large (ordinateur portable ou de bureau), l'application passe en « poste caisse » : menu à gauche toujours visible ; Commandes sur 3 colonnes (à traiter et versements / commandes en cours / cuisine en direct et vente au comptoir) ; chiffres du jour en haut.
+- Raccourcis clavier : / pour chercher, N pour une vente au comptoir, 1 à 9 pour changer de rubrique, Échap pour fermer une fenêtre.
+- Le téléphone garde son affichage habituel.
 
 ## Installation sur le téléphone
 - Android (Chrome) : ouvrir le lien, menu ⋮ → « Ajouter à l'écran d'accueil » ou « Installer l'application ».
