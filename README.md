@@ -171,3 +171,8 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Responsive : poste caisse dès 900 px (tablette paysage, 2 colonnes), ordinateur et grand écran (3 colonnes) ; vérifié de 360 à 1920 px pour les 5 rôles.
 - Windows : application installable (PWA) via Edge / Chrome, bouton « Installer GesCo sur cet appareil » dans le menu, manifeste sans blocage en portrait, raccourcis (Commandes, Écran mural cuisine, Planning).
 
+## v4.13 — Notifications push (application fermée)
+- Abonnement Web Push par appareil (`push_subscriptions`, `gb_push_register` / `gb_push_unregister`), clés VAPID créées et gardées côté serveur (`gb_private.push_config`), fonction `gesco-push`.
+- Déclencheurs en base (pg_net) : nouvelle commande, annulation demandée, Mobile Money à vérifier, commande validée, table confiée, bon cuisine, plat gardé disponible, plat prêt, plat à décider, demande de permission, relève de caisse, journée clôturée. Jamais à la personne qui fait l'action.
+- Toucher la notification ouvre la bonne rubrique ; application rouverte après plus d'une minute : PIN ou empreinte. Déconnexion = désabonnement de l'appareil. Migration 022.
+
