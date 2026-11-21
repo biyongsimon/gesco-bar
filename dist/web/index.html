@@ -570,7 +570,7 @@ const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentC
 
 /* ═══════════════ Moteur DÉMO (données locales, mêmes règles que le serveur) ═══════════════ */
 function DemoBackend() {
-  const KEY = "gesco-demo-v10";
+  const KEY = "gesco-demo-v11";
   let db = LS.get(KEY), sess = LS.get(KEY + "-sess");
   const listeners = [];
   const save = () => LS.set(KEY, db);
@@ -951,7 +951,7 @@ function DemoBackend() {
         ["Coca-Cola 1L", "Sucreries", 600, 24], ["World Cola 1L", "Sucreries", 500, 12], ["Top Pamplemousse", "Sucreries", 500, 24], ["Top Grenadine", "Sucreries", 500, 24], ["Top Orange", "Sucreries", 500, 12], ["Top Ananas", "Sucreries", 500, 12],
         ["Vimto 1L", "Sucreries", 600, 12], ["Orangina 1L", "Sucreries", 700, 12], ["D’jino Cocktail 1L", "Jus", 600, 12], ["Tangui 1,5 L", "Eaux", 600, 10], ["Supermont 1,5 L", "Eaux", 500, 10], ["Opur 50 cl", "Eaux", 300, 12], ["Vitale 1,5 L", "Eaux", 500, 10],
         ["Petite Guinness 33cl", "Bières", 600, 24], ["Beaufort Light 33cl", "Bières", 600, 24], ["Isenbeck 65cl", "Bières", 650, 24], ["Malta Guinness", "Sucreries", 500, 12], ["Fanta 1L", "Sucreries", 600, 12],
-        ["Planet Orange", "Sucreries", 400, 12], ["Planet Ananas", "Sucreries", 400, 12], ["Planet Pomme", "Sucreries", 400, 12], ["Planet Cocktail", "Sucreries", 400, 12],
+        ["Planet Orange", "Sucreries", 400, 12], ["Chivas Regal 12 ans", "Spiritueux", 35000, 2], ["Grant’s 70cl", "Spiritueux", 12000, 3], ["Martini Rosso", "Liqueurs", 9000, 3], ["Castillo de Ferrer rouge", "Vins rouges", 5000, 6], ["Planet Ananas", "Sucreries", 400, 12], ["Planet Pomme", "Sucreries", 400, 12], ["Planet Cocktail", "Sucreries", 400, 12],
         ["Vin rouge Bordeaux", "Vins rouges", 6000, 6], ["Vin rouge (verre)", "Vins rouges", 1000, 6, "verre"], ["Vin blanc Côtes de Gascogne", "Vins blancs", 6000, 4],
         ["Whisky J&B 75cl", "Spiritueux", 15000, 3], ["Whisky J&B (verre)", "Spiritueux", 1500, 15, "verre"], ["Jack Daniel’s 70cl", "Spiritueux", 25000, 2]]
         .map(([name, category, price, stock, unit], i) => ({ id: uuid(), name, category, price, stock, active: true, sort: i + 1, unit: unit || "bouteille", parent_id: null, doses: null })),
@@ -959,7 +959,7 @@ function DemoBackend() {
     const link = (g, b, n) => { const G = db.products.find(p => p.name === g); G.parent_id = db.products.find(p => p.name === b).id; G.doses = n; };
     link("Vin rouge (verre)", "Vin rouge Bordeaux", 6); link("Whisky J&B (verre)", "Whisky J&B 75cl", 15);
     db.products.forEach(p => { p.low_at = p.parent_id ? 3 : /Vins|Spiritueux/.test(p.category) ? 2 : null; });
-    const COST = { "Castel": 450, "33 Export": 450, "Mützig": 450, "Beaufort": 450, "Guinness": 750, "Orijin": 450, "Coca": 300, "Top": 300, "Petite Guinness": 420, "Isenbeck": 450, "Malta": 350, "Fanta": 400, "Planet": 280, "Opur": 200, "Vitale": 350, "Heineken": 600, "Doppel": 500, "Booster": 500, "World": 350, "Vimto": 400, "Orangina": 500, "D’jino": 400, "Tangui": 400, "Supermont": 350, "Vin rouge Bordeaux": 3500, "Vin rouge (verre)": 600, "Vin blanc": 3500, "Whisky J&B 75cl": 9000, "Whisky J&B (verre)": 600, "Jack": 16000 };
+    const COST = { "Castel": 450, "33 Export": 450, "Mützig": 450, "Beaufort": 450, "Guinness": 750, "Orijin": 450, "Coca": 300, "Top": 300, "Chivas": 26000, "Grant": 8500, "Martini": 6000, "Castillo": 3200, "Petite Guinness": 420, "Isenbeck": 450, "Malta": 350, "Fanta": 400, "Planet": 280, "Opur": 200, "Vitale": 350, "Heineken": 600, "Doppel": 500, "Booster": 500, "World": 350, "Vimto": 400, "Orangina": 500, "D’jino": 400, "Tangui": 400, "Supermont": 350, "Vin rouge Bordeaux": 3500, "Vin rouge (verre)": 600, "Vin blanc": 3500, "Whisky J&B 75cl": 9000, "Whisky J&B (verre)": 600, "Jack": 16000 };
     db.products.forEach(p => { const k = Object.keys(COST).find(x => p.name.startsWith(x)); p.cost = k ? COST[k] : 0; });
     db.expenses = [];
     const ex = (dAgo, category, label, amount, method) => db.expenses.push({ id: uuid(), day: new Date(Date.now() - 6 * 3600e3 - dAgo * 86400e3).toLocaleDateString("sv-SE"), category, label, amount, method });
@@ -1574,7 +1574,17 @@ const CATALOG = [
   ["planet-ananas", "Planet Ananas", "Sucreries", ["planet ananas", "planete ananas"], 1], ["planet-pomme", "Planet Pomme", "Sucreries", ["planet pomme", "planete pomme"], 1],
   ["planet-cocktail", "Planet Cocktail", "Sucreries", ["planet cocktail", "planete cocktail"], 1],
   ["tangui", "Tangui", "Eaux", ["tangui"], 1], ["supermont", "Supermont", "Eaux", ["supermont"], 1],
-  ["opur", "Opur", "Eaux", ["opur"], 1], ["vitale", "Eau Vitale", "Eaux", ["vitale", "eau vitale"], 1]
+  ["opur", "Opur", "Eaux", ["opur"], 1], ["vitale", "Eau Vitale", "Eaux", ["vitale", "eau vitale"], 1],
+  ["grants", "Grant’s", "Spiritueux", ["grant's", "grants", "grant"], 0], ["ballantines", "Ballantine’s", "Spiritueux", ["ballantine's", "ballantines", "ballantine"], 0],
+  ["chivas", "Chivas Regal 12 ans", "Spiritueux", ["chivas"], 0], ["johnnie-walker-black", "Johnnie Walker Black Label", "Spiritueux", ["black label", "johnnie walker", "johnny walker"], 0],
+  ["jack-daniels", "Jack Daniel’s", "Spiritueux", ["jack daniel's", "jack daniels", "jack"], 0], ["absolut", "Absolut Vodka", "Spiritueux", ["absolut"], 0],
+  ["martini-rosso", "Martini Rosso", "Liqueurs", ["martini", "martini rosso", "martini rouge"], 0], ["martini-bianco", "Martini Bianco", "Liqueurs", ["martini bianco", "martini blanc"], 0],
+  ["martini-rosato", "Martini Rosato", "Liqueurs", ["martini rosato", "martini rose"], 0], ["martini-extra-dry", "Martini Extra Dry", "Liqueurs", ["martini extra dry", "martini dry"], 0],
+  ["martini-fiero", "Martini Fiero", "Liqueurs", ["martini fiero"], 0],
+  ["castillo-rouge", "Castillo de Ferrer rouge", "Vins rouges", ["castillo", "castillo rouge", "castillo de ferrer", "castillo de ferrer rouge"], 0],
+  ["castillo-blanc", "Castillo de Ferrer blanc", "Vins blancs", ["castillo blanc", "castillo de ferrer blanc"], 0],
+  ["castillo-mousseux", "Castillo de Ferrer mousseux", "Champagnes", ["castillo mousseux", "castillo sparkling", "castillo petillant", "castillo de ferrer mousseux"], 0],
+  ["bordeaux", "Bordeaux rouge", "Vins rouges", ["bordeaux"], 0]
 ].map(([k, n, c, kw, ph, sh, col]) => ({ k, n, c, kw, ph: !!ph, sh, col }));
 const CAT_BY = Object.fromEntries(CATALOG.map(x => [x.k, x])); CAT_BY.guinness = CAT_BY["guinness-grande"]; CAT_BY.planete = CAT_BY["planet-orange"];
 const KW = CATALOG.flatMap(x => x.kw.map(w => [w, x])).sort((a, b) => b[0].length - a[0].length);
