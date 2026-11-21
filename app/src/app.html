@@ -93,6 +93,51 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
 .chev{width:22px;height:22px;flex:none;color:var(--muted);transition:transform .15s}
 .tk.open .chev{transform:rotate(90deg)}
 .tk-b{border-top:1px solid var(--line);padding:12px 14px;display:flex;flex-direction:column;gap:12px}
+/* cartes produits */
+.pfind{display:flex;flex-direction:column;gap:8px;position:sticky;top:0;z-index:3;background:var(--surface);padding:6px 0 4px;margin-top:-6px}
+.psearch{position:relative;display:block}.psearch .ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--muted)}.psearch input{padding-left:38px;border-radius:14px}
+.catsc{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 1px 4px;scroll-snap-type:x proximity;margin:0 -2px}.catsc::-webkit-scrollbar{display:none}
+.catsc button{position:relative;flex:none;scroll-snap-align:start;min-height:38px;padding:7px 15px;border-radius:99px;border:1px solid var(--line);background:var(--surface);font:700 13.5px var(--body);color:var(--muted);cursor:pointer;transition:background .15s,color .15s,transform .12s}
+.catsc button:active{transform:scale(.96)}.catsc button.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.catsc button i{position:absolute;top:5px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--amber)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(102px,1fr));gap:10px;margin:6px 0 4px}
+.pcw{position:relative;min-width:0}
+.pcard{position:relative;width:100%;display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 6px 9px;border-radius:18px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;overflow:hidden;text-align:center;font:inherit;color:inherit;transition:border-color .15s,box-shadow .2s,background .2s,transform .1s;-webkit-tap-highlight-color:transparent}
+.pcard:active{transform:scale(.94)}
+.pcard .pi{position:relative;width:100%;height:116px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px}
+.pcard .pi::before{content:"";position:absolute;bottom:0;left:24%;right:24%;height:10px;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.22),transparent)}
+.pcard .pi img,.pcard .pi svg{position:relative;height:100%;width:auto;max-width:100%;object-fit:contain;filter:drop-shadow(0 6px 7px rgba(0,0,0,.16));transition:transform .25s}
+.pcard b{font-size:12.5px;font-weight:700;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.4em;overflow-wrap:anywhere}
+.pcard .pp{font-weight:800;font-size:13px;color:var(--brand)}.pcard .pp small{font-weight:600;color:var(--muted)}
+.pcard .ps{font-size:11px;color:var(--muted);line-height:1.2}
+.pcard.on{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 8%,var(--surface));box-shadow:0 10px 22px -14px var(--brand)}
+.pcard.on .pi img,.pcard.on .pi svg{transform:translateY(-3px) scale(1.04)}
+.pcard .pn{position:absolute;top:6px;right:6px;z-index:2;min-width:28px;height:28px;padding:0 8px;border-radius:99px;background:var(--brand);color:var(--brand-ink);font:800 15px/28px var(--display);font-style:normal;box-shadow:0 6px 14px -6px var(--brand)}
+.pcm{position:absolute;top:6px;left:6px;z-index:3;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--surface);box-shadow:0 3px 10px rgba(0,0,0,.18);font:800 20px/1 var(--body);color:var(--ink);cursor:pointer;touch-action:manipulation}
+.pcm:active{transform:scale(.9)}
+.pcard.bump{animation:pcb .5s cubic-bezier(.3,1.6,.5,1)}
+.pcard.bump .pi img,.pcard.bump .pi svg{animation:pcj .5s cubic-bezier(.3,1.6,.5,1)}
+.pcard.bump .pn{animation:pnp .5s cubic-bezier(.3,1.9,.5,1)}
+.pcard.bump::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(circle at 50% 38%,color-mix(in srgb,var(--brand) 38%,transparent),transparent 62%);animation:rip .55s ease-out forwards}
+.pcard.dip{animation:pcd .35s ease-out}
+.pcard .fly{position:absolute;top:26%;left:50%;z-index:3;font:800 20px var(--display);font-style:normal;color:var(--brand);pointer-events:none;text-shadow:0 2px 8px var(--surface);animation:fly .7s ease-out forwards}
+@keyframes pcb{0%{transform:scale(.92)}45%{transform:scale(1.05)}100%{transform:none}}
+@keyframes pcj{0%{transform:translateY(0) rotate(0)}35%{transform:translateY(-12px) rotate(-6deg) scale(1.08)}70%{transform:translateY(-2px) rotate(3deg)}100%{transform:translateY(-3px) scale(1.04)}}
+@keyframes pnp{0%{transform:scale(.2)}60%{transform:scale(1.4)}100%{transform:none}}
+@keyframes rip{from{opacity:1;transform:scale(.3)}to{opacity:0;transform:scale(1.5)}}
+@keyframes pcd{0%{transform:scale(.96)}100%{transform:none}}
+@keyframes fly{from{opacity:1;transform:translate(-50%,0) scale(.7)}to{opacity:0;transform:translate(-50%,-52px) scale(1.35)}}
+.pchosen{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0}.pchosen::-webkit-scrollbar{display:none}
+.pch{flex:none;display:inline-flex;align-items:center;gap:5px;padding:3px 10px 3px 4px;border-radius:99px;background:color-mix(in srgb,var(--brand) 10%,var(--surface));border:1px solid color-mix(in srgb,var(--brand) 30%,var(--line));font-size:12.5px;font-weight:600;white-space:nowrap}
+.pch .pci{width:22px;height:30px;display:flex;align-items:center;justify-content:center}.pch .pci img,.pch .pci svg{height:100%;width:auto}
+.pch b{color:var(--brand)}
+.ptiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;max-height:46vh;overflow:auto;padding:2px}
+.pt{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;font:inherit;color:inherit}
+.pt .pi{height:84px;display:flex;align-items:flex-end;justify-content:center}.pt .pi img,.pt .pi svg{height:100%;width:auto;max-width:100%;object-fit:contain}
+.pt small{font-size:11px;font-weight:600;line-height:1.2;text-align:center}
+.pt.on{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 10%,var(--surface));box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 25%,transparent)}
+.pthumb{width:44px;height:58px;flex:none;display:flex;align-items:flex-end;justify-content:center;border-radius:10px;background:var(--sunk);padding:3px;border:0;cursor:pointer}.pthumb img,.pthumb svg{height:100%;width:auto;max-width:100%;object-fit:contain}
+@media (prefers-reduced-motion:reduce){.pcard.bump,.pcard.bump .pi img,.pcard.bump .pi svg,.pcard.bump .pn,.pcard.bump::after,.pcard .fly{animation:none!important}}
 .prow{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:10px}
 .prow.on{background:color-mix(in srgb,var(--amber) 14%,transparent)}
 .prow .pn{flex:1;min-width:0}
@@ -512,7 +557,7 @@ const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentC
 
 /* ═══════════════ Moteur DÉMO (données locales, mêmes règles que le serveur) ═══════════════ */
 function DemoBackend() {
-  const KEY = "gesco-demo-v8";
+  const KEY = "gesco-demo-v9";
   let db = LS.get(KEY), sess = LS.get(KEY + "-sess");
   const listeners = [];
   const save = () => LS.set(KEY, db);
@@ -889,7 +934,9 @@ function DemoBackend() {
       staff: [["Marcel", "pdg", "9999"], ["Hervé", "directeur", "5555"], ["Mireille", "caisse", "0000"], ["Aline", "serveuse", "1111"], ["Brigitte", "serveuse", "2222"], ["Carine", "serveuse", "3333"]]
         .map(([name, role, pin]) => ({ id: uuid(), name, role, pin, active: true, fails: 0, lock: 0 })),
       products: [["Castel Beer 65cl", "Bières", 650, 48], ["33 Export 65cl", "Bières", 650, 36], ["Mützig 65cl", "Bières", 650, 24], ["Beaufort 65cl", "Bières", 650, 24],
-        ["Guinness 65cl", "Bières", 1000, 18], ["Orijin", "Bières", 650, 24], ["Coca-Cola", "Sucreries", 500, 24], ["Top Pamplemousse", "Sucreries", 500, 24], ["Eau minérale 1,5 L", "Eaux", 600, 10],
+        ["Guinness 65cl", "Bières", 1000, 18], ["Orijin", "Bières", 650, 24], ["Heineken 33cl", "Bières", 800, 24], ["Doppel Munich 65cl", "Bières", 700, 12], ["Booster Whisky Cola", "Bières", 700, 12], ["Booster Mangue Orange", "Bières", 700, 12], ["Booster Gin Tonic", "Bières", 700, 12],
+        ["Coca-Cola 1L", "Sucreries", 600, 24], ["World Cola 1L", "Sucreries", 500, 12], ["Top Pamplemousse", "Sucreries", 500, 24], ["Top Grenadine", "Sucreries", 500, 24], ["Top Orange", "Sucreries", 500, 12], ["Top Ananas", "Sucreries", 500, 12],
+        ["Vimto 1L", "Sucreries", 600, 12], ["Orangina 1L", "Sucreries", 700, 12], ["D’jino Cocktail 1L", "Jus", 600, 12], ["Tangui 1,5 L", "Eaux", 600, 10], ["Supermont 1,5 L", "Eaux", 500, 10],
         ["Vin rouge Bordeaux", "Vins rouges", 6000, 6], ["Vin rouge (verre)", "Vins rouges", 1000, 6, "verre"], ["Vin blanc Côtes de Gascogne", "Vins blancs", 6000, 4],
         ["Whisky J&B 75cl", "Spiritueux", 15000, 3], ["Whisky J&B (verre)", "Spiritueux", 1500, 15, "verre"], ["Jack Daniel’s 70cl", "Spiritueux", 25000, 2]]
         .map(([name, category, price, stock, unit], i) => ({ id: uuid(), name, category, price, stock, active: true, sort: i + 1, unit: unit || "bouteille", parent_id: null, doses: null })),
@@ -897,7 +944,7 @@ function DemoBackend() {
     const link = (g, b, n) => { const G = db.products.find(p => p.name === g); G.parent_id = db.products.find(p => p.name === b).id; G.doses = n; };
     link("Vin rouge (verre)", "Vin rouge Bordeaux", 6); link("Whisky J&B (verre)", "Whisky J&B 75cl", 15);
     db.products.forEach(p => { p.low_at = p.parent_id ? 3 : /Vins|Spiritueux/.test(p.category) ? 2 : null; });
-    const COST = { "Castel": 450, "33 Export": 450, "Mützig": 450, "Beaufort": 450, "Guinness": 750, "Orijin": 450, "Coca": 300, "Top": 300, "Eau": 400, "Vin rouge Bordeaux": 3500, "Vin rouge (verre)": 600, "Vin blanc": 3500, "Whisky J&B 75cl": 9000, "Whisky J&B (verre)": 600, "Jack": 16000 };
+    const COST = { "Castel": 450, "33 Export": 450, "Mützig": 450, "Beaufort": 450, "Guinness": 750, "Orijin": 450, "Coca": 300, "Top": 300, "Heineken": 600, "Doppel": 500, "Booster": 500, "World": 350, "Vimto": 400, "Orangina": 500, "D’jino": 400, "Tangui": 400, "Supermont": 350, "Vin rouge Bordeaux": 3500, "Vin rouge (verre)": 600, "Vin blanc": 3500, "Whisky J&B 75cl": 9000, "Whisky J&B (verre)": 600, "Jack": 16000 };
     db.products.forEach(p => { const k = Object.keys(COST).find(x => p.name.startsWith(x)); p.cost = k ? COST[k] : 0; });
     db.expenses = [];
     const ex = (dAgo, category, label, amount, method) => db.expenses.push({ id: uuid(), day: new Date(Date.now() - 6 * 3600e3 - dAgo * 86400e3).toLocaleDateString("sv-SE"), category, label, amount, method });
@@ -1013,6 +1060,8 @@ function DemoBackend() {
       return { thread: th, status, reply, messages: H }; },
     async assistHistory() { return { thread: "demo-thread", status: null, messages: LS.get(KEY + "-help-" + (S && S.me ? S.me.id : "anon"), []) }; },
     async uploadProof(file) { const c = ctx(); mgr(c); return db.bar.id + "/abonnement-demo-" + (file.name || "capture"); },
+    async uploadProductPhoto(blob) { const c = ctx(); caisse(c); return await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ko(new Error("Photo illisible.")); r.readAsDataURL(blob); }); },
+    async productImage(id, image) { const c = ctx(); caisse(c); const p = db.products.find(x => x.id === id); if (!p) E("Produit introuvable."); p.image = image || null; save(); log(c, "produit_photo", { produit: p.name }); },
     async uploadDoc(file) { const c = ctx(); pdg(c); return db.bar.id + "/demo-" + (file.name || "piece"); },
     async staffCreate(name, role, pin) {
       const c = ctx(); mgr(c); name = (name || "").trim(); if (!name) throw bizErr("Indiquez un nom."); pinOk(pin);
@@ -1098,6 +1147,12 @@ function LiveBackend() {
     subStatus: id => fn("sub_status", { id }, true),
     assist: (message, thread, token) => fn("assist", { message, thread, token }, true),
     assistHistory: (thread, token) => fn("assist_history", { thread, token }, true),
+    async uploadProductPhoto(blob) {
+      const { data: bars } = await sb.from("bars").select("id").limit(1); if (!bars || !bars.length) throw bizErr("Bar introuvable.");
+      const path = `${bars[0].id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
+      const { error } = await sb.storage.from("produits").upload(path, blob, { contentType: "image/webp", upsert: false });
+      if (error) throw bizErr("Envoi de la photo impossible : " + error.message); return path; },
+    async productImage(id, image) { return this.rpc("gb_product_image", { p_id: id, p_image: image }); },
     async uploadProof(file) {
       const { data: bars } = await sb.from("bars").select("id").limit(1); if (!bars || !bars.length) throw bizErr("Bar introuvable.");
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, ""), path = `${bars[0].id}/abonnement-${Date.now()}.${ext}`;
@@ -1312,6 +1367,7 @@ A.togSales = d => { V.salesOpen[d.id] = !V.salesOpen[d.id]; render(); };
 A.newT = () => { const c = (V.f.client || "").trim(); if (!c) return toast("Indiquez le nom du client ou un repère de table.", "err");
   const id = uuid(); V.f.client = ""; V.open[id] = true; V.wf = "open"; call("gb_ticket_create", { p_id: id, p_client: c }); };
 A.qty = d => { const t = S.tickets.find(x => x.id === d.t); if (!t) return; const cur = (t.items.find(i => i.product_id === d.p) || { qty: 0 }).qty;
+  if (cur + (+d.d) < 0) return; V.bump = { t: d.t, p: d.p, d: +d.d, at: Date.now() }; try { navigator.vibrate && navigator.vibrate(+d.d > 0 ? 12 : [8, 30, 8]); } catch (e) {}
   call("gb_ticket_set_qty", { p_ticket: d.t, p_product: d.p, p_qty: Math.max(0, cur + (+d.d)) }); };
 A.send = d => { V.open[d.t] = false; call("gb_ticket_send", { p_ticket: d.t }); toast("Commande envoyée à la caisse."); };
 A.bill = d => { V.f["rcv_" + d.t] = d.v; render(); };
@@ -1482,24 +1538,124 @@ function changeBlock(t) {
   return `<div class="note info">${head}<div class="between"><span>Bon de reliquat ${v ? esc(v.number) : ""}</span><b class="num">${F(t.change_due)}</b></div>
     ${v ? `<div class="row" style="margin-top:6px"><span>Code : <b class="num">${esc(v.code)}</b></span><button class="btn soft sm" data-a="showV" data-v="${v.id}">Voir le bon</button></div>` : ""}</div>`;
 }
+/* ── Photothèque des boissons : photos détourées (dossier produits/) et bouteilles dessinées pour le reste ── */
+// [clé, nom, catégorie, mots repérés dans le nom du produit, photo disponible, forme, couleur]
+const CATALOG = [
+  ["castel", "Castel Beer 65 cl", "Bières", ["castel"], 1], ["33-export", "33 Export", "Bières", ["33 export", "33"], 1], ["mutzig", "Mützig", "Bières", ["mutzig", "mützig"], 1],
+  ["doppel-munich", "Doppel Munich", "Bières", ["doppel"], 1], ["heineken", "Heineken", "Bières", ["heineken"], 1], ["orijin", "Orijin", "Bières", ["orijin"], 1],
+  ["guinness", "Guinness", "Bières", ["guinness", "guiness"], 1],
+  ["beaufort-light", "Beaufort Light", "Bières", ["beaufort light"], 0, "biere", "#c9b25e"], ["beaufort", "Beaufort", "Bières", ["beaufort"], 0, "biere", "#a5761c"],
+  ["isenbeck", "Isenbeck", "Bières", ["isenbeck", "isembeck"], 0, "biere", "#1f5fa8"], ["kadji", "Kadji Beer", "Bières", ["kadji"], 0, "biere", "#a8322c"],
+  ["booster-whisky-cola", "Booster Whisky Cola", "Bières", ["booster whisky", "whisky cola"], 1], ["booster-mangue-orange", "Booster Mangue Orange", "Bières", ["booster mangue", "mangue orange"], 1],
+  ["booster-gin-tonic", "Booster Gin Tonic", "Bières", ["booster gin", "gin tonic"], 1],
+  ["malta", "Malta Guinness", "Sucreries", ["malta"], 0, "biere33", "#4a2410"],
+  ["top-orange", "Top Orange", "Sucreries", ["top orange"], 1], ["top-pamplemousse", "Top Pamplemousse", "Sucreries", ["top pamplemousse", "top pample"], 1],
+  ["top-ananas", "Top Ananas", "Sucreries", ["top ananas"], 1], ["top-grenadine", "Top Grenadine", "Sucreries", ["top grenadine"], 1],
+  ["coca-cola", "Coca-Cola", "Sucreries", ["coca"], 1], ["world-cola", "World Cola", "Sucreries", ["world cola"], 1], ["vimto", "Vimto", "Sucreries", ["vimto"], 1],
+  ["orangina", "Orangina", "Sucreries", ["orangina"], 1], ["djino", "D’jino Cocktail", "Jus", ["djino", "d’jino", "d'jino", "d jino"], 1],
+  ["fanta", "Fanta", "Sucreries", ["fanta"], 0, "pet", "#f08a1d"], ["sprite", "Sprite", "Sucreries", ["sprite"], 0, "pet", "#2a9d4a"],
+  ["planete", "Planète", "Sucreries", ["planete", "planète"], 0, "pet", "#e04a2a"],
+  ["tangui", "Tangui", "Eaux", ["tangui"], 0, "eau", "#1d74c8"], ["supermont", "Supermont", "Eaux", ["supermont"], 0, "eau", "#2a9bd6"],
+  ["opur", "Opur", "Eaux", ["opur"], 0, "eau", "#56a9e2"]
+].map(([k, n, c, kw, ph, sh, col]) => ({ k, n, c, kw, ph: !!ph, sh, col }));
+const CAT_BY = Object.fromEntries(CATALOG.map(x => [x.k, x]));
+const KW = CATALOG.flatMap(x => x.kw.map(w => [w, x])).sort((a, b) => b[0].length - a[0].length);
+const nrm = s => " " + String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’']/g, "'").replace(/[^a-z0-9']+/g, " ").trim() + " ";
+const autoCat = name => { const n = nrm(name); const hit = KW.find(([w]) => n.includes(" " + nrm(w).trim() + " ")); return hit ? hit[1] : null; };
+const PIMG = /*PIMG*/null;
+const photoUrl = k => (PIMG && PIMG[k]) || "produits/" + k + ".webp";
+const userUrl = path => CFG.mode === "demo" || !CFG.url ? path : `${CFG.url}/storage/v1/object/public/produits/${path}`;
+// Ce qui s'affiche pour un produit : photo choisie, photo reconnue d'après le nom, sinon bouteille dessinée
+function pVis(p) {
+  const im = p.image || "";
+  if (im.startsWith("c:") && CAT_BY[im.slice(2)]) return { c: CAT_BY[im.slice(2)] };
+  if (im && !im.startsWith("c:")) return { url: im.startsWith("data:") ? im : userUrl(im) };
+  return { c: autoCat(p.name) };
+}
+function pShape(p, c) {
+  if (c && c.sh) return [c.sh, c.col];
+  const u = unitOf(p) || "", cat = p.category || "", h = [...String(p.name)].reduce((a, x) => (a * 31 + x.charCodeAt(0)) % 360, 11);
+  if (/verre/.test(u)) return ["verre", /Vin/.test(cat) ? "#8e1b2e" : "#c98a12"];
+  if (/plat|portion/.test(u) || cat === "Cuisine") return ["plat", `hsl(${h} 60% 45%)`];
+  if (/canette/.test(u)) return ["canette", `hsl(${h} 65% 45%)`];
+  if (/Vins rouges/.test(cat)) return ["vin", "#5c0f1f"]; if (/Vins blancs/.test(cat)) return ["vin", "#c9b458"]; if (/Vins rosés/.test(cat)) return ["vin", "#e48aa0"];
+  if (/Champagne/.test(cat)) return ["vin", "#2d3b2a"]; if (/Spiritueux|Liqueur/.test(cat)) return ["spirit", `hsl(${h} 45% 35%)`];
+  if (/Eau/.test(cat)) return ["eau", "#2a8fd6"]; if (/Sucreries|Jus/.test(cat)) return ["pet", `hsl(${h} 70% 48%)`];
+  return ["biere", "#7a4a12"];
+}
+const initials = n => { const w = String(n).replace(/\d+\s*(cl|l|ml)\b/gi, "").trim().split(/\s+/).filter(Boolean); return (w.length > 1 ? w[0][0] + w[1][0] : (w[0] || "?").slice(0, 3)).toUpperCase(); };
+function drawn(p, c) {
+  const [sh, col] = pShape(p, c), t = esc(initials(c ? c.n : p.name)), lab = (y, h) => `<rect x="27" y="${y}" width="46" height="${h}" rx="5" fill="#fff" fill-opacity=".94"/><text x="50" y="${y + h / 2 + 5}" text-anchor="middle" font-family="Bricolage Grotesque,Trebuchet MS,sans-serif" font-weight="800" font-size="${t.length > 2 ? 13 : 16}" fill="${col}">${t}</text>`;
+  const shine = `<path d="M35 ${sh === "verre" ? 60 : 92}v70" stroke="#fff" stroke-opacity=".38" stroke-width="5" stroke-linecap="round"/>`;
+  const B = {
+    biere: `<rect x="41" y="4" width="18" height="9" rx="2.5" fill="#cfd3d1"/><path d="M42 12h16v12c0 12 5 20 9 29 3 7 5 13 5 22v106c0 6-4 10-10 10H38c-6 0-10-4-10-10V75c0-9 2-15 5-22 4-9 9-17 9-29z" fill="${col}"/>${shine}${lab(104, 46)}`,
+    biere33: `<rect x="41" y="34" width="18" height="9" rx="2.5" fill="#cfd3d1"/><path d="M42 42h16v10c0 10 6 16 10 24 3 6 4 11 4 18v87c0 6-4 10-10 10H38c-6 0-10-4-10-10V94c0-7 1-12 4-18 4-8 10-14 10-24z" fill="${col}"/>${shine}${lab(116, 40)}`,
+    pet: `<rect x="41" y="4" width="18" height="11" rx="2.5" fill="${col}"/><path d="M44 15h12v8c0 7 16 12 16 28v128c0 8-4 12-11 12H39c-7 0-11-4-11-12V51c0-16 16-21 16-28z" fill="${col}" fill-opacity=".88"/>${shine}${lab(84, 40)}`,
+    eau: `<rect x="41" y="4" width="18" height="11" rx="2.5" fill="${col}"/><path d="M44 15h12v8c0 7 16 12 16 28v128c0 8-4 12-11 12H39c-7 0-11-4-11-12V51c0-16 16-21 16-28z" fill="#e9f4fc" stroke="${col}" stroke-width="2.5"/><rect x="28" y="86" width="44" height="36" fill="${col}"/><text x="50" y="110" text-anchor="middle" font-family="Bricolage Grotesque,Trebuchet MS,sans-serif" font-weight="800" font-size="${t.length > 2 ? 13 : 16}" fill="#fff">${t}</text>${shine}`,
+    canette: `<rect x="30" y="44" width="40" height="146" rx="8" fill="${col}"/><rect x="33" y="40" width="34" height="8" rx="3" fill="#cfd3d1"/>${shine}${lab(100, 42)}`,
+    vin: `<rect x="42" y="4" width="16" height="22" rx="2" fill="#2a2a2a"/><path d="M43 24h14v28c0 10 15 15 15 32v100c0 6-4 9-10 9H38c-6 0-10-3-10-9V84c0-17 15-22 15-32z" fill="${col}"/>${shine}${lab(116, 46)}`,
+    spirit: `<rect x="40" y="10" width="20" height="16" rx="3" fill="#2a2a2a"/><path d="M42 26h16v14c0 6 16 8 16 20v124c0 6-4 9-10 9H36c-6 0-10-3-10-9V60c0-12 16-14 16-20z" fill="${col}"/>${shine}${lab(104, 52)}`,
+    verre: `<path d="M24 46h52l-7 132c0 7-4 11-11 11H42c-7 0-11-4-11-11z" fill="#eef3f1" fill-opacity=".85" stroke="#b9c6c0" stroke-width="2"/><path d="M28 98h44l-4 80c0 6-3 9-9 9H41c-6 0-9-3-9-9z" fill="${col}"/>${shine}`,
+    plat: `<ellipse cx="50" cy="150" rx="47" ry="22" fill="#e9ecea"/><ellipse cx="50" cy="146" rx="47" ry="20" fill="#fff"/><ellipse cx="50" cy="143" rx="30" ry="12" fill="${col}"/><circle cx="40" cy="138" r="5" fill="#fff" fill-opacity=".5"/><text x="50" y="112" text-anchor="middle" font-family="Bricolage Grotesque,Trebuchet MS,sans-serif" font-weight="800" font-size="16" fill="${col}">${t}</text>`
+  };
+  return `<svg viewBox="0 0 100 200" aria-hidden="true">${B[sh] || B.biere}</svg>`;
+}
+function pImg(p) { const v = pVis(p);
+  if (v.url) return `<img src="${esc(v.url)}" alt="" loading="lazy" decoding="async">`;
+  if (v.c && v.c.ph) return `<img src="${photoUrl(v.c.k)}" alt="" loading="lazy" decoding="async">`;
+  return drawn(p, v.c); }
+
+/* ── Prise de commande en cartes : toucher = +1, animation, badge de quantité ── */
 function editor(t) {
   const inT = new Map(t.items.map(i => [i.product_id, i.qty])), hmap = new Map(S.holdings.filter(h => h.waitress_id === t.waitress_id).map(h => [h.product_id, h.qty]));
   const q = (V.f["q_" + t.id] || "").toLowerCase().trim(), cat = V.f["cat_" + t.id] || "", counter = isCounter(t);
   const avail = S.products.filter(p => p.active || inT.has(p.id)), allCats = [...new Set(avail.map(p => p.category))];
-  const ps = avail.filter(p => (!q || p.name.toLowerCase().includes(q)) && (!cat || p.category === cat || inT.has(p.id)));
-  const row = p => { const n = inT.get(p.id) || 0, h = hmap.get(p.id) || 0, u = unitOf(p);
-    const info = counter ? `stock : ${p.stock}` : h >= 0 ? `en main : ${h}` : `<span class="warn-t">${-h} à prendre à la caisse</span>`;
-    return `<div class="prow ${n ? "on" : ""}"><div class="pn"><b>${esc(p.name)}</b><span class="mu num">${F(p.price)}${u ? " / " + esc(u) : ""} · ${info}</span></div>
-      <div class="stepper"><button data-a="qty" data-t="${t.id}" data-p="${p.id}" data-d="-1" aria-label="Retirer une ${esc(p.name)}" ${n ? "" : "disabled"}>−</button>
-      <input type="number" inputmode="numeric" min="0" value="${n}" data-qty="1" data-t="${t.id}" data-p="${p.id}" aria-label="Quantité ${esc(p.name)}">
-      <button class="plus" data-a="qty" data-t="${t.id}" data-p="${p.id}" data-d="1" aria-label="Ajouter une ${esc(p.name)}">+</button></div></div>`; };
-  const chosen = ps.filter(p => inT.has(p.id)), rest = ps.filter(p => !inT.has(p.id)), cats = [...new Set(rest.map(p => p.category))];
-  return `${avail.length > 8 ? `<input id="q_${t.id}" data-k="q_${t.id}" value="${val("q_" + t.id)}" placeholder="Chercher une boisson…" autocomplete="off">` : ""}
-    ${allCats.length > 1 ? `<div class="bills" role="group" aria-label="Catégories">${[["", "Tout"], ...allCats.map(c => [c, c])].map(([v, l]) => `<button data-a="cat" data-t="${t.id}" data-v="${esc(v)}" class="${cat === v ? "on" : ""}">${esc(l)}</button>`).join("")}</div>` : ""}
-    <div>${chosen.length ? `<div class="cat">Dans ce ticket</div>${chosen.map(row).join("")}` : ""}
-    ${cats.map(c => `<div class="cat">${esc(c)}</div>${rest.filter(p => p.category === c).map(row).join("")}`).join("")}
-    ${!ps.length ? `<div class="empty">Aucune boisson ne correspond.</div>` : ""}</div>`;
+  const ps = avail.filter(p => (!q || nrm(p.name).includes(nrm(q).trim())) && (!cat || p.category === cat));
+  const bump = V.bump && V.bump.t === t.id && Date.now() - V.bump.at < 700 ? V.bump : null;
+  const card = p => { const n = inT.get(p.id) || 0, h = hmap.get(p.id) || 0, u = unitOf(p), b = bump && bump.p === p.id;
+    const info = counter ? `stock ${p.stock}` : h > 0 ? `${h} en main` : h < 0 ? `<span class="warn-t">${-h} à prendre</span>` : "à prendre en caisse";
+    return `<div class="pcw"><button type="button" class="pcard ${n ? "on" : ""} ${b && bump.d > 0 ? "bump" : ""} ${b && bump.d < 0 ? "dip" : ""}" data-a="qty" data-t="${t.id}" data-p="${p.id}" data-d="1" aria-label="Ajouter ${esc(p.name)}${n ? `, ${n} dans le ticket` : ""}">
+      <span class="pi">${pImg(p)}</span>${n ? `<i class="pn num">${n}</i>` : ""}${b && bump.d > 0 ? `<i class="fly">+1</i>` : ""}
+      <b>${esc(p.name)}</b><span class="pp num">${F(p.price)}${u ? `<small> / ${esc(u)}</small>` : ""}</span><span class="ps">${info}</span></button>
+      ${n ? `<button type="button" class="pcm" data-a="qty" data-t="${t.id}" data-p="${p.id}" data-d="-1" aria-label="Retirer une ${esc(p.name)}">−</button>` : ""}</div>`; };
+  const chosen = t.items.map(i => S.products.find(p => p.id === i.product_id)).filter(Boolean);
+  const groups = cat || q ? [[cat || "", ps]] : allCats.map(c => [c, ps.filter(p => p.category === c)]).filter(([, l]) => l.length);
+  return `<div class="pfind">${avail.length > 8 ? `<label class="psearch">${ico("search")}<input id="q_${t.id}" data-k="q_${t.id}" value="${val("q_" + t.id)}" placeholder="Chercher : castel, top, eau…" autocomplete="off" enterkeyhint="search" aria-label="Chercher une boisson"></label>` : ""}
+    ${allCats.length > 1 ? `<div class="catsc" role="group" aria-label="Catégories">${[["", "Tout"], ...allCats.map(c => [c, c])].map(([v, l]) => `<button type="button" data-a="cat" data-t="${t.id}" data-v="${esc(v)}" class="${cat === v ? "on" : ""}" aria-pressed="${cat === v}">${esc(l)}${v && avail.some(p => p.category === v && inT.has(p.id)) ? "<i></i>" : ""}</button>`).join("")}</div>` : ""}</div>
+    ${chosen.length ? `<div class="pchosen">${chosen.map(p => `<span class="pch"><span class="pci">${pImg(p)}</span><b class="num">${inT.get(p.id)}×</b> ${esc(p.name)}</span>`).join("")}</div>` : ""}
+    ${groups.map(([c, l]) => `${!cat && !q ? `<div class="cat">${esc(c)}</div>` : ""}<div class="pgrid">${l.map(card).join("")}</div>`).join("")}
+    ${!ps.length ? `<div class="empty">Aucun produit ne correspond.${q ? ` <button class="btn ghost sm" data-a="clrQ" data-t="${t.id}">Effacer la recherche</button>` : ""}</div>` : ""}`;
 }
+A.clrQ = d => { V.f["q_" + d.t] = ""; render(); };
+
+/* ── Choisir la photo d'un produit (caisse, directeur, PDG) ── */
+function vPimg(m) {
+  const p = S.products.find(x => x.id === m.p); if (!p) return "";
+  const cur = p.image || "", auto = autoCat(p.name), qq = nrm(V.f.pimg_q || "").trim();
+  const list = CATALOG.filter(c => !qq || nrm(c.n).includes(qq));
+  const tile = (val, label, inner, on) => `<button type="button" class="pt ${on ? "on" : ""}" data-a="pimgSet" data-p="${p.id}" data-v="${esc(val)}" aria-pressed="${on}"><span class="pi">${inner}</span><small>${esc(label)}</small></button>`;
+  return `<h2>Photo de « ${esc(p.name)} »</h2>
+    <p class="mu" style="margin:0">C’est l’image que les serveuses touchent pour prendre la commande.</p>
+    <div class="row"><label class="btn soft grow" for="pimg_file" style="cursor:pointer">${ico("camera")} Prendre ou choisir une photo</label><input id="pimg_file" type="file" accept="image/*" capture="environment" hidden data-p="${p.id}"></div>
+    <label class="psearch">${ico("search")}<input id="pimg_q" data-k="pimg_q" value="${val("pimg_q")}" placeholder="Chercher dans la photothèque" autocomplete="off"></label>
+    <div class="ptiles">${tile("", auto ? "Automatique" : "Dessin", pImg({ ...p, image: null }), !cur)}
+      ${cur && !cur.startsWith("c:") ? tile(cur, "Ma photo", pImg(p), true) : ""}
+      ${list.map(c => tile("c:" + c.k, c.n, c.ph ? `<img src="${photoUrl(c.k)}" alt="" loading="lazy">` : drawn(p, c), cur === "c:" + c.k)).join("")}</div>
+    <button class="btn ghost" data-a="close">Fermer</button>`;
+}
+A.pimg = d => { V.f.pimg_q = ""; V.modal = { type: "pimg", p: d.p }; render(); };
+A.pimgSet = d => run(async () => { await B.productImage(d.p, d.v || null); V.modal = null; await refresh(); toast(d.v ? "Photo enregistrée." : "Photo automatique selon le nom."); });
+// Photo prise par le bar : recadrée et allégée sur le téléphone (WebP 480 px) avant l'envoi
+async function shrinkPhoto(file) {
+  const bmp = await createImageBitmap(file), s = Math.min(1, 480 / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s);
+  cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
+  return await new Promise((ok, ko) => cv.toBlob(b => b ? ok(b) : ko(new Error("Photo illisible.")), "image/webp", .82));
+}
+document.addEventListener("change", e => { const f = e.target; if (f.id !== "pimg_file" || !f.files || !f.files[0]) return;
+  const file = f.files[0], pid = f.dataset.p;
+  run(async () => { if (!/^image\//.test(file.type)) throw bizErr("Choisissez une image."); if (file.size > 15728640) throw bizErr("Photo trop lourde (15 Mo maximum).");
+    const blob = await shrinkPhoto(file), path = await B.uploadProductPhoto(blob); await B.productImage(pid, path); V.modal = null; await refresh(); toast("Photo du produit enregistrée."); }); });
 function payBox(t) {
   const r = num("rcv_" + t.id), bills = [...new Set([t.total, ...[500, 1000, 2000, 5000, 10000].map(b => Math.ceil(t.total / b) * b)])].filter(b => b >= t.total).sort((a, b) => a - b).slice(0, 5);
   const ch = r != null && r >= t.total ? r - t.total : null;
@@ -1555,6 +1711,7 @@ function wService() {
 
 /* ═══════════════ Cadre commun : rubriques par rôle, menu, recherche ═══════════════ */
 const IC = {
+  camera: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
   service: '<path d="M4 7h16l-1.5 11a2 2 0 0 1-2 1.7H7.5a2 2 0 0 1-2-1.7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
   orders: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
   stock: '<path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',
@@ -2107,7 +2264,7 @@ function cStock() {
   const row = p => { const inh = sum(S.holdings.filter(h => h.product_id === p.id), h => Math.max(0, h.qty)), ed = !!V.open["p_" + p.id], par = p.parent_id && S.products.find(x => x.id === p.parent_id), u = unitOf(p);
     const unit = V.f[k("u", p.id)] ?? (p.unit || "bouteille");
     return `<div class="stack" id="prod_${p.id}" style="padding:12px 0;${p.active ? "" : "opacity:.6"}">
-      <div class="between"><div style="min-width:0"><b>${esc(p.name)}</b><div class="mu num">${F(p.price)}${u ? " / " + esc(u) : ""}${p.cost ? ` · achat ${F(p.cost)}` : ` · <span class="warn-t">prix d’achat à saisir</span>`} · stock <b>${p.stock}</b>${inh ? ` · ${inh} chez les serveuses` : ""}${p.active ? "" : " · masqué"}</div>
+      <div class="between"><button class="pthumb" data-a="pimg" data-p="${p.id}" aria-label="Changer la photo de ${esc(p.name)}">${pImg(p)}</button><div class="grow" style="min-width:0"><b>${esc(p.name)}</b><div class="mu num">${F(p.price)}${u ? " / " + esc(u) : ""}${p.cost ? ` · achat ${F(p.cost)}` : ` · <span class="warn-t">prix d’achat à saisir</span>`} · stock <b>${p.stock}</b>${inh ? ` · ${inh} chez les serveuses` : ""}${p.active ? "" : " · masqué"}</div>
       ${par ? `<div class="mu">1 bouteille de ${esc(par.name)} = ${p.doses} verres (reste ${par.stock} bouteille(s))</div>` : ""}</div>
       <button class="btn ghost sm" data-a="togPe" data-p="${p.id}">${ed ? "Fermer" : "Modifier"}</button></div>
       ${par ? `<div class="row"><input style="flex:0 1 110px" id="ob_${p.id}" type="number" inputmode="numeric" data-k="ob_${p.id}" value="${val("ob_" + p.id)}" placeholder="1" aria-label="Nombre de bouteilles à ouvrir"><button class="btn soft sm grow" data-a="openB" data-p="${p.id}">Ouvrir une bouteille (+${p.doses} verres)</button></div>` : ""}
@@ -2119,7 +2276,7 @@ function cStock() {
         <label class="f grow" for="${k("st", p.id)}">Stock général<input id="${k("st", p.id)}" type="number" inputmode="numeric" data-k="${k("st", p.id)}" value="${fv("st", p, p.stock)}"></label>
 </div>
         ${glassFields(k("par", p.id), k("dz", p.id), p.id, unit, V.f[k("par", p.id)] ?? p.parent_id ?? "", V.f[k("dz", p.id)] ?? p.doses)}
-        <div class="row"><button class="btn ghost sm" data-a="togP" data-p="${p.id}">${p.active ? "Masquer de la carte" : "Remettre sur la carte"}</button><span class="grow"></span><button class="btn sm" data-a="saveP" data-p="${p.id}">Enregistrer</button></div></div>` : ""}</div>`; };
+        <div class="row"><button class="btn soft sm" data-a="pimg" data-p="${p.id}">${ico("camera")} Photo</button><button class="btn ghost sm" data-a="togP" data-p="${p.id}">${p.active ? "Masquer de la carte" : "Remettre sur la carte"}</button><span class="grow"></span><button class="btn sm" data-a="saveP" data-p="${p.id}">Enregistrer</button></div></div>` : ""}</div>`; };
   const npUnit = V.f.np_u || "bouteille";
   return `<div class="stack"><datalist id="gb-cats">${[...new Set([...CATS, ...cats])].map(c => `<option value="${esc(c)}"></option>`).join("")}</datalist>
     <div class="card stack"><div class="between"><h3>Inventaire (frigo et réserve)</h3><button class="btn ${V.inv ? "ghost" : "soft"} sm" data-a="invToggle">${V.inv ? "Fermer" : "Faire l’inventaire"}</button></div>
@@ -2455,7 +2612,7 @@ function cDay(DT) {
 }
 const ACT = { ticket_supprime: "Ticket supprimé", ticket_modifie: "Ticket modifié après envoi", annulation_demandee: "Annulation demandée", annulation_refusee: "Annulation refusée", ticket_rouvert: "Ticket rouvert",
   versement: "Versement reçu", momo_confirme: "Mobile Money confirmé", monnaie_remise: "Monnaie remise", bon_emis: "Bon émis", bon_verifie: "Bon vérifié", bon_utilise: "Bon utilisé",
-  approvisionnement: "Approvisionnement", produit_ajoute: "Boisson ajoutée", produit_modifie: "Boisson modifiée", equipe_modifiee: "Équipe modifiée", pin_change: "PIN modifié",
+  approvisionnement: "Approvisionnement", produit_ajoute: "Boisson ajoutée", produit_modifie: "Boisson modifiée", produit_photo: "Photo de produit changée", equipe_modifiee: "Équipe modifiée", pin_change: "PIN modifié",
   reglages_modifies: "Réglages modifiés", journee_cloturee: "Journée clôturée", bar_cree: "Bar créé", membre_ajoute: "Membre ajouté", pin_bloque: "PIN bloqué après 5 essais", bouteille_ouverte: "Bouteille ouverte au verre", depense_ajoutee: "Dépense ajoutée", depense_supprimee: "Dépense supprimée", inventaire: "Inventaire du stock", identite_bar: "Identité légale mise à jour", presence: "Présence pointée", permission_demandee: "Permission demandée",
   permission_acceptee: "Permission acceptée", permission_refusee: "Permission refusée", planning_copie: "Planning copié", salaire_paye: "Salaire payé", salaire_annule: "Paiement de salaire annulé" };
 const KEYS = { ticket: "N°", client: "client", total: "total", produit: "boisson", variation: "variation", serveuse: "serveuse", attendu: "attendu", recu: "reçu", ecart: "écart", tickets: "tickets",
@@ -2602,6 +2759,7 @@ function vModal() {
       <button class="tgl ${V.f.sh_all ? "on" : ""}" data-a="shAll" role="switch" aria-checked="${!!V.f.sh_all}"><i></i><span>Appliquer cet horaire du lundi au dimanche</span></button>
       <div class="row"><button class="btn grow" data-a="shiftSave" data-k="travail">Enregistrer l’horaire</button><button class="btn soft grow" data-a="shiftSave" data-k="repos">Jour de repos</button></div>
       <div class="row">${sh ? `<button class="btn bad sm" data-a="shiftSave" data-k="aucun">Effacer la case</button>` : ""}<span class="grow"></span><button class="btn ghost sm" data-a="close">Fermer</button></div>`; }
+  if (m.type === "pimg") c = vPimg(m);
   if (m.type === "plan") c = `<h2>Planning de la semaine</h2>${m.url ? `<img class="planimg" src="${m.url}" alt="Planning de la semaine du ${dfr(wkStart(), { day: "numeric", month: "long" })}">` : `<div class="note bad">Image indisponible sur cet appareil.</div>`}
       <div class="row">${m.url ? `<button class="btn grow" data-a="planShare">${ico("share")} Partager l’image</button><button class="btn soft grow" data-a="planDl">${ico("dl")} Télécharger</button>` : ""}</div>
       <a class="btn soft wide" href="https://wa.me/?text=${encodeURIComponent(planText())}" target="_blank" rel="noopener">Envoyer le planning en texte sur WhatsApp</a>
@@ -2649,7 +2807,7 @@ document.addEventListener("click", e => {
   e.preventDefault(); A[a]({ ...el.dataset }, el);
 });
 document.addEventListener("input", e => { const k = e.target.dataset && e.target.dataset.k; if (!k) return; V.f[k] = e.target.value;
-  if (/^(rcv_|cnt$|q_|gq$|pb_|pd_|qr_amt$)/.test(k)) { clearTimeout(window.__r); window.__r = setTimeout(render, /^(q_|gq)/.test(k) ? 120 : 250); } });
+  if (/^(rcv_|cnt$|q_|gq$|pb_|pd_|qr_amt$|pimg_q$)/.test(k)) { clearTimeout(window.__r); window.__r = setTimeout(render, /^(q_|gq|pimg_q)/.test(k) ? 120 : 250); } });
 document.addEventListener("change", e => { const t = e.target;
   if (t.id === "id_file") { window.__idFile = t.files && t.files[0] || null; render(); return; }
   if (t.id === "ab_file") { window.__abFile = t.files && t.files[0] || null; render(); return; }

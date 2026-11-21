@@ -130,3 +130,9 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Sur téléphone : barre d’onglets en bas (Accueil, Paiements, Assistance, Bars, Plus), tableaux affichés en fiches, journal en fil chronologique.
 - Application installable « GesCo Console » (manifeste `console.webmanifest`, icônes `console-*.png`, portée `/console`).
 - Connexion rapide propre à l’appareil : code à 4 chiffres (haché PBKDF2 en local) et empreinte (WebAuthn), demandés à l’ouverture et après 1 minute d’inactivité ; 5 erreurs → déconnexion et mot de passe obligatoire.
+
+## v4.7 — Cartes visuelles des boissons
+- Prise de commande en cartes : photo de la bouteille, catégories défilantes, recherche, toucher = +1 avec animation (rebond, badge, « +1 », vibration), bouton − sur la carte, résumé du ticket en pastilles.
+- Photothèque GesCo (`app/public/produits/*.webp`, 19 photos détourées et améliorées) + bouteilles dessinées (Beaufort, Isenbeck, Tangui, Supermont, Opur, Fanta…) ; reconnaissance automatique d'après le nom du produit.
+- Stock → vignette du produit : choisir une photo de la photothèque ou prendre une photo (réduite en WebP 480 px sur le téléphone, stockage public `produits/<bar>/…`).
+- Migration 015 : `products.image`, `gb_product_image`, compartiment `produits`.
