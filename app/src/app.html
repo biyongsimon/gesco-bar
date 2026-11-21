@@ -542,6 +542,11 @@ details summary{cursor:pointer}
   .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
   .kbd-hint{display:none}
 }
+@media (min-width:900px) and (max-height:780px){
+  .bnav button{padding:7px 12px;font-size:14px}.bnav .in{gap:2px}
+  .sb-who{padding:4px 6px 10px;margin-bottom:6px}.sb-who .avatar{width:36px;height:36px}
+  .sb-foot{gap:6px;padding-top:10px}.sb-foot .kbd-hint{display:none}
+}
 /* Écran mural de la cuisine */
 .kds{min-height:calc(100vh - 28px)}
 body.kds-on .top,body.kds-on .bnav,body.kds-on .ptitle,body.kds-on .bismo.mini{display:none!important}

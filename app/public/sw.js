@@ -1,5 +1,5 @@
 // GesCo Bar : l'application s'ouvre même sans connexion (les données se synchronisent au retour du réseau).
-const CACHE = "gesco-shell-v34";
+const CACHE = "gesco-shell-v35";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png",
   "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js", "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
