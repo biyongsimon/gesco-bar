@@ -176,3 +176,10 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Déclencheurs en base (pg_net) : nouvelle commande, annulation demandée, Mobile Money à vérifier, commande validée, table confiée, bon cuisine, plat gardé disponible, plat prêt, plat à décider, demande de permission, relève de caisse, journée clôturée. Jamais à la personne qui fait l'action.
 - Toucher la notification ouvre la bonne rubrique ; application rouverte après plus d'une minute : PIN ou empreinte. Déconnexion = désabonnement de l'appareil. Migration 022.
 
+
+## v4.14 — Commande close après paiement, chacun son rôle en cuisine
+- Une commande payée est close : plus de réouverture (même client ou même table → nouveau ticket). Erreur de saisie : la caisse supprime le ticket (trace au journal).
+- Après l'envoi, le ticket n'affiche que les articles choisis ; « + Ajouter ou corriger un article » rouvre le catalogue tant que la commande n'est pas payée.
+- Seul le cuisinier fait avancer les bons (Commencer, Prêt, plat gardé, décision sur un plat annulé). Caisse et direction voient la cuisine en direct, sans agir. La serveuse (ou la cheffe de salle) confirme le retrait.
+- La caisse confirme toujours les paiements Mobile Money par QR des serveuses.
+- Migration `023_roles_cuisine_commande_close.sql`.

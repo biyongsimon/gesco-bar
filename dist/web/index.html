@@ -578,6 +578,7 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
 .kds .kcard .btn{min-height:54px;font-size:18px}
 .kds-empty{text-align:center;color:var(--muted);font-size:42px;padding:30px 0}
 @media (max-width:899px){.kds-cols{grid-template-columns:1fr}.kds-col{min-height:0}}
+.kview{padding:0 12px 12px;font-size:13px;color:var(--muted)}
 .kreuse{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 12px 10px;padding:8px 10px;border-radius:12px;background:var(--amber-soft);color:var(--warn);font-size:14px}
 .kreuse span{flex:1 1 180px}
 .kcard.haskept{border-color:var(--warn);box-shadow:0 0 0 2px color-mix(in srgb,var(--warn) 30%,transparent)}
@@ -652,9 +653,9 @@ function notifyNew() { // chacun est prévenu de ce qui le concerne, avec un gé
   if (r === "caisse") S.tickets.filter(t => !isCounter(t) && (t.status === "sent" || t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo")))
     .forEach(t => K.set(`t:${t.id}:${t.status}:${t.cancel_requested ? 1 : 0}`, ["order", t.cancel_requested ? "Annulation demandée" : t.status === "cashed" ? "Mobile Money à vérifier" : "Nouvelle commande", `${staffName(t.waitress_id)} · ${t.client_label} · ${F(t.total)}`]));
   if (r === "caisse") S.tickets.filter(t => t.status === "paid" && t.pay_method === "momo" && !isCounter(t)).forEach(t => K.set("m:" + t.id, ["ok", "Paiement Mobile Money reçu", `${staffName(t.waitress_id)} · ${t.client_label} · ${F(t.total)}`]));
-  if (["cuisine", "caisse"].includes(r)) (S.kitchen || []).filter(o => o.status === "a_decider").forEach(o => K.set("kd:" + o.id, ["info", "Plat annulé après préparation", `${o.qty}× ${prodName(o.product_id)} · bon ${o.bon} : revendre, repas du personnel ou perte ?`]));
+  if (r === "cuisine") (S.kitchen || []).filter(o => o.status === "a_decider").forEach(o => K.set("kd:" + o.id, ["info", "Plat annulé après préparation", `${o.qty}× ${prodName(o.product_id)} · bon ${o.bon} : revendre, repas du personnel ou perte ?`]));
   if (r === "caisse") (S.handovers || []).filter(h => !h.confirmed_at && h.from_staff !== me).forEach(h => K.set("hv:" + h.id, ["info", "Relève de caisse", `${staffName(h.from_staff)} vous passe la caisse avec ${F(h.counted)} : vérifiez et confirmez.`]));
-  if (["cuisine", "caisse"].includes(r)) (S.kitchen || []).filter(o => ["attente", "prep"].includes(o.status) && keptFor(o).length).forEach(o => K.set("kg:" + o.id, ["order", "♻ Plat gardé disponible", `${o.qty}× ${prodName(o.product_id)} pour ${o.label || "une table"} : un plat identique est gardé, vous pouvez le servir tout de suite.`]));
+  if (r === "cuisine") (S.kitchen || []).filter(o => ["attente", "prep"].includes(o.status) && keptFor(o).length).forEach(o => K.set("kg:" + o.id, ["order", "♻ Plat gardé disponible", `${o.qty}× ${prodName(o.product_id)} pour ${o.label || "une table"} : un plat identique est gardé, vous pouvez le servir tout de suite.`]));
   if (r === "cuisine" || (V.kds && r !== "serveuse")) (S.kitchen || []).filter(o => o.status === "attente").forEach(o => K.set("k:" + o.id, ["order", "Nouvelle commande en cuisine", `Bon ${o.bon} · ${o.qty}× ${prodName(o.product_id)} · ${o.label || ""} · ${staffName(o.waitress_id)}`]));
   if (r === "serveuse") (S.kitchen || []).filter(o => o.status === "pret" && o.waitress_id === me).forEach(o => K.set("kr:" + o.id, ["ok", "Plat prêt en cuisine 🍽", `${o.qty}× ${prodName(o.product_id)} · ${o.label || ""} · bon ${o.bon} : allez le récupérer`]));
   if (r === "serveuse") S.tickets.filter(t => t.waitress_id === me).forEach(t => {
@@ -762,12 +763,7 @@ function DemoBackend() {
       E("Ticket déjà encaissé : seule la caisse peut le supprimer.");
     },
     gb_ticket_reject_cancel({ p_ticket }) { const c = ctx(); caisse(c); const t = tk(p_ticket); t.cancel_requested = false; log(c, "annulation_refusee", { ticket: t.number, client: t.client_label }); },
-    gb_ticket_reopen({ p_ticket }) {
-      const c = ctx(); caisse(c); const t = tk(p_ticket); if (!["cashed", "paid"].includes(t.status)) E("Seul un ticket encaissé peut être rouvert.");
-      db.vouchers.forEach(v => { if (v.ticket_id === t.id && v.status === "active") v.status = "void"; });
-      log(c, "ticket_rouvert", { ticket: t.number, client: t.client_label, total: t.total, statut_avant: t.status });
-      Object.assign(t, { status: "sent", pay_method: null, received: null, change_due: 0, change_status: "none", voucher_id: null, cashed_at: null, paid_at: null });
-    },
+    gb_ticket_reopen({ p_ticket }) { ctx(); E("Commande déjà payée : elle est close. Pour une nouvelle consommation, même à la même table, la serveuse ouvre un nouveau ticket."); },
     gb_remit({ p_waitress, p_received }) {
       const c = ctx(); caisse(c); if (p_received == null || p_received === "" || +p_received < 0) E("Saisissez le montant reçu.");
       const w = member(p_waitress), ts = db.tickets.filter(t => t.waitress_id === p_waitress && t.status === "cashed" && t.pay_method === "cash");
@@ -847,15 +843,15 @@ function DemoBackend() {
       p.reorder_min = p_min || null; p.pack = p_pack || null; log(c, "regle_reappro", { produit: p.name, minimum: p_min, casier: p_pack }); },
     gb_kitchen_step({ p_id, p_status }) { const c = ctx(), o = (db.kitchen || []).find(x => x.id === p_id) || E("Bon cuisine introuvable.");
       if (!["attente", "prep", "pret"].includes(o.status)) E("Ce bon n’est plus en cours.");
-      if (p_status === "servi") { if (o.waitress_id !== c.id && !["caisse", "pdg", "directeur"].includes(c.role) && !c.head) E("Seule la serveuse de la table récupère ce plat.");
+      if (p_status === "servi") { if (o.waitress_id !== c.id && !c.head) E("Seule la serveuse de la table (ou la cheffe de salle) récupère ce plat.");
         if (o.status !== "pret") E("Le plat n’est pas encore prêt."); o.status = "servi"; o.served_at = now(); return; }
-      if (!["prep", "pret", "attente"].includes(p_status)) E("Étape inconnue."); if (!["cuisine", "caisse", "pdg", "directeur"].includes(c.role)) E("Action réservée à la cuisine.");
+      if (!["prep", "pret", "attente"].includes(p_status)) E("Étape inconnue."); if (c.role !== "cuisine") E("Seule la cuisine indique qu’un plat est commencé ou prêt.");
       Object.assign(o, { status: p_status, started_at: ["prep", "pret"].includes(p_status) ? (o.started_at || now()) : null, ready_at: p_status === "pret" ? now() : null, cook_id: c.id }); },
-    gb_kitchen_decide({ p_id, p_choice, p_note }) { const c = ctx(); if (!["cuisine", "caisse", "pdg", "directeur"].includes(c.role)) E("Action réservée à la cuisine et à la caisse.");
+    gb_kitchen_decide({ p_id, p_choice, p_note }) { const c = ctx(); if (c.role !== "cuisine") E("C’est la cuisine qui décide du sort d’un plat annulé.");
       const o = (db.kitchen || []).find(x => x.id === p_id) || E("Bon cuisine introuvable."); if (!["a_decider", "revente"].includes(o.status)) E("Ce plat n’attend pas de décision.");
       if (!["revente", "personnel", "perte"].includes(p_choice)) E("Choix inconnu."); Object.assign(o, { status: p_choice, decided_at: now(), decided_by: c.id, note: (p_note || "").trim() || o.note });
       const p = prod(o.product_id); log(c, "plat_" + p_choice, { plat: p.name, qte: o.qty, bon: o.bon, valeur: o.qty * (p.cost || 0), motif: p_note }); },
-    gb_kitchen_reuse({ p_order, p_kept }) { const c = ctx(); if (!["cuisine", "caisse", "pdg", "directeur"].includes(c.role)) E("Action réservée à la cuisine et à la caisse.");
+    gb_kitchen_reuse({ p_order, p_kept }) { const c = ctx(); if (c.role !== "cuisine") E("Seule la cuisine sert un plat gardé.");
       const o = (db.kitchen || []).find(x => x.id === p_order) || E("Bon cuisine introuvable."); if (!["attente", "prep"].includes(o.status)) E("Ce bon n’attend plus de préparation.");
       const k = db.kitchen.find(x => x.id === p_kept && x.status === "revente" && x.product_id === o.product_id && Date.now() - new Date(x.decided_at) < 6 * 3600e3) || E("Plat gardé introuvable ou gardé depuis plus de 6 h.");
       const n = Math.min(o.qty, k.qty); kRelease(o, n, c); if (n === k.qty) k.status = "reutilise"; else k.qty -= n;
@@ -2053,16 +2049,16 @@ function kStrip(t) {
 const keptFor = o => (S.kitchen || []).filter(k => k.status === "revente" && k.product_id === o.product_id && Date.now() - new Date(k.decided_at) < 6 * 3600e3);
 function kCard(o) {
   const p = S.products.find(x => x.id === o.product_id) || { name: "?" }, ref = o.status === "pret" ? (o.ready_at || o.created_at) : o.created_at;
-  const mins = Math.max(0, Math.floor((Date.now() - new Date(ref)) / 60000)), late = o.status !== "pret" && mins >= 15, can = ["cuisine", "caisse", "pdg", "directeur"].includes(ROLE());
+  const mins = Math.max(0, Math.floor((Date.now() - new Date(ref)) / 60000)), late = o.status !== "pret" && mins >= 15, can = ROLE() === "cuisine";
   const kept = ["attente", "prep"].includes(o.status) ? keptFor(o) : [];
   const acts = o.status === "attente" ? `<button class="btn soft grow" data-a="kStep" data-id="${o.id}" data-v="prep">Commencer</button><button class="btn grow" data-a="kStep" data-id="${o.id}" data-v="pret">Prêt ✓</button>`
     : o.status === "prep" ? `<button class="btn ghost sm" data-a="kStep" data-id="${o.id}" data-v="attente" aria-label="Remettre en attente">↩</button><button class="btn grow" data-a="kStep" data-id="${o.id}" data-v="pret">Prêt ✓</button>`
-    : `<span class="mu grow">Attend ${esc(staffName(o.waitress_id))}</span><button class="btn ghost sm" data-a="kStep" data-id="${o.id}" data-v="prep" aria-label="Remettre en préparation">↩</button>${ROLE() !== "cuisine" ? `<button class="btn soft sm" data-a="kStep" data-id="${o.id}" data-v="servi">Servi</button>` : ""}`;
+    : `<span class="mu grow">Attend ${esc(staffName(o.waitress_id))}</span><button class="btn ghost sm" data-a="kStep" data-id="${o.id}" data-v="prep" aria-label="Remettre en préparation">↩</button>`;
   return `<div class="kcard ${late ? "late" : ""} ${kept.length ? "haskept" : ""}" style="--h:${kHue(staffName(o.waitress_id))}"><div class="kband"><b class="kbon">BON ${o.bon}</b><span class="kwho">${esc(staffName(o.waitress_id))}</span></div>
     <div class="kbody"><span class="pthumb">${pImg(p)}</span><div class="grow" style="min-width:0"><div class="kdish"><b>${o.qty}×</b> ${esc(p.name)}</div>
       <div class="ktab">${esc(o.label || "")}${o.ticket_no ? ` · ticket N°${o.ticket_no}` : ""}</div><div class="ktime ${late ? "bad-t" : ""}">${o.status === "pret" ? `prêt depuis ${mins} min` : `commandé il y a ${mins} min${late ? " ⚠" : ""}`}${o.note ? ` · ${esc(o.note)}` : ""}</div></div></div>
     ${kept.length ? `<div class="kreuse"><span>♻ <b>${sum(kept, k => k.qty)} ${esc(p.name)}</b> gardé${sum(kept, k => k.qty) > 1 ? "s" : ""} (bon ${kept.map(k => k.bon).join(", ")}, depuis ${hm(kept[0].decided_at)})</span>${can ? `<button class="btn amber sm" data-a="kReuse" data-id="${o.id}" data-k="${kept[0].id}">Servir le plat gardé</button>` : ""}</div>` : ""}
-    ${can ? `<div class="row">${acts}</div>` : ""}</div>`;
+    ${can ? `<div class="row">${acts}</div>` : `<div class="kview">${{ attente: "En attente de la cuisine", prep: "En préparation", pret: "Prêt : attend " + esc(staffName(o.waitress_id)) }[o.status] || ""}</div>`}</div>`;
 }
 const KDS_OK = () => ["cuisine", "caisse", "pdg", "directeur"].includes(ROLE());
 const kdsActive = () => !!(V.kds && V.screen === "app" && S && V.tab === "kitchen" && KDS_OK());
@@ -2078,7 +2074,10 @@ function vKitchen() {
     board = `<div class="seg ktabs">${T.map(([k, l]) => `<button class="${tab === k ? "on" : ""}" data-a="kTab" data-v="${k}" aria-pressed="${tab === k}">${l} <b class="num">${L[k].length}</b></button>`).join("")}</div>
       <div class="stack" style="margin-top:10px">${L[tab].map(kCard).join("") || `<div class="empty">${{ attente: "Aucune commande en attente.", prep: "Rien sur le feu.", pret: "Aucun plat en attente de retrait." }[tab]}</div>`}</div>`; }
   else board = `<div class="kboard">${T.map(([st, title]) => `<section class="kcol ${st}"><h3>${title} <span class="pill ${st === "pret" ? "ok" : st === "prep" ? "warn" : ""}">${L[st].length}</span></h3>${L[st].map(kCard).join("") || `<div class="empty">${{ attente: "Aucune commande en attente.", prep: "Rien sur le feu.", pret: "Aucun plat en attente de retrait." }[st]}</div>`}</section>`).join("")}</div>`;
-  return `${kDecide()}${board}
+  const cooks = S.staff.filter(x => x.active && x.role === "cuisine").length;
+  const roleNote = ROLE() === "cuisine" ? "" : !cooks ? `<div class="note warn" style="margin-bottom:14px">Aucun cuisinier dans l’équipe : ajoutez-en un (Équipe → rôle « Cuisine ») pour que les bons avancent. Seule la cuisine marque un plat commencé ou prêt.</div>`
+    : `<div class="note info" style="margin-bottom:14px">Vous suivez la cuisine en direct pour vos comptes. C’est le cuisinier qui fait avancer les bons ; la serveuse confirme le retrait de ses plats.</div>`;
+  return `${roleNote}${kDecide()}${board}
     <p class="mu" style="margin:6px 4px 12px">Chaque bon porte la couleur et le nom de sa serveuse : seule elle est prévenue quand le plat est prêt, et elle confirme le retrait.</p>${wall}
     ${served.length ? `<div class="card"><h3>Derniers plats servis</h3><div class="list">${served.map(o => `<div class="li"><div class="grow"><b>${o.qty}× ${esc(prodName(o.product_id))}</b><div class="mu">Bon ${o.bon} · ${esc(o.label || "")} · ${esc(staffName(o.waitress_id))}</div></div><span class="mu">${o.served_at ? hm(o.served_at) : ""}</span></div>`).join("")}</div></div>` : ""}`;
 }
@@ -2128,6 +2127,7 @@ A.recAdd = d => { const id = V.f["recAdd_" + d.p]; if (!id) return toast("Choisi
   if (!r.items.some(x => x.i === id)) r.items.push({ i: id, q: 1 }); V.f["recAdd_" + d.p] = ""; render(); };
 A.recDel = d => { const r = recCur(d.p); r.items.splice(+d.k, 1); render(); };
 A.recSave = d => run(async () => { const r = recCur(d.p); await B.rpc("gb_recipe_set", { p_dish: d.p, p_items: r.items.filter(x => x.q > 0) }); V.rec = null; await refresh(); toast("Recette enregistrée."); });
+A.more = d => { V.more = V.more || {}; V.more[d.t] = !V.more[d.t]; render(); };
 /* ═══════════════ Cheffe de salle et transfert de tables ═══════════════ */
 const isHead = () => !!(S && S.me && S.me.head && ROLE() === "serveuse");
 const headsNow = () => { const h = S.staff.filter(x => x.active && x.head && x.role === "serveuse"), td = today();
@@ -2209,16 +2209,16 @@ function vHov(m) { const s = m.s || {};
 /* ═══════════════ Cuisine : plats annulés après préparation, courses du marché ═══════════════ */
 Object.assign(KST, { a_decider: "annulé : à décider", revente: "à revendre", reutilise: "revendu", personnel: "repas du personnel", perte: "perte" });
 function kDecide() {
-  if (!["cuisine", "caisse", "pdg", "directeur"].includes(ROLE())) return "";
+  if (!["cuisine", "caisse", "pdg", "directeur"].includes(ROLE())) return ""; const ck = ROLE() === "cuisine";
   const K2 = S.kitchen || [], dec = K2.filter(o => o.status === "a_decider"), rv = K2.filter(o => o.status === "revente" && Date.now() - new Date(o.decided_at) < 6 * 3600e3);
   const lost = K2.filter(o => ["perte", "personnel"].includes(o.status) && S.day && o.decided_at && new Date(o.decided_at) >= new Date(S.day.opened_at));
   const valO = o => o.qty * ((S.products.find(p => p.id === o.product_id) || {}).cost || 0);
   let h = "";
   if (dec.length) h += `<div class="card stack kdec"><h3>Plats annulés après préparation · ${dec.length}</h3><p class="mu" style="margin:0">Un plat commencé ne revient jamais en stock comme une bière. Décidez ce qu’il devient :</p>
     ${dec.map(o => `<div class="stack" style="gap:8px;padding-top:10px;border-top:1px solid var(--line)"><div><b>${o.qty}× ${esc(prodName(o.product_id))}</b> <span class="mu">· bon ${o.bon} · ${esc(o.label || "")} · ${esc(staffName(o.waitress_id))}${o.note ? " · " + esc(o.note) : ""}</span></div>
-      <div class="row"><button class="btn sm" data-a="kDec" data-id="${o.id}" data-v="revente">Revendre</button><button class="btn soft sm" data-a="kDec" data-id="${o.id}" data-v="personnel">Repas du personnel</button><button class="btn bad sm" data-a="kDec" data-id="${o.id}" data-v="perte">Perte</button></div></div>`).join("")}</div>`;
+      ${ck ? `<div class="row"><button class="btn sm" data-a="kDec" data-id="${o.id}" data-v="revente">Revendre</button><button class="btn soft sm" data-a="kDec" data-id="${o.id}" data-v="personnel">Repas du personnel</button><button class="btn bad sm" data-a="kDec" data-id="${o.id}" data-v="perte">Perte</button></div>` : `<span class="mu">Le cuisinier décide : revendre, repas du personnel ou perte.</span>`}</div>`).join("")}</div>`;
   if (rv.length) h += `<div class="card stack"><h3>Plats gardés pour la revente · ${rv.length}</h3><p class="mu" style="margin:0">Quand une serveuse commande le même plat, son bon est signalé ♻ : touchez « Servir le plat gardé » pour le donner tout de suite. Après 6 h, ils ne sont plus proposés.</p>
-    <div class="list">${rv.map(o => `<div class="li"><div class="grow"><b>${o.qty}× ${esc(prodName(o.product_id))}</b><div class="mu">gardé depuis ${hm(o.decided_at)} · bon ${o.bon}</div></div><button class="btn ghost sm" data-a="kDec" data-id="${o.id}" data-v="personnel">Personnel</button><button class="btn ghost sm" data-a="kDec" data-id="${o.id}" data-v="perte">Perte</button></div>`).join("")}</div></div>`;
+    <div class="list">${rv.map(o => `<div class="li"><div class="grow"><b>${o.qty}× ${esc(prodName(o.product_id))}</b><div class="mu">gardé depuis ${hm(o.decided_at)} · bon ${o.bon}</div></div>${ck ? `<button class="btn ghost sm" data-a="kDec" data-id="${o.id}" data-v="personnel">Personnel</button><button class="btn ghost sm" data-a="kDec" data-id="${o.id}" data-v="perte">Perte</button>` : ""}</div>`).join("")}</div></div>`;
   if (lost.length) h += `<div class="card"><div class="between"><h3>Pertes et repas du personnel (journée)</h3><b class="num">${F(sum(lost, valO))}</b></div><div class="list">${lost.map(o => `<div class="li"><div class="grow">${o.qty}× ${esc(prodName(o.product_id))} <span class="mu">· ${o.status === "perte" ? "perte" : "repas du personnel"}${o.note ? " · " + esc(o.note) : ""}</span></div><span class="mu num">${valO(o) ? F(valO(o)) : ""}</span></div>`).join("")}</div></div>`;
   return h;
 }
@@ -2307,7 +2307,9 @@ function ticket(t, opts = {}) {
   let body = "";
   if (open) {
     if (editable) {
-      body = editor(t) + `<div class="total"><span class="mu">Total</span><b>${F(t.total)}</b></div>`;
+      const compact = t.status === "sent" && !(V.more && V.more[t.id]);
+      body = (compact ? lines(t) + `<div class="row"><button class="btn soft sm" data-a="more" data-t="${t.id}">+ Ajouter ou corriger un article</button></div>`
+        : editor(t) + (t.status === "sent" ? `<div class="row"><button class="btn sm" data-a="more" data-t="${t.id}">Terminer : n’afficher que la commande</button></div>` : "")) + `<div class="total"><span class="mu">Total</span><b>${F(t.total)}</b></div>`;
       if (!isCounter(t) && t.number && t.total > 0) body += `<div class="row"><button class="btn ghost sm" data-a="tkGive" data-t="${t.id}">Confier cette table à une collègue</button></div>`;
       if (t.cancel_requested) body += `<div class="note bad">Annulation demandée : en attente de la caisse.</div>`;
       if (t.status === "draft" && isCounter(t)) body += (t.total ? payBox(t) : "") + `<div class="row"><span class="mu grow">Vente au comptoir : le paiement est validé directement.</span><button class="btn bad sm" data-a="del" data-t="${t.id}">Supprimer</button></div>`;
@@ -2318,7 +2320,8 @@ function ticket(t, opts = {}) {
       if (ROLE() === "directeur" && !isCounter(t)) body += `<div class="note info">${t.served_at ? `Servie au client à ${hm(t.served_at)}.` : `Envoyée ${ago(t.sent_at || t.created_at)}, pas encore marquée servie.`} La validation reste à la caisse.</div>`;
       if (isCaisse() && t.status === "sent" && !isCounter(t)) body += `<div class="note info">Commande de ${esc(staffName(t.waitress_id))}. Seule la serveuse peut la modifier ; la caisse suit son évolution ici.</div>`;
       if (["caisse", "directeur", "pdg"].includes(ROLE()) && ["draft", "sent"].includes(t.status) && !isCounter(t)) body += `<div class="row"><button class="btn ghost sm" data-a="tkGive" data-t="${t.id}">Confier la table à une autre serveuse</button></div>`;
-      if (isCaisse() && t.status !== "cancelled") body += `<div class="row">${sold(t) ? `<button class="btn soft sm" data-a="reopen" data-t="${t.id}">Rouvrir pour modifier</button>` : ""}<button class="btn bad sm" data-a="del" data-t="${t.id}">Supprimer</button></div>`;
+      if (sold(t) && t.status !== "cancelled") body += `<div class="note info">Commande payée : elle est close. Une nouvelle consommation, même à la même table, se fait sur un nouveau ticket.</div>`;
+      if (isCaisse() && t.status !== "cancelled") body += `<div class="row"><button class="btn bad sm" data-a="del" data-t="${t.id}">Supprimer</button></div>`;
     }
   }
   return `<div class="tk ${open ? "open" : ""}"><button class="tk-h" data-a="tog" data-id="${t.id}" aria-expanded="${open}">${chev}<span class="nm"><b>${esc(t.client_label)}</b><span class="mu">${meta}</span></span>
