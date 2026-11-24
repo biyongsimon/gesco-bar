@@ -188,3 +188,9 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - `bars.sub_test_price` (réglé par l'éditeur en SQL uniquement, 100 à 5 000 FCFA) : le paiement sur téléphone facture ce montant pour 1 mois de la formule choisie ; le transfert et les autres durées sont masqués.
 - Après un paiement réussi, le prix de test s'efface tout seul. Les paiements test sont marqués « test » dans l'historique et le journal de l'éditeur.
 - Activé pour Bring win (200 FCFA). Migration `024_formule_test_cachee.sql`.
+
+## v4.16 — Suspension : motif, demande de réactivation avec preuves
+- Console éditeur : motif de suspension affiché au bar (la « Note interne » reste privée) ; réactiver clôt la demande et prévient le bar ; pièces jointes visibles dans Assistance ; contact téléphone / WhatsApp affiché aux bars (Réglages).
+- Écran « Accès suspendu » : motif, date ; PDG et directeur envoient la demande de réactivation (message, jusqu'à 5 photos ou PDF dans le stockage privé `preuves`, numéro WhatsApp), suivent la réponse de BISMO Agency sur le même écran ; boutons Appeler / WhatsApp. L'application se rouvre seule après réactivation.
+- Notifications bloquées : bouton « Débloquer les notifications » avec les étapes selon l'appareil.
+- Migration `025_reactivation_suspension.sql`.

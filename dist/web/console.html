@@ -494,9 +494,11 @@ function vPanel() {
       <label class="f grow">Valable jusqu’au<input id="p_until" type="date" value="${esc(until)}" ${plan === "beta" ? "disabled" : ""}></label></div>
       <div class="row"><span class="mu">Essai gratuit :</span>${[14, 30].map(n => `<button class="btn soft sm" data-a="trialB" data-v="${n}">${n} jours dès aujourd’hui</button>`).join("")}</div>
       <div class="row"><span class="mu">Offrir :</span>${[1, 3, 12].map(n => `<button class="btn soft sm" data-a="addM" data-v="${addM(n)}">+${n} mois</button>`).join("")}</div>
-      <label class="f">Note interne<input id="p_note" value="${esc(f.p_note ?? (b.admin_note || ""))}" placeholder="Ex. offert pour le pilote"></label>
+      <label class="f">Note interne (jamais visible par le bar)<input id="p_note" value="${esc(f.p_note ?? (b.admin_note || ""))}" placeholder="Ex. offert pour le pilote"></label>
       <div class="row"><button class="btn grow" data-a="saveBar" data-id="${b.id}" ${V.busy ? "disabled" : ""}>Enregistrer</button>
         <button class="btn ${b.suspended ? "ok" : "bad"}" data-a="suspend" data-id="${b.id}" data-v="${b.suspended ? 0 : 1}" ${V.busy ? "disabled" : ""}>${b.suspended ? "Réactiver l’accès" : "Suspendre l’accès"}</button></div>
+      ${b.suspended ? `<div class="kv" style="border:0;background:var(--bad-soft, var(--sunk));border-radius:10px;padding:10px 12px"><span><b>Suspendu${b.suspended_at ? " le " + D(b.suspended_at) : ""}.</b> Motif affiché au bar : ${esc(b.suspend_reason || "aucun")}</span></div>`
+        : `<label class="f">Motif de la suspension (affiché au bar)<input id="p_reason" value="${esc(f.p_reason || "")}" maxlength="500" placeholder="Ex. Abonnement impayé depuis le 1er décembre"></label>`}
       <p class="mu" style="margin:0;font-size:13px">Sans renouvellement, l’application se bloque 3 jours après la date de fin. Les données sont conservées.</p></div>
     <div class="card stack"><h3>Identité légale</h3><div class="row"><span class="pill ${b.kyc_status === "verifie" ? "ok" : b.kyc_status === "refuse" ? "bad" : b.kyc_status === "a_verifier" ? "warn" : ""}">${KY[b.kyc_status] || "—"}</span>
       ${b.id_doc_path ? `<button class="btn soft sm" data-a="doc" data-p="${esc(b.id_doc_path)}">Voir la pièce d’identité</button>` : '<span class="mu">Aucune pièce transmise</span>'}</div>
@@ -524,6 +526,10 @@ function vReglages() {
         <p class="mu" style="margin:0;font-size:13px">Si un raccourci de transfert direct fonctionne sur votre téléphone, saisissez-le avec {numero} et {montant} : le bouton « Payer » des bars préremplira le transfert. Laissez vide pour ouvrir le menu de l’opérateur.</p>
         <label class="f">Orange Money<input id="s_omt" value="${esc(p.om_tpl || "")}" placeholder="#150*1*1*{numero}*{montant}#"></label><label class="f">MTN MoMo<input id="s_mtnt" value="${esc(p.mtn_tpl || "")}" placeholder="*126*1*1*{numero}*{montant}#"></label></div></details>
       <button class="btn" data-a="saveSettings" ${V.busy ? "disabled" : ""}>Enregistrer</button></div>
+    <div class="card stack" style="max-width:640px;margin-top:14px"><h3>Contact BISMO Agency affiché aux bars</h3>
+      <p class="mu" style="margin:0;font-size:13px">Montré sur l’écran d’un bar suspendu, à côté de la demande de réactivation : bouton d’appel et bouton WhatsApp.</p>
+      <div class="row"><label class="f grow">Téléphone<input id="s_phone" inputmode="tel" value="${esc(p.phone || "")}" placeholder="6XXXXXXXX"></label><label class="f grow">WhatsApp (avec l’indicatif)<input id="s_wa" inputmode="tel" value="${esc(p.whatsapp || "")}" placeholder="2376XXXXXXXX"></label></div>
+      <button class="btn soft" data-a="saveContact" ${V.busy ? "disabled" : ""}>Enregistrer le contact</button></div>
     <div class="card stack" style="max-width:640px;margin-top:14px"><h3>Connexion rapide sur cet appareil</h3>
       <p class="mu" style="margin:0;font-size:14px">${qpState()}. Le code${BIO_OK ? " ou l’empreinte" : ""} remplace le mot de passe au déverrouillage, sur cet appareil uniquement.</p>
       <div class="row"><button class="btn soft" data-a="qpOpen">${ic("finger")} Gérer la connexion rapide</button>${canInstall() ? `<button class="btn soft" data-a="install">${ic("download")} Installer l’application</button>` : ""}</div></div>
@@ -541,7 +547,7 @@ function vAssistance() {
     <div class="chips sc" style="margin-bottom:14px">${[["transmis", "À traiter"], ["ia", "Réglées par l’IA"], ["resolu", "Résolues"], ["tous", "Toutes"]].map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-a="supF" data-v="${k}">${l} <b>${cnt(k)}</b></button>`).join("")}</div>
     <div class="sup"><div class="card supl">${list.map(x => `<button class="supi ${x.id === V.thr ? "on" : ""}" data-a="openThr" data-id="${x.id}">
         <span class="row" style="justify-content:space-between"><b>${esc(x.bar_name || "Visiteur (non connecté)")}</b>${supNew(x) ? `<span class="pill bad">Nouveau</span>` : `<span class="mu" style="font-size:12px">${ago(x.last_msg_at)}</span>`}</span>
-        <span class="mu" style="font-size:13px">${esc(x.staff_name ? x.staff_name + " · " + (ROLE_L[x.staff_role] || "") : x.contact || "Sans contact")}${x.urgence === "urgente" ? ` · <b style="color:var(--bad)">urgent</b>` : ""}</span>
+        <span class="mu" style="font-size:13px">${x.kind === "reactivation" ? `<b style="color:var(--bad)">Réactivation</b> · ` : ""}${esc(x.staff_name ? x.staff_name + " · " + (ROLE_L[x.staff_role] || "") : x.contact || "Sans contact")}${x.urgence === "urgente" ? ` · <b style="color:var(--bad)">urgent</b>` : ""}</span>
         <span class="supd">${esc(x.summary || x.dernier || "")}</span></button>`).join("") || `<div class="empty">Aucune discussion ici.</div>`}</div>
       <div class="card stack supt">${t ? vThread(t) : `<div class="empty">Choisissez une discussion pour lire l’échange et répondre.</div>`}</div></div>`;
 }
@@ -549,8 +555,9 @@ function vThread(t) {
   const who = { client: t.staff_name || "Client", ia: "Assistant IA", bismo: "BISMO Agency" };
   return `<div class="row" style="justify-content:space-between"><div><h2 style="font-size:20px">${esc(t.bar_name || "Visiteur")}${t.bar_code ? ` <span class="mu" style="font-size:14px">${esc(t.bar_code)}</span>` : ""}</h2>
       <span class="mu" style="font-size:13px">${esc([t.staff_name, ROLE_L[t.staff_role], t.contact].filter(Boolean).join(" · ") || "Sans contact")} · ouvert ${ago(t.created_at)}</span></div><span class="pill ${STAT[t.status]?.[1] || ""}">${STAT[t.status]?.[0] || esc(t.status)}</span></div>
-    ${t.summary ? `<div class="kv" style="border:0;background:var(--warn-soft);border-radius:10px;padding:10px 12px"><span><b>Résumé de l’IA :</b> ${esc(t.summary)}</span></div>` : ""}
-    <div class="slog">${(V.msgs || []).map(m => `<div class="sm ${m.sender}"><small>${who[m.sender] || m.sender} · ${new Date(m.created_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</small>${esc(m.body).replace(/\n/g, "<br>")}</div>`).join("") || `<div class="empty"><span class="spin"></span></div>`}</div>
+    ${t.summary ? `<div class="kv" style="border:0;background:var(--warn-soft);border-radius:10px;padding:10px 12px"><span><b>${t.kind === "reactivation" ? "Demande de réactivation" : "Résumé de l’IA"} :</b> ${esc(t.summary)}</span></div>` : ""}
+    ${(() => { const b = t.kind === "reactivation" && (V.data.bars || []).find(x => x.id === t.bar_id); return b ? `<div class="row">${b.suspended ? `<span class="pill bad">Bar suspendu</span><button class="btn ok sm" data-a="suspend" data-id="${b.id}" data-v="0" ${V.busy ? "disabled" : ""}>Réactiver l’accès</button>` : `<span class="pill ok">Accès rétabli</span>`}<button class="btn soft sm" data-a="openBar" data-id="${b.id}">Voir la fiche du bar</button></div>` : ""; })()}
+    <div class="slog">${(V.msgs || []).map(m => `<div class="sm ${m.sender}"><small>${who[m.sender] || m.sender} · ${new Date(m.created_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</small>${esc(m.body).replace(/\n/g, "<br>")}${(m.files || []).length ? `<div class="row" style="margin-top:8px;gap:6px">${m.files.map((f, i) => `<button class="btn soft sm" data-a="proofOpen" data-p="${esc(f)}">📎 ${/\.pdf$/i.test(f) ? "PDF" : "Photo"} ${i + 1}</button>`).join("")}</div>` : ""}</div>`).join("") || `<div class="empty"><span class="spin"></span></div>`}</div>
     <label class="f">Votre réponse (le client la lit dans sa fenêtre d’aide)<textarea id="rep_${t.id}" rows="3" placeholder="Écrivez votre réponse…">${esc(V.f["rep_" + t.id] || "")}</textarea></label>
     <div class="row"><button class="btn" data-a="reply" data-id="${t.id}" ${V.busy ? "disabled" : ""}>Envoyer</button><button class="btn ok" data-a="reply" data-id="${t.id}" data-close="1" ${V.busy ? "disabled" : ""}>Envoyer et marquer résolu</button>${t.status !== "resolu" ? `<button class="btn soft" data-a="reply" data-id="${t.id}" data-close="1" data-silent="1">Marquer résolu sans répondre</button>` : ""}</div>`;
 }
@@ -671,10 +678,13 @@ const A = {
     await rpc("gb_pf_bar_set", { p_bar: d.id, p_plan: plan, p_until: until, p_suspended: null, p_note: val("p_note") }); V.f = {}; await loadAll(); toast("Bar mis à jour."); }),
   suspend: d => run(async () => { const b = V.data.bars.find(x => x.id === d.id);
     if (d.v === "1" && !confirmTwice(d.id)) return;
-    await rpc("gb_pf_bar_set", { p_bar: d.id, p_plan: b.plan, p_until: b.plan_until, p_suspended: d.v === "1", p_note: b.admin_note }); await loadAll(); toast(d.v === "1" ? "Accès suspendu." : "Accès rétabli."); }),
+    await rpc("gb_pf_suspend", { p_bar: d.id, p_on: d.v === "1", p_reason: d.v === "1" ? val("p_reason") : null }); delete V.f.p_reason; await loadAll(); if (V.thr) await loadMsgs(V.thr);
+    toast(d.v === "1" ? "Accès suspendu : le bar voit le motif et peut demander la réactivation." : "Accès rétabli : la demande de réactivation est close et le bar est prévenu."); }),
   kyc: d => run(async () => { await rpc("gb_pf_kyc", { p_bar: d.id, p_status: d.v }); await loadAll(); toast("Statut mis à jour."); }),
+  proofOpen: d => run(async () => { const { data, error } = await sb.storage.from("preuves").createSignedUrl(d.p, 600); if (error) throw new Error("Preuve introuvable."); window.open(data.signedUrl, "_blank", "noopener"); }),
   doc: d => run(async () => { const { data, error } = await sb.storage.from("kyc").createSignedUrl(d.p, 600); if (error) throw new Error("Document introuvable."); window.open(data.signedUrl, "_blank", "noopener"); }),
   decide: d => run(async () => { await rpc("gb_pf_sub_decide", { p_id: d.id, p_ok: d.ok === "1", p_note: val("note_" + d.id) }); await loadAll(); toast(d.ok === "1" ? "Paiement validé : la formule est active." : "Paiement refusé."); }),
+  saveContact: () => run(async () => { await rpc("gb_pf_contact", { p_phone: val("s_phone"), p_whatsapp: val("s_wa") }); await loadAll(); toast("Contact enregistré : il s’affiche sur l’écran des bars suspendus."); }),
   saveSettings: () => run(async () => { await rpc("gb_pf_settings", { p_holder: val("s_holder"), p_om: val("s_om").replace(/\D/g, ""), p_mtn: val("s_mtn").replace(/\D/g, ""), p_om_tpl: val("s_omt"), p_mtn_tpl: val("s_mtnt") }); await loadAll(); toast("Réglages enregistrés."); }),
   changePw: () => run(async () => { const p = val("s_pw"); if (p.length < 10) throw new Error("10 caractères minimum."); const { error } = await sb.auth.updateUser({ password: p }); if (error) throw new Error(error.message); toast("Mot de passe changé."); }),
   theme: () => { const r = document.documentElement; r.dataset.theme = isDark() ? "light" : "dark"; try { localStorage.setItem("gesco-console-theme", r.dataset.theme); } catch (e) {} themeMeta(); render(); }

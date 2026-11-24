@@ -430,6 +430,7 @@ input[type=date],input[type=time]{width:100%;min-height:46px;padding:10px 12px;b
 .hmsg{max-width:86%;padding:10px 12px;border-radius:16px;line-height:1.45;font-size:15px;animation:fadeUp .25s both;overflow-wrap:anywhere}
 .hmsg small{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:2px}
 .hmsg.client{align-self:flex-end;background:var(--brand);color:var(--brand-ink);border-bottom-right-radius:4px}
+.hmsg.client small{color:inherit;opacity:.8}.hmsg.client .btn{color:inherit;border-color:color-mix(in srgb,currentColor 55%,transparent);background:transparent}
 .hmsg.ia{align-self:flex-start;background:var(--sunk);border-bottom-left-radius:4px}.hmsg.ia.err{background:var(--bad-soft);color:var(--bad)}
 .hmsg.bismo{align-self:flex-start;background:var(--amber-soft);border:1px solid color-mix(in srgb,var(--amber) 50%,var(--line));border-bottom-left-radius:4px}
 .typing{display:flex;gap:4px;padding:14px}.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:blink 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
@@ -1110,6 +1111,14 @@ function DemoBackend() {
       const c = ctx(); if (!(p_rating >= 1 && p_rating <= 5)) E("Choisissez une note de 1 à 5 étoiles.");
       db.feedback = db.feedback || []; db.feedback.push({ staff_id: c.id, rating: p_rating, topics: p_topics || [], message: p_message || "", created_at: now() });
     },
+    gb_reactivation_state() { const c = ctx(), m = ["pdg", "directeur"].includes(c.role), t = m ? (db.react || null) : null;
+      return { suspended: !!db.bar.suspended, reason: db.bar.suspend_reason || null, since: db.bar.suspended_at || null, phone: "690000000", whatsapp: "237690000000", thread: t }; },
+    gb_reactivation_send({ p_message, p_files, p_contact }) { const c = ctx(); mgr(c); if (!db.bar.suspended) E("Ce bar n’est pas suspendu.");
+      const msg = String(p_message || "").trim(); if (!msg && !(p_files || []).length) E("Écrivez un message ou ajoutez une preuve.");
+      db.react = db.react && db.react.status !== "resolu" ? db.react : { id: uuid(), status: "transmis", created_at: now(), messages: [] };
+      db.react.status = "transmis"; db.react.messages.push({ sender: "client", body: msg || "Preuves jointes.", files: (p_files || []).length ? p_files : null, at: now() });
+      setTimeout(() => { if (db.react && db.react.messages.length === 1) { db.react.messages.push({ sender: "bismo", body: "Bien reçu, nous vérifions vos preuves. (Démo : BISMO Agency répond ici depuis sa console.)", files: null, at: now() }); save(); } }, 4000);
+      return db.react.id; },
     gb_sub_request({ p_plan, p_months, p_method, p_reference, p_proof }) {
       const c = ctx(); mgr(c); const price = { simple: 10000, premium: 15000, gold: 20000, lounge: 30000 }[p_plan]; if (!price) E("Formule inconnue.");
       if (![1, 3, 6, 12].includes(+p_months)) E("Durée invalide."); if (!["orange", "mtn"].includes(p_method)) E("Mode de paiement inconnu.");
@@ -1279,6 +1288,8 @@ function DemoBackend() {
       return { thread: th, status, reply, messages: H }; },
     async assistHistory() { return { thread: "demo-thread", status: null, messages: LS.get(KEY + "-help-" + (S && S.me ? S.me.id : "anon"), []) }; },
     async uploadProof(file) { const c = ctx(); mgr(c); return db.bar.id + "/abonnement-demo-" + (file.name || "capture"); },
+    async uploadReact(file, i) { const c = ctx(); mgr(c); return db.bar.id + "/reactivation-" + Date.now() + "-" + i + "." + (/pdf/.test(file.type) ? "pdf" : "jpg"); },
+    async proofUrl() { return null; },
     async uploadProductPhoto(blob) { const c = ctx(); caisse(c); return await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ko(new Error("Photo illisible.")); r.readAsDataURL(blob); }); },
     async listPO() { db = LS.get(KEY) || db; return JSON.parse(JSON.stringify((db.pos || []).slice().reverse())); },
     async productImage(id, image) { const c = ctx(); caisse(c); const p = db.products.find(x => x.id === id); if (!p) E("Produit introuvable."); p.image = image || null; save(); log(c, "produit_photo", { produit: p.name }); },
@@ -1330,7 +1341,7 @@ function LiveBackend() {
       const uid = sd.session.user.id;
       const [staff, bars, products, days] = await Promise.all([
         q(sb.from("staff").select("id,name,role,active,user_id,head").order("name")),
-        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status,om_code,mtn_code,om_ussd,mtn_ussd,push_enabled,plan,plan_until,plan_trial_until,trial_plan,suspended,kitchen_on,plan_cfg,sub_test_price").limit(1)),
+        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status,om_code,mtn_code,om_ussd,mtn_ussd,push_enabled,plan,plan_until,plan_trial_until,trial_plan,suspended,suspend_reason,suspended_at,kitchen_on,plan_cfg,sub_test_price").limit(1)),
         q(sb.from("products").select("*").order("sort")),
         q(sb.from("service_days").select("*").eq("status", "open").limit(1))]);
       const meRow = staff.find(s => s.user_id === uid && s.active); if (!meRow || !bars.length) { const e = bizErr("Compte non rattaché à un bar ou désactivé."); e.auth = true; throw e; }
@@ -1376,6 +1387,13 @@ function LiveBackend() {
       if (error) throw bizErr("Envoi de la photo impossible : " + error.message); return path; },
     async productImage(id, image) { return this.rpc("gb_product_image", { p_id: id, p_image: image }); },
     async listPO() { const { data, error } = await sb.from("purchase_orders").select("*").order("created_at", { ascending: false }).limit(20); if (error) throw toErr(error); return data || []; },
+    async uploadReact(file, i) {
+      const { data: bars } = await sb.from("bars").select("id").limit(1); if (!bars || !bars.length) throw bizErr("Bar introuvable.");
+      const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" }[file.type]; if (!ext) throw bizErr("Format non accepté : photo (JPG, PNG, WebP) ou PDF.");
+      const path = `${bars[0].id}/reactivation-${Date.now()}-${i}.${ext}`;
+      const { error } = await sb.storage.from("preuves").upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw bizErr(/size|large/i.test(error.message) ? "Fichier trop lourd (5 Mo maximum)." : "Envoi de la preuve impossible : " + error.message); return path; },
+    async proofUrl(path) { const { data } = await sb.storage.from("preuves").createSignedUrl(path, 600); return data ? data.signedUrl : null; },
     async uploadProof(file) {
       const { data: bars } = await sb.from("bars").select("id").limit(1); if (!bars || !bars.length) throw bizErr("Bar introuvable.");
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, ""), path = `${bars[0].id}/abonnement-${Date.now()}.${ext}`;
@@ -2336,7 +2354,7 @@ function wService() {
 }
 
 /* ═══════════════ Cadre commun : rubriques par rôle, menu, recherche ═══════════════ */
-const IC = {
+const IC = { phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
   kitchen: '<path d="M5 12h14v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z"/><path d="M3 12h18"/><path d="M8.5 8.5c0-1.6 1-1.6 1-3.2M12 8.5c0-1.6 1-1.6 1-3.2M15.5 8.5c0-1.6 1-1.6 1-3.2"/>',
   camera: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
   service: '<path d="M4 7h16l-1.5 11a2 2 0 0 1-2 1.7H7.5a2 2 0 0 1-2-1.7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
@@ -2468,7 +2486,43 @@ function vHelp() { const h = V.help || { msgs: [] }, sug = HELP_SUG[S && S.me ? 
     ${h.msgs.length ? "" : `<div class="chips">${sug.map(q => `<button class="chip pick" data-a="helpSend" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>`}
     <div class="row hin"><input id="hq" data-k="hq" data-enter="helpSend" value="${val("hq")}" placeholder="Écrivez votre question…" maxlength="1500" autocomplete="off" aria-label="Votre question"><button class="btn" data-a="helpSend" ${h.sending ? "disabled" : ""} aria-label="Envoyer">${ico("send")}</button></div>
     <div class="between"><span class="mu" style="font-size:12px">Ne partagez jamais votre PIN ni votre code secret Mobile Money.</span>${h.msgs.length ? `<button class="lnk" data-a="helpNew">Nouvelle discussion</button>` : ""}</div></div>`; }
+// Bar suspendu : motif, demande de réactivation avec preuves (PDG, directeur), contact direct BISMO Agency
+function reactLoad() { if (V.reactBusy) return; V.reactBusy = 1; B.rpc("gb_reactivation_state").then(r => { V.react = r; render(); }).catch(() => {}).finally(() => { V.reactBusy = 0; }); }
+setInterval(() => { if (V.screen === "app" && S && barBlock() === "suspendu" && document.visibilityState === "visible") reactLoad(); }, 20000);
+function reactCard() {
+  const r = V.react || {}, t = r.thread, open = t && t.status !== "resolu", files = window.__reF || [], P = S.platform || {}, ph = r.phone || P.phone, wa = r.whatsapp || P.whatsapp;
+  const who = { client: "Vous", bismo: "BISMO Agency", ia: "Assistant" }, when = x => new Date(x).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const contact = ph || wa ? `<div class="row" style="justify-content:center">${ph ? `<a class="btn soft" href="tel:+237${esc(String(ph).replace(/^237/, ""))}">${ico("phone")} Appeler ${fmtTel(String(ph).replace(/^237/, ""))}</a>` : ""}${wa ? `<a class="btn soft" target="_blank" rel="noopener" href="https://wa.me/${esc(wa)}?text=${encodeURIComponent("Bonjour BISMO Agency, notre bar " + S.bar.name + " (code " + S.bar.code + ") est suspendu sur GesCo Bar. Nous demandons sa réactivation.")}">WhatsApp</a>` : ""}</div>` : "";
+  if (!isMgr()) return `<div class="card stack" style="text-align:left;width:100%"><b>Pour rétablir l’accès</b><p class="mu" style="margin:0">Prévenez votre PDG ou votre directeur : il envoie la demande de réactivation à BISMO Agency depuis cet écran, avec les preuves.</p></div>`;
+  return `<div class="card stack" style="text-align:left;width:100%">
+    <div class="between"><b>Demande de réactivation</b>${t ? `<span class="pill ${open ? "warn" : "ok"}">${open ? "Transmise à BISMO Agency" : "Traitée"}</span>` : ""}</div>
+    ${t ? `<div class="stack" style="gap:8px;max-height:40vh;overflow:auto">${t.messages.map(m => `<div class="hmsg ${m.sender === "client" ? "client" : "bismo"}"><small>${who[m.sender] || m.sender} · ${when(m.at)}</small>${esc(m.body).replace(/\n/g, "<br>")}${(m.files || []).length ? `<div class="row" style="margin-top:6px;gap:6px">${m.files.map((f, i) => `<button class="btn ghost sm" data-a="reactFile" data-p="${esc(f)}">📎 ${/\.pdf$/i.test(f) ? "PDF" : "Photo"} ${i + 1}</button>`).join("")}</div>` : ""}</div>`).join("")}</div>` : `<p class="mu" style="margin:0">Expliquez la situation (paiement effectué, erreur, changement de propriétaire…) et joignez vos preuves : capture du SMS de paiement, reçu, document. BISMO Agency vous répond ici même.</p>`}
+    <label class="f" for="re_msg">${t ? "Ajouter un message" : "Votre message"}<textarea id="re_msg" data-k="re_msg" rows="3" maxlength="2000" placeholder="Ex. Nous avons payé l’abonnement le 24/11 par Orange Money, voici la capture du SMS.">${esc(V.f.re_msg || "")}</textarea></label>
+    <label class="f" for="re_files">Preuves : photos ou PDF (5 au maximum, 5 Mo chacun)<input id="re_files" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf"></label>
+    ${files.length ? `<div class="row" style="gap:6px">${files.map((f, i) => `<span class="pill">${esc(f.name.length > 22 ? f.name.slice(0, 20) + "…" : f.name)} <button class="lnk" data-a="reactRm" data-i="${i}" aria-label="Retirer">✕</button></span>`).join("")}</div>` : ""}
+    ${t ? "" : `<label class="f" for="re_ct">Votre numéro WhatsApp (pour être rappelé)<input id="re_ct" data-k="re_ct" inputmode="tel" value="${esc(V.f.re_ct || "")}" placeholder="6XX XX XX XX"></label>`}
+    <button class="btn wide" data-a="reactSend" ${V.busy ? "disabled" : ""}>${t ? "Envoyer à BISMO Agency" : "Demander la réactivation"}</button>
+    ${contact ? `<p class="mu" style="margin:0;text-align:center">Ou contactez directement BISMO Agency :</p>${contact}` : ""}</div>`;
+}
+document.addEventListener("change", e => { if (e.target && e.target.id === "re_files") { const add = Array.from(e.target.files || []);
+  const all = (window.__reF || []).concat(add); if (all.length > 5) toast("5 fichiers au maximum : les premiers sont gardés.", "err"); window.__reF = all.slice(0, 5); render(); } });
+A.reactRm = d => { (window.__reF || []).splice(+d.i, 1); render(); };
+A.reactFile = d => run(async () => { const u = await B.proofUrl(d.p); if (!u) throw bizErr("Aperçu indisponible ici."); window.open(u, "_blank", "noopener"); });
+A.reactSend = () => run(async () => { const files = window.__reF || [], msg = (V.f.re_msg || "").trim();
+  if (!msg && !files.length) throw bizErr("Écrivez un message ou ajoutez au moins une preuve.");
+  for (const f of files) { if (f.size > 5242880) throw bizErr(`« ${f.name} » est trop lourd (5 Mo maximum).`); if (!/^(image\/(jpeg|png|webp)|application\/pdf)$/.test(f.type)) throw bizErr(`« ${f.name} » : photo (JPG, PNG, WebP) ou PDF uniquement.`); }
+  const paths = []; for (let i = 0; i < files.length; i++) paths.push(await B.uploadReact(files[i], i));
+  await B.rpc("gb_reactivation_send", { p_message: msg, p_files: paths, p_contact: (V.f.re_ct || "").trim() || null });
+  V.f.re_msg = ""; window.__reF = []; const fi = document.getElementById("re_files"); if (fi) fi.value = "";
+  toast("Demande envoyée à BISMO Agency : la réponse s’affichera ici."); reactLoad(); });
 function lockView(k) {
+  if (k === "suspendu") { if (!V.react && !V.reactBusy) setTimeout(reactLoad, 0); const r = V.react || {}, why = r.reason || S.bar.suspend_reason, since = r.since || S.bar.suspended_at;
+    return `<div class="lockv"><div class="lock-ic">${ico("alert")}</div><h1>Accès suspendu</h1>
+    <p>L’accès de ${esc(S.bar.name)} a été suspendu par BISMO Agency${since ? " le " + new Date(since).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : ""}.</p>
+    ${why ? `<div class="note warn" style="text-align:left;width:100%"><b>Motif :</b> ${esc(why)}</div>` : ""}
+    ${reactCard()}
+    <p class="mu">Vos données sont conservées : tout se rouvre dès que BISMO Agency rétablit l’accès.</p>
+    <div class="row" style="justify-content:center"><button class="btn soft" data-a="help">${ico("help")} Aide</button>${themeBtn()}<button class="btn bad" data-a="logout">${ico("out")} Se déconnecter</button></div></div>`; }
   return `<div class="lockv"><div class="lock-ic">${ico("alert")}</div><h1>${k === "suspendu" ? "Accès suspendu" : S.bar.plan === "essai" ? "Essai gratuit terminé" : "Abonnement expiré"}</h1>
     <p>${k === "suspendu" ? "L’accès de ce bar a été suspendu par BISMO Agency. Le PDG doit contacter BISMO Agency pour le rétablir." : (S.bar.plan === "essai" ? "La période d’essai gratuite de " + esc(S.bar.name) + " est terminée. Prévenez votre PDG ou votre directeur : il choisit une formule en un geste depuis l’application." : "L’abonnement de " + esc(S.bar.name) + " est arrivé à échéance. Prévenez votre PDG ou votre directeur : il le renouvelle en un geste depuis l’application.")}</p>
     <p class="mu">Vos données sont conservées et seront de nouveau accessibles dès le renouvellement.</p>
