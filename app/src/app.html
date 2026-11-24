@@ -1330,7 +1330,7 @@ function LiveBackend() {
       const uid = sd.session.user.id;
       const [staff, bars, products, days] = await Promise.all([
         q(sb.from("staff").select("id,name,role,active,user_id,head").order("name")),
-        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status,om_code,mtn_code,om_ussd,mtn_ussd,push_enabled,plan,plan_until,plan_trial_until,trial_plan,suspended,kitchen_on,plan_cfg").limit(1)),
+        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status,om_code,mtn_code,om_ussd,mtn_ussd,push_enabled,plan,plan_until,plan_trial_until,trial_plan,suspended,kitchen_on,plan_cfg,sub_test_price").limit(1)),
         q(sb.from("products").select("*").order("sort")),
         q(sb.from("service_days").select("*").eq("status", "open").limit(1))]);
       const meRow = staff.find(s => s.user_id === uid && s.active); if (!meRow || !bars.length) { const e = bizErr("Compte non rattaché à un bar ou désactivé."); e.auth = true; throw e; }
@@ -3199,11 +3199,11 @@ function planState() { const b = S.bar, now = Date.now(), until = b.plan_until ?
   if (PLANS[b.plan] && until) return { k: b.plan, name: PLANS[b.plan][0], days, until, expired: true };
   return { k: "beta", name: "Version bêta gratuite", ok: true, beta: true }; }
 function vAbo() {
-  const b = S.bar, ps = planState(), pl = V.f.ab_p || (PLANS[ps.k] ? ps.k : "gold"), mo = +(V.f.ab_m || 1), price = PLANS[pl][1], total = price * (mo === 12 ? 10 : mo), meth = V.f.ab_o || "orange";
+  const b = S.bar, ps = planState(), pl = V.f.ab_p || (PLANS[ps.k] ? ps.k : "gold"), tp = b.sub_test_price || 0, mo = tp ? 1 : +(V.f.ab_m || 1), price = PLANS[pl][1], total = tp || price * (mo === 12 ? 10 : mo), meth = V.f.ab_o || "orange";
   const P = S.platform || {}, num0 = meth === "orange" ? P.om_number : P.mtn_number, tpl = meth === "orange" ? P.om_tpl : P.mtn_tpl, ref = "GB-" + b.code;
   const dial = tpl ? tpl.replace("{numero}", num0).replace("{montant}", total) : meth === "orange" ? "#150#" : "*126#";
   const pend = (S.subs || []).find(x => x.status === "en_attente"), SST = { en_attente: ["warn", "En vérification"], validee: ["ok", "Validé"], refusee: ["bad", "Refusé"], echouee: ["", "Non abouti"] };
-  const direct = !!P.sub_push, mode = direct ? (V.f.ab_mode || "direct") : "transfert", sp = V.subPay && V.subPay.status === "en_attente" ? V.subPay : null;
+  const direct = !!P.sub_push, mode = direct ? (tp ? "direct" : V.f.ab_mode || "direct") : "transfert", sp = V.subPay && V.subPay.status === "en_attente" ? V.subPay : null;
   const head = ps.essai ? (ps.expired ? `Terminé le ${ps.until.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : `Toutes les fonctions offertes jusqu’au ${ps.until.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`) : ps.provisional ? `Activée provisoirement jusqu’au ${ps.trial.toLocaleString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}` : ps.until ? `${ps.expired ? "Expirée depuis le" : "Valable jusqu’au"} ${ps.until.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : "Profitez de toutes les fonctions pendant la bêta";
   const cp = (v, l) => `<button class="btn soft sm" data-a="copy" data-txt="${esc(String(v))}">Copier ${l}</button>`;
   return `<div class="stack">
@@ -3219,9 +3219,9 @@ function vAbo() {
     <div class="plans">${Object.entries(PLANS).map(([k, [n, p, feats]], i) => `<button class="plan rise ${pl === k ? "on" : ""} ${k}" style="--i:${i}" data-a="setF" data-k2="ab_p" data-v="${k}" aria-pressed="${pl === k}">
       ${k === "gold" ? '<span class="pill brand">Le plus choisi</span>' : ""}<b>${n}</b><span class="pp num">${Fs(p)}<small> FCFA / mois</small></span><ul>${feats.map(f => `<li>${f}</li>`).join("")}</ul></button>`).join("")}</div>
     ${pend ? "" : `<div class="card stack paysteps"><h3>${mode === "direct" ? "Payer en un geste" : "Payer en 3 étapes"}</h3>
-      <div class="segs">${[[1, "1 mois"], [3, "3 mois"], [6, "6 mois"], [12, "12 mois · 2 offerts"]].map(([m, l]) => `<button class="${mo === m ? "on ok" : ""}" data-a="setF" data-k2="ab_m" data-v="${m}">${l}</button>`).join("")}</div>
+      ${tp ? `<div class="note warn"><b>Mode test (visible uniquement pour ce bar).</b> Le paiement sur téléphone coûte ${F(tp)} au lieu du prix normal et active 1 mois de la formule choisie. Ce mode disparaît tout seul après un paiement réussi.</div>` : `<div class="segs">${[[1, "1 mois"], [3, "3 mois"], [6, "6 mois"], [12, "12 mois · 2 offerts"]].map(([m, l]) => `<button class="${mo === m ? "on ok" : ""}" data-a="setF" data-k2="ab_m" data-v="${m}">${l}</button>`).join("")}</div>`}
       <div class="between"><span class="mu">${PLANS[pl][0]} · ${mo} mois</span><b class="num" style="font:800 26px var(--display)">${F(total)}</b></div>
-      ${direct ? `<div class="segs">${[["direct", "Sur mon téléphone · recommandé"], ["transfert", "Par transfert"]].map(([k, l]) => `<button class="${mode === k ? "on ok" : ""}" data-a="setF" data-k2="ab_mode" data-v="${k}">${l}</button>`).join("")}</div>` : ""}
+      ${direct && !tp ? `<div class="segs">${[["direct", "Sur mon téléphone · recommandé"], ["transfert", "Par transfert"]].map(([k, l]) => `<button class="${mode === k ? "on ok" : ""}" data-a="setF" data-k2="ab_mode" data-v="${k}">${l}</button>`).join("")}</div>` : ""}
       ${mode === "direct" ? (() => { const ph = String(V.f.ab_ph ?? LS.get("gesco-abph-" + S.me.id, "")).replace(/\D/g, ""), op = (V.f.ab_o_pick && V.f.ab_o) || opOf(ph) || meth, guess = opOf(ph);
         return `<div class="step"><i>1</i><div class="grow stack" style="gap:8px"><b>Votre numéro Mobile Money</b>
           <input id="ab_ph" data-k="ab_ph" inputmode="tel" autocomplete="tel" maxlength="13" value="${esc(V.f.ab_ph ?? LS.get("gesco-abph-" + S.me.id, ""))}" placeholder="Ex. 6XX XX XX XX">
@@ -3245,7 +3245,7 @@ function vAbo() {
         ${window.__abFile ? `<span class="mu">Capture prête : ${esc(window.__abFile.name)}</span>` : ""}
         <button class="btn" data-a="subGo">Activer mon abonnement</button>
         <p class="mu" style="margin:0">La formule s’active tout de suite pendant 72 h, le temps que BISMO Agency confirme la réception. Le paiement à l’année vous offre 2 mois.</p></div></div>`}</div>`}
-    <div class="card"><h3>Historique et reçus</h3><div class="list">${(S.subs || []).map(x => `<div class="li"><div class="grow"><b>${PLANS[x.plan][0]} · ${x.months} mois</b><div class="mu">${new Date(x.created_at).toLocaleDateString("fr-FR")} · ${x.method === "orange" ? "Orange Money" : "MTN MoMo"}${x.channel === "notchpay" ? " direct" : ""} · réf. ${esc(x.reference)}</div></div><b class="num">${F(x.amount)}</b><span class="pill ${SST[x.status][0]}">${SST[x.status][1]}</span>${x.status === "validee" ? `<button class="btn soft sm" data-a="subRecu" data-id="${x.id}">Reçu</button>` : ""}</div>`).join("") || '<div class="empty">Aucun paiement d’abonnement pour le moment.</div>'}</div></div></div>`;
+    <div class="card"><h3>Historique et reçus</h3><div class="list">${(S.subs || []).map(x => `<div class="li"><div class="grow"><b>${PLANS[x.plan][0]} · ${x.months} mois${x.is_test ? " · test" : ""}</b><div class="mu">${new Date(x.created_at).toLocaleDateString("fr-FR")} · ${x.method === "orange" ? "Orange Money" : "MTN MoMo"}${x.channel === "notchpay" ? " direct" : ""} · réf. ${esc(x.reference)}</div></div><b class="num">${F(x.amount)}</b><span class="pill ${SST[x.status][0]}">${SST[x.status][1]}</span>${x.status === "validee" ? `<button class="btn soft sm" data-a="subRecu" data-id="${x.id}">Reçu</button>` : ""}</div>`).join("") || '<div class="empty">Aucun paiement d’abonnement pour le moment.</div>'}</div></div></div>`;
 }
 A.abOp = d => { V.f.ab_ph = (document.getElementById("ab_ph") || {}).value ?? V.f.ab_ph; V.f.ab_o = d.v; V.f.ab_o_pick = 1; render(); };
 A.subGo = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ? planState().k : "gold"); let proof = null; const f = window.__abFile;
@@ -3253,7 +3253,7 @@ A.subGo = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ?
   if (f) { if (f.size > 5242880) throw bizErr("Capture trop lourde (5 Mo maximum)."); proof = await B.uploadProof(f); }
   const r = await call("gb_sub_request", { p_plan: pl, p_months: +(V.f.ab_m || 1), p_method: V.f.ab_o || "orange", p_reference: V.f.ab_ref || "", p_proof: proof });
   V.f.ab_ref = ""; window.__abFile = null; await refresh(); notify("ok", "Abonnement activé", `${PLANS[pl][0]} actif jusqu’à la confirmation de BISMO Agency (72 h).`); });
-A.subPush = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ? planState().k : "gold"), mo = +(V.f.ab_m || 1);
+A.subPush = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ? planState().k : "gold"), mo = S.bar.sub_test_price ? 1 : +(V.f.ab_m || 1);
   const ph = String(V.f.ab_ph ?? LS.get("gesco-abph-" + S.me.id, "")).replace(/\D/g, ""), op = (V.f.ab_o_pick && V.f.ab_o) || opOf(ph) || V.f.ab_o || "orange";
   if (!/^(237)?6\d{8}$/.test(ph)) throw bizErr("Saisissez votre numéro Mobile Money : 9 chiffres commençant par 6.");
   const r = await B.subPush(pl, mo, op, ph); LS.set("gesco-abph-" + S.me.id, ph.slice(-9));

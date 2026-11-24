@@ -183,3 +183,8 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Seul le cuisinier fait avancer les bons (Commencer, Prêt, plat gardé, décision sur un plat annulé). Caisse et direction voient la cuisine en direct, sans agir. La serveuse (ou la cheffe de salle) confirme le retrait.
 - La caisse confirme toujours les paiements Mobile Money par QR des serveuses.
 - Migration `023_roles_cuisine_commande_close.sql`.
+
+## v4.15 — Formule test cachée
+- `bars.sub_test_price` (réglé par l'éditeur en SQL uniquement, 100 à 5 000 FCFA) : le paiement sur téléphone facture ce montant pour 1 mois de la formule choisie ; le transfert et les autres durées sont masqués.
+- Après un paiement réussi, le prix de test s'efface tout seul. Les paiements test sont marqués « test » dans l'historique et le journal de l'éditeur.
+- Activé pour Bring win (200 FCFA). Migration `024_formule_test_cachee.sql`.
