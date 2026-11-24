@@ -2559,7 +2559,7 @@ function drawer(nav, b) {
     ${q.trim() ? searchRes(q) : `<nav class="nav-l" aria-label="Rubriques">${nav.map((k, i) => `<button class="${V.tab === k ? "on" : ""}" data-a="go" data-v="${k}" style="--i:${i}">${ico(SEC[k][1])}<span class="grow"><b>${SEC[k][0]}</b><small>${SEC[k][2]}</small></span>${b[k] ? `<i class="bd">${b[k]}</i>` : ""}</button>`).join("")}</nav>`}
     <div class="sub stack" style="gap:6px"><div class="between"><span class="mu">Code du bar</span><b class="num" style="letter-spacing:.12em">${esc(S.bar.code)}</b></div>
       <div class="between"><span class="mu">Connexion</span><span class="net ${V.online ? "" : "off"}"><i></i>${V.online ? "En ligne" : "Hors ligne"}${V.outbox.length ? ` · ${V.outbox.length} en attente` : ""}</span></div></div>
-    <div class="row">${themeBtn()}<button class="btn ghost sm" data-a="notifTest">${ico("alert")} Tester le son</button>${"Notification" in window && Notification.permission !== "granted" ? `<button class="btn ghost sm" data-a="notifOn">Activer les notifications</button>` : ""}
+    <div class="row">${themeBtn()}<button class="btn ghost sm" data-a="notifTest">${ico("alert")} Tester le son</button>${"Notification" in window && Notification.permission !== "granted" ? `<button class="btn ghost sm" data-a="notifOn">${Notification.permission === "denied" ? "Débloquer les notifications" : "Activer les notifications"}</button>` : ""}
       ${CFG.mode === "demo" ? `<button class="btn ghost sm" data-a="resetDemo">Réinitialiser la démo</button>` : ""}</div>
     ${window.__install ? `<button class="btn wide" data-a="install">${ico("dl")} Installer GesCo sur cet appareil</button><p class="mu" style="margin:-6px 2px 0;font-size:12.5px">Sur un ordinateur Windows : GesCo s’ouvre ensuite dans sa propre fenêtre, depuis le menu Démarrer et la barre des tâches.</p>` : ""}
     <button class="btn soft wide" data-a="help">${ico("help")} Aide et assistance</button>
@@ -3328,8 +3328,27 @@ function cSettings() {
 A.menu = () => { V.menu = !V.menu; if (V.menu) V.menuT = Date.now(); render(); };
 A.ntfClose = () => { V.ntf = null; render(); };
 A.notifOn = async () => { LS.set("gesco-ntf-ask", 1); if (/iPhone|iPad/.test(navigator.userAgent) && !("PushManager" in window)) return toast("Sur iPhone : installez d’abord GesCo (Partager → « Sur l’écran d’accueil »), ouvrez-le depuis l’icône, puis activez les notifications.", "err");
-  try { const p = await Notification.requestPermission(); chime("ok"); if (p === "granted") pushSub();
-  toast(p === "granted" ? "Notifications activées : elles arrivent même application fermée." : "Notifications refusées : vous les entendrez seulement application ouverte.", p === "granted" ? "" : "err"); } catch (e) { toast("Notifications système indisponibles ici : le son et l’alerte restent actifs dans l’application.", "err"); } render(); };
+  if (!("Notification" in window)) return toast("Notifications système indisponibles ici : le son et l’alerte restent actifs dans l’application.", "err");
+  if (Notification.permission === "denied") { V.menu = false; V.modal = { type: "ntfHelp" }; return render(); }
+  try { const p = await Notification.requestPermission(); chime("ok"); if (p === "granted") { pushSub(); toast("Notifications activées : elles arrivent même application fermée."); }
+    else if (p === "denied") { V.menu = false; V.modal = { type: "ntfHelp" }; }
+    else toast("Vous avez fermé la demande sans choisir. Touchez à nouveau « Activer les notifications » puis « Autoriser ».", "err"); } catch (e) { toast("Notifications système indisponibles ici : le son et l’alerte restent actifs dans l’application.", "err"); } render(); };
+// Notifications bloquées sur cet appareil : le navigateur ne redemande plus, il faut les autoriser dans les réglages
+function ntfHelpView() {
+  const ua = navigator.userAgent, ios = /iPhone|iPad/.test(ua), and = /Android/.test(ua), app = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone, edge = /Edg\//.test(ua), host = location.host;
+  const steps = ios ? ["Ouvrez les <b>Réglages</b> de l’iPhone.", "Touchez <b>Notifications</b> puis <b>GesCo</b>.", "Activez <b>Autoriser les notifications</b>."]
+    : and && app ? ["Faites un <b>appui long sur l’icône GesCo</b> de l’écran d’accueil, puis touchez <b>ⓘ Infos sur l’appli</b>.", "Touchez <b>Notifications</b> et activez-les.", `Si c’est déjà activé : ouvrez <b>Chrome</b> → menu <b>⋮</b> → <b>Paramètres</b> → <b>Paramètres des sites</b> → <b>Notifications</b> → <b>${esc(host)}</b> → <b>Autoriser</b>.`]
+    : and ? ["Touchez l’icône <b>à gauche de l’adresse</b> (réglages ou cadenas), en haut de l’écran.", "Touchez <b>Autorisations</b> (ou <b>Paramètres du site</b>) puis <b>Notifications</b>.", "Choisissez <b>Autoriser</b>."]
+    : [`Cliquez sur l’icône <b>à gauche de l’adresse</b> dans ${edge ? "Edge" : "Chrome"}.`, "À la ligne <b>Notifications</b>, choisissez <b>Autoriser</b>.", `Sous Windows, vérifiez aussi <b>Paramètres → Système → Notifications</b> : ${edge ? "Microsoft Edge" : "Google Chrome"} doit être activé.`];
+  return `<h2>Débloquer les notifications</h2>
+    <p style="margin:0">Les notifications de GesCo sont <b>bloquées sur cet appareil</b> : il ne pose plus la question, il faut les autoriser une fois dans ses réglages.</p>
+    <ol class="stack" style="margin:0;padding-left:20px;gap:8px">${steps.map(x => `<li>${x}</li>`).join("")}</ol>
+    <p class="mu" style="margin:0">Revenez ensuite dans GesCo : l’activation se fait toute seule. Le réglage vaut pour toutes les personnes qui se connectent sur cet appareil.</p>
+    <div class="row"><button class="btn ghost grow" data-a="close">Plus tard</button><button class="btn grow" data-a="ntfRecheck">C’est fait : vérifier</button></div>`;
+}
+A.ntfRecheck = () => { if ("Notification" in window && Notification.permission === "granted") { V.modal = null; pushSub(); toast("Notifications activées : elles arrivent même application fermée."); render(); }
+  else toast("Toujours bloquées sur cet appareil. Suivez les étapes, puis revenez dans GesCo.", "err"); };
+document.addEventListener("visibilitychange", () => { try { if (document.visibilityState === "visible" && S && "Notification" in window && Notification.permission === "granted" && !V.pushOk) { pushSub(); if (V.modal && V.modal.type === "ntfHelp") { V.modal = null; toast("Notifications activées : elles arrivent même application fermée."); render(); } } } catch (e) {} });
 A.notifLater = () => { LS.set("gesco-ntf-ask", 1); render(); };
 A.notifTest = () => notify("ok", "Test du générique", "Voici le son de vos notifications GesCo Bar.");
 A.menuClose = () => { V.menu = false; V.f.gq = ""; render(); };
@@ -3492,6 +3511,7 @@ function voucherText(v) { return `${S.bar.name}\nBON DE RELIQUAT ${v.number}\nCl
 function vModal() {
   const m = V.modal; if (!m) return "";
   let c = "";
+  if (m.type === "ntfHelp") c = ntfHelpView();
   if (m.type === "confirm") c = `<h2>${esc(m.title)}</h2><p style="margin:0">${esc(m.text)}</p><div class="row"><button class="btn ghost grow" data-a="close">Annuler</button><button class="btn grow ${m.danger ? "bad" : ""}" data-a="okModal">${esc(m.ok)}</button></div>`;
   if (m.type === "voucher") { const v = m.v;
     c = `<h2>Bon de reliquat</h2><div class="receipt printable"><div class="c"><b>${esc(S.bar.name)}</b>${S.bar.city ? `<br>${esc(S.bar.city)}` : ""}</div><hr><div class="c"><b>BON DE RELIQUAT</b><br>N° ${esc(v.number)}</div><hr>
