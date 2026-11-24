@@ -4,7 +4,9 @@
 """
 import json, pathlib, shutil
 ROOT = pathlib.Path(__file__).parent
+import hashlib
 SRC = (ROOT / "src/app.html").read_text(encoding="utf-8").replace("__LOGO_B64__", (ROOT / "src/logo.b64").read_text().strip())
+SRC = SRC.replace("__BUILD__", hashlib.sha1(SRC.encode()).hexdigest()[:8])
 SUPABASE_URL = "https://tkiuepleshsvptranoik.supabase.co"
 SUPABASE_KEY = "sb_publishable_GF4euX-Zbx3Bve-WSkgBWA_u4JoBY6w"  # clé publique (publishable), faite pour le navigateur
 SB_JS = '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>'
@@ -49,7 +51,7 @@ for f in (ROOT / "public").iterdir():
     else: shutil.copy(f, web / f.name)
 (web / "_headers").write_text("/sw.js\n  Cache-Control: no-cache\n/\n  Cache-Control: no-cache\n/index.html\n  Cache-Control: no-cache\n/console\n  Cache-Control: no-cache\n  X-Robots-Tag: noindex\n/console.html\n  Cache-Control: no-cache\n  X-Robots-Tag: noindex\n", encoding="utf-8")
 # Console éditeur (BISMO Agency)
-console = (ROOT / "src/admin.html").read_text(encoding="utf-8").replace("__LOGO_B64__", (ROOT / "src/logo.b64").read_text().strip()).replace("__URL__", SUPABASE_URL).replace("__KEY__", SUPABASE_KEY)
+console = (ROOT / "src/admin.html").read_text(encoding="utf-8").replace("__BUILD__", hashlib.sha1((ROOT / "src/admin.html").read_bytes()).hexdigest()[:8]).replace("__LOGO_B64__", (ROOT / "src/logo.b64").read_text().strip()).replace("__URL__", SUPABASE_URL).replace("__KEY__", SUPABASE_KEY)
 (web / "console.html").write_text(console, encoding="utf-8")
 
 import base64

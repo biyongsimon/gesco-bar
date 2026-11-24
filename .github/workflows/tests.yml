@@ -1,0 +1,45 @@
+# Tests automatiques à chaque envoi sur GitHub.
+# - Interface : la version démo est reconstruite, puis chaque rôle et les parcours clés sont vérifiés dans Chrome.
+# - Serveur : les règles de la base sont testées sur la vraie base dans une transaction annulée (rien n'est gardé).
+#   Ce second test ne tourne que si le secret SUPABASE_DB_URL existe (le même que pour la sauvegarde).
+name: Tests
+on:
+  push: { branches: [main] }
+  pull_request: {}
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  interface:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Reconstruction (dist doit correspondre aux sources)
+        run: |
+          python3 app/build.py
+          git diff --stat --exit-code -- dist || { echo "::error::dist/ n'est pas à jour : lancez python3 app/build.py puis envoyez dist/"; exit 1; }
+      - name: Installation de Chrome pour les tests
+        run: npm i --no-save --no-package-lock playwright@1.63.0 && npx playwright install --with-deps chromium
+      - name: Tests de l'interface
+        run: node tests/ui.cjs
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: captures-des-echecs, path: tests/echecs/, if-no-files-found: ignore, retention-days: 7 }
+
+  serveur:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tests des règles du serveur (transaction annulée)
+        run: |
+          if [ -z "$DB_URL" ]; then echo "::warning::Tests serveur ignorés : secret SUPABASE_DB_URL absent."; exit 0; fi
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f tests/serveur.sql > sortie.txt 2>&1 || true
+          cat sortie.txt
+          grep -q "TESTS_SERVEUR_OK" sortie.txt || { echo "::error::$(grep -m1 -o 'ECHEC : .*' sortie.txt || echo 'les tests serveur ont échoué')"; exit 1; }
+          echo "::notice::Tous les tests serveur sont passés (et annulés)."

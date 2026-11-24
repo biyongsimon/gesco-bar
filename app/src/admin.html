@@ -253,7 +253,7 @@ const ago = d => { if (!d) return "jamais"; const m = Math.round((Date.now() - n
 const PLANS = { beta: ["Bêta gratuite", 0, ""], essai: ["Essai gratuit", 0, "warn"], simple: ["Snack Simple", 10000, "sky"], premium: ["Snack Premium", 15000, "sky"], gold: ["Snack Gold", 20000, "warn"], lounge: ["Lounge", 30000, "night"] };
 const MONTH = m => new Date(m + "-15").toLocaleDateString("fr-FR", { month: "short" });
 const V = { view: "login", tab: (location.hash || "#apercu").slice(1), f: {}, data: {}, filter: "tous", q: "", panel: null, busy: false, toast: null, setup: false };
-const SECT = [["apercu", "Vue d’ensemble", "home", "Accueil"], ["paiements", "Paiements", "card"], ["assistance", "Assistance", "chat"], ["avis", "Avis", "star"], ["bars", "Bars", "store"], ["reglages", "Réglages", "sliders"], ["journal", "Journal", "list"]];
+const SECT = [["apercu", "Vue d’ensemble", "home", "Accueil"], ["paiements", "Paiements", "card"], ["assistance", "Assistance", "chat"], ["avis", "Avis", "star"], ["bars", "Bars", "store"], ["erreurs", "Erreurs", "alert"], ["reglages", "Réglages", "sliders"], ["journal", "Journal", "list"]];
 const BNAV = ["apercu", "paiements", "assistance", "bars"];
 
 function toast(msg, kind) { V.toast = { msg, kind }; render(); clearTimeout(window.__t); window.__t = setTimeout(() => { V.toast = null; render(); }, kind === "err" ? 5000 : 2800); }
@@ -261,13 +261,21 @@ async function rpc(n, a) { const { data, error } = await sb.rpc(n, a || {}); if 
 async function fn(action, body) { const r = await fetch(CFG.url + "/functions/v1/gesco-admin", { method: "POST", headers: { "Content-Type": "application/json", apikey: CFG.key, Authorization: "Bearer " + CFG.key }, body: JSON.stringify({ action, ...body }) });
   const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || "Erreur réseau."); return j; }
 // Les champs sont relus AVANT le re-rendu (sinon le bouton « en cours » efface ce qui vient d'être tapé).
+const APP_BUILD = "__BUILD__";
+const ERR_SEEN = {};
+function reportErr(e) { try { const msg = String((e && e.message) || e || "").slice(0, 500);
+  if (!msg || /^Script error\.?$|ResizeObserver loop|Failed to fetch|NetworkError|Load failed|network/i.test(msg)) return;
+  const k = msg.slice(0, 120); if (ERR_SEEN[k] && Date.now() - ERR_SEEN[k] < 600000) return; ERR_SEEN[k] = Date.now();
+  sb.rpc("gb_log_error", { p_message: msg, p_stack: String((e && e.stack) || "").slice(0, 2000), p_source: "console", p_url: location.pathname, p_tab: String(V.tab || V.view || ""), p_version: APP_BUILD, p_ua: navigator.userAgent.slice(0, 200) }).then(() => {}, () => {}); } catch (x) {} }
+addEventListener("error", ev => reportErr(ev.error || ev.message));
+addEventListener("unhandledrejection", ev => reportErr(ev.reason));
 const run = async f => { if (V.busy) return; const snap = {}; document.querySelectorAll("input,select,textarea").forEach(e => { if (e.id) snap[e.id] = e.type === "checkbox" ? e.checked : e.value; }); V.snap = snap;
-  V.busy = true; render(); try { await f(); } catch (e) { toast(e.message, "err"); } V.snap = null; V.busy = false; render(); };
+  V.busy = true; render(); try { await f(); } catch (e) { if (e instanceof TypeError || e instanceof ReferenceError || e instanceof RangeError) reportErr(e); toast(e.message, "err"); } V.snap = null; V.busy = false; render(); };
 
 async function loadAll() {
   const [ov, bars, subs, log] = await Promise.all([rpc("gb_pf_overview"), rpc("gb_pf_bars"), rpc("gb_pf_subs"), sb.from("platform_log").select("*").order("created_at", { ascending: false }).limit(100).then(r => r.data || [])]);
   const { data: pc } = await sb.from("platform_config").select("*").limit(1);
-  V.data = { ov, bars, subs, log, pc: (pc || [])[0] || {}, sup: await rpc("gb_pf_support_list").catch(() => []), avis: await rpc("gb_pf_feedback").catch(() => []) };
+  V.data = { ov, bars, subs, log, pc: (pc || [])[0] || {}, sup: await rpc("gb_pf_support_list").catch(() => []), avis: await rpc("gb_pf_feedback").catch(() => []), errs: await rpc("gb_pf_errors").catch(() => []) };
   const need = subs.filter(s => s.status === "en_attente" && s.proof_path && !V.urls?.[s.proof_path]); V.urls = V.urls || {};
   await Promise.all(need.map(async s => { const { data } = await sb.storage.from("preuves").createSignedUrl(s.proof_path, 3600); if (data) V.urls[s.proof_path] = data.signedUrl; }));
 }
@@ -321,6 +329,24 @@ const Fk = n => F(n).replace(/ FCFA$/, '<span class="cur">FCFA</span>');
 const nPend = () => (V.data.subs || []).filter(s => s.status === "en_attente" && s.channel !== "notchpay").length;
 const nSup = () => (V.data.sup || []).filter(supNew).length;
 const nAvis = () => (V.data.avis || []).filter(a => !a.admin_seen_at).length;
+const nErr = () => (V.data.errs || []).filter(e => !e.resolved_at).length;
+const devName = ua => { ua = ua || ""; const os = /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iPhone" : /Windows/.test(ua) ? "Windows" : /Mac OS/.test(ua) ? "Mac" : /Linux/.test(ua) ? "Linux" : "Appareil";
+  const br = /Edg\//.test(ua) ? "Edge" : /SamsungBrowser/.test(ua) ? "Samsung Internet" : /OPR\//.test(ua) ? "Opera" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : ""; return os + (br ? " · " + br : ""); };
+function vErreurs() {
+  const all = V.data.errs || [], open = all.filter(e => !e.resolved_at), done = all.filter(e => e.resolved_at);
+  const ROL = { pdg: "PDG", directeur: "Directeur", caisse: "Caisse", serveuse: "Serveuse", cuisine: "Cuisine" };
+  const card = e => `<div class="card stack" style="gap:8px;${e.resolved_at ? "opacity:.6" : ""}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><b style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;overflow-wrap:anywhere;min-width:0">${esc(e.message)}</b>
+      ${e.resolved_at ? `<span class="pill ok">Corrigée</span>` : `<button class="btn soft sm" data-a="errDone" data-id="${e.id}" ${V.busy ? "disabled" : ""}>${ic("check")} Corrigée</button>`}</div>
+    <div class="row" style="gap:6px">${e.count > 1 ? `<span class="pill bad">${e.count} fois</span>` : ""}<span class="pill">${e.source === "console" ? "Console éditeur" : e.bar_name ? esc(e.bar_name) + " · " + esc(e.bar_code || "") : "Écran de connexion"}</span>
+      ${e.role ? `<span class="pill">${ROL[e.role] || esc(e.role)}${e.staff_name ? " · " + esc(e.staff_name) : ""}</span>` : ""}${e.tab ? `<span class="pill">Onglet ${esc(e.tab)}</span>` : ""}<span class="pill">${esc(devName(e.ua))}</span></div>
+    <div class="mu" style="font-size:12.5px">Dernière fois ${ago(e.last_at)}${e.count > 1 ? ` · première fois ${ago(e.first_at)}` : ""} · version ${esc(e.version || "?")}</div>
+    ${e.stack ? `<details><summary class="mu" style="cursor:pointer;font-size:13px">Détail technique</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;margin:8px 0 0;max-height:240px;overflow:auto">${esc(e.stack)}</pre></details>` : ""}</div>`;
+  return `<div class="ph"><div><h1>Erreurs</h1><p class="mu" style="margin:4px 0 0">Les plantages de l’application chez les bars (et dans cette console), remontés automatiquement. Une même erreur est regroupée avec son nombre d’occurrences. Les messages normaux (PIN faux, stock insuffisant, réseau coupé…) ne sont jamais remontés.</p></div>
+    ${open.length ? `<button class="btn soft" data-a="errDone" ${V.busy ? "disabled" : ""}>${ic("check")} Tout marquer comme corrigé</button>` : ""}</div>
+    ${open.length ? `<div class="stack">${open.map(card).join("")}</div>` : `<div class="card"><div class="empty">${ic("check")} Aucune erreur en cours. Tout fonctionne chez les bars.</div></div>`}
+    ${done.length ? `<h3 style="margin:22px 0 10px">Corrigées ces 14 derniers jours</h3><div class="stack">${done.map(card).join("")}</div>` : ""}`;
+}
 const isDark = () => document.documentElement.dataset.theme !== "light";
 const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -596,9 +622,9 @@ function render() {
   else if (V.view === "login") h = vLogin();
   else if (V.view === "relock") h = vRelock();
   else if (!V.data.ov) h = `<div class="auth"><div class="card" style="text-align:center"><h1 style="font-size:22px">Données indisponibles</h1><p class="mu">Vérifiez la connexion internet, puis réessayez.</p><button class="btn" data-a="reload">Réessayer</button><button class="lnk" data-a="logout">Se déconnecter</button></div></div>`;
-  else { const nb = { paiements: nPend(), assistance: nSup(), avis: nAvis() }, bdg = k => nb[k] ? `<i class="badge">${nb[k]}</i>` : "";
+  else { const nb = { paiements: nPend(), assistance: nSup(), avis: nAvis(), erreurs: nErr() }, bdg = k => nb[k] ? `<i class="badge">${nb[k]}</i>` : "";
     const fresh = V.lastTab !== V.tab; V.lastTab = V.tab;
-    const body = { apercu: vApercu, paiements: vPaiements, assistance: vAssistance, avis: vAvis, bars: vBars, reglages: vReglages, journal: vJournal }[V.tab] || vApercu;
+    const body = { apercu: vApercu, paiements: vPaiements, assistance: vAssistance, avis: vAvis, erreurs: vErreurs, bars: vBars, reglages: vReglages, journal: vJournal }[V.tab] || vApercu;
     h = `<div class="shell"><nav class="side" aria-label="Sections"><div class="brand"><img class="mk" src="icon.svg" alt=""><div><b>GesCo Bar</b><small>Console éditeur</small></div></div>
       <div class="nav">${SECT.map(([k, l, i]) => `<a href="#${k}" class="${V.tab === k ? "on" : ""}">${ic(i)}<span>${l}</span>${bdg(k)}</a>`).join("")}</div>
       ${canInstall() ? `<button class="side-inst" data-a="install">${ic("download")} Installer l’application</button>` : ""}
@@ -681,6 +707,7 @@ const A = {
     await rpc("gb_pf_suspend", { p_bar: d.id, p_on: d.v === "1", p_reason: d.v === "1" ? val("p_reason") : null }); delete V.f.p_reason; await loadAll(); if (V.thr) await loadMsgs(V.thr);
     toast(d.v === "1" ? "Accès suspendu : le bar voit le motif et peut demander la réactivation." : "Accès rétabli : la demande de réactivation est close et le bar est prévenu."); }),
   kyc: d => run(async () => { await rpc("gb_pf_kyc", { p_bar: d.id, p_status: d.v }); await loadAll(); toast("Statut mis à jour."); }),
+  errDone: d => run(async () => { await rpc("gb_pf_error_resolve", { p_id: d.id ? +d.id : null }); V.data.errs = await rpc("gb_pf_errors"); toast(d.id ? "Erreur marquée comme corrigée." : "Toutes les erreurs sont marquées comme corrigées."); }),
   proofOpen: d => run(async () => { const { data, error } = await sb.storage.from("preuves").createSignedUrl(d.p, 600); if (error) throw new Error("Preuve introuvable."); window.open(data.signedUrl, "_blank", "noopener"); }),
   doc: d => run(async () => { const { data, error } = await sb.storage.from("kyc").createSignedUrl(d.p, 600); if (error) throw new Error("Document introuvable."); window.open(data.signedUrl, "_blank", "noopener"); }),
   decide: d => run(async () => { await rpc("gb_pf_sub_decide", { p_id: d.id, p_ok: d.ok === "1", p_note: val("note_" + d.id) }); await loadAll(); toast(d.ok === "1" ? "Paiement validé : la formule est active." : "Paiement refusé."); }),

@@ -1,0 +1,94 @@
+# Sauvegarde quotidienne de la base GesCo Bar (forfait Supabase gratuit = aucune sauvegarde automatique).
+# - Copie complète : rôles, structure, données (y compris les comptes), via la connexion « Session pooler » (IPv4).
+# - Chiffrée en AES-256 avec une phrase secrète AVANT d'être stockée : le dépôt est public, la copie ne l'est jamais en clair.
+# - Gardée 30 jours comme artefact de l'exécution (onglet Actions → Sauvegarde → l'exécution du jour).
+# - Chaque nuit, la copie est restaurée dans une base vide pour prouver qu'elle est utilisable.
+# Pour l'activer, deux secrets du dépôt (Settings → Secrets and variables → Actions) :
+#   SUPABASE_DB_URL     chaîne « Session pooler » du tableau de bord Supabase (bouton Connect), avec le mot de passe de la base
+#   BACKUP_PASSPHRASE   une longue phrase secrète, gardée hors de GitHub : sans elle, les copies sont illisibles
+# Restauration : voir README, section « Sauvegardes ».
+name: Sauvegarde
+on:
+  schedule:
+    - cron: "47 1 * * *"   # 2 h 47, heure de Douala
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency: { group: sauvegarde, cancel-in-progress: false }
+jobs:
+  copie:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+    outputs:
+      faite: ${{ steps.verif.outputs.ok }}
+    steps:
+      - id: verif
+        name: Secrets présents ?
+        run: |
+          if [ -z "$DB_URL" ] || [ -z "$PASS" ]; then
+            echo "::warning::Sauvegarde non configurée : ajoutez les secrets SUPABASE_DB_URL et BACKUP_PASSPHRASE (voir l'en-tête de ce fichier)."
+            echo "ok=0" >> "$GITHUB_OUTPUT"
+          else echo "ok=1" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.verif.outputs.ok == '1'
+        uses: supabase/setup-cli@v1
+        with: { version: 3.4.0 }
+      - if: steps.verif.outputs.ok == '1'
+        name: Copie des rôles, de la structure et des données
+        run: |
+          set -euo pipefail
+          mkdir -p copie
+          supabase db dump --remote="$DB_URL" -f copie/roles.sql --role-only
+          supabase db dump --remote="$DB_URL" -f copie/schema.sql
+          supabase db dump --remote="$DB_URL" -f copie/data.sql --data-only --use-copy -x "storage.buckets_vectors" -x "storage.vector_indexes"
+          for f in roles schema data; do test -s "copie/$f.sql" || { echo "::error::copie/$f.sql est vide"; exit 1; }; done
+          grep -q "public.bars" copie/data.sql || { echo "::error::la table des bars est absente de la copie"; exit 1; }
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > copie/date.txt
+          ls -la copie
+      - if: steps.verif.outputs.ok == '1'
+        name: Chiffrement AES-256
+        run: |
+          set -euo pipefail
+          tar -czf copie.tar.gz copie
+          printf '%s' "$PASS" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --symmetric --cipher-algo AES256 -o "gesco-sauvegarde.tar.gz.gpg" copie.tar.gz
+          rm -rf copie copie.tar.gz
+          ls -la gesco-sauvegarde.tar.gz.gpg
+      - if: steps.verif.outputs.ok == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gesco-sauvegarde-${{ github.run_number }}
+          path: gesco-sauvegarde.tar.gz.gpg
+          retention-days: 30
+          if-no-files-found: error
+
+  restauration:
+    needs: copie
+    if: needs.copie.outputs.faite == '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: "gesco-sauvegarde-${{ github.run_number }}" }
+      - name: Déchiffrement
+        run: |
+          set -euo pipefail
+          printf '%s' "$PASS" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 -o copie.tar.gz -d gesco-sauvegarde.tar.gz.gpg
+          tar -xzf copie.tar.gz
+      - uses: supabase/setup-cli@v1
+        with: { version: 3.4.0 }
+      - name: Restauration dans une base Supabase vide
+        run: |
+          set -euo pipefail
+          mkdir essai && cd essai && supabase init --force --yes >/dev/null && supabase db start
+          L=$(supabase status -o env 2>/dev/null | grep -o 'postgresql://[^"]*' | head -1); L=${L:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}
+          psql "$L" --single-transaction -v ON_ERROR_STOP=1 \
+            -f ../copie/roles.sql -f ../copie/schema.sql -c "SET session_replication_role = replica" -f ../copie/data.sql
+          psql "$L" -tA -v ON_ERROR_STOP=1 \
+            -c "select 'bars=' || count(*) from public.bars" -c "select 'personnel=' || count(*) from public.staff" -c "select 'tickets=' || count(*) from public.tickets"
+          n=$(psql "$L" -tA -c "select count(*) from public.bars")
+          [ "$n" -ge 1 ] || { echo "::error::aucun bar après restauration"; exit 1; }
+          echo "::notice::Copie restaurée avec succès ($n bar(s))."

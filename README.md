@@ -194,3 +194,12 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Écran « Accès suspendu » : motif, date ; PDG et directeur envoient la demande de réactivation (message, jusqu'à 5 photos ou PDF dans le stockage privé `preuves`, numéro WhatsApp), suivent la réponse de BISMO Agency sur le même écran ; boutons Appeler / WhatsApp. L'application se rouvre seule après réactivation.
 - Notifications bloquées : bouton « Débloquer les notifications » avec les étapes selon l'appareil.
 - Migration `025_reactivation_suspension.sql`.
+
+## v4.17 — Fiabilité : sauvegardes, tests, remontée des erreurs, confidentialité
+- **Sauvegardes** (`.github/workflows/sauvegarde.yml`) : chaque nuit, copie complète (rôles, structure, données) chiffrée AES-256, gardée 30 jours comme artefact, puis restaurée dans une base vide pour la vérifier. À activer avec les secrets `SUPABASE_DB_URL` (Session pooler) et `BACKUP_PASSPHRASE`.
+  Restaurer : télécharger l'artefact, `gpg -d gesco-sauvegarde.tar.gz.gpg > copie.tar.gz && tar -xzf copie.tar.gz`, puis
+  `psql "<base cible>" --single-transaction -v ON_ERROR_STOP=1 -f copie/roles.sql -f copie/schema.sql -c "SET session_replication_role = replica" -f copie/data.sql`.
+  Les fichiers du stockage (photos, preuves, pièces d'identité) ne sont pas dans cette copie.
+- **Tests** (`.github/workflows/tests.yml`) : `node tests/ui.cjs` (15 scénarios sur la démo, chaque rôle, téléphone et ordinateur) et `tests/serveur.sql` (règles du serveur sur la vraie base, transaction annulée). Le CI vérifie aussi que `dist/` est à jour.
+- **Erreurs** : les plantages de l'application et de la console remontent dans la console éditeur (onglet Erreurs), regroupés, effacés après 30 jours. Migration `026_remontee_erreurs.sql`.
+- **Légal** : page `/confidentialite`, conditions générales mises à jour (paiement sur téléphone, suspension et réactivation).

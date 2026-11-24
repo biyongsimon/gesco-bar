@@ -597,6 +597,21 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
 "use strict";
 /* ═══════════════ Outils ═══════════════ */
 const CFG = window.GESCO_CONFIG;
+const APP_BUILD = "e8318b15";
+/* Remontée des erreurs inattendues vers la console éditeur (jamais les messages métier, réseau ou de session) */
+const ERR_SEEN = {};
+function reportErr(e, kind) {
+  try {
+    const msg = String((e && e.message) || e || "").slice(0, 500);
+    if (!msg || (e && (e.biz || e.net || e.auth)) || /^Script error\.?$|ResizeObserver loop|Failed to fetch|NetworkError|Load failed|network/i.test(msg)) return;
+    const k = msg.slice(0, 120); if (ERR_SEEN[k] && Date.now() - ERR_SEEN[k] < 600000) return; if (Object.keys(ERR_SEEN).length > 40) return; ERR_SEEN[k] = Date.now();
+    const v = typeof V !== "undefined" ? V : {};
+    if (typeof B !== "undefined" && B && B.logError) B.logError({ p_message: (kind ? kind + " : " : "") + msg, p_stack: String((e && e.stack) || "").slice(0, 2000), p_source: "app",
+      p_url: location.pathname, p_tab: String(v.tab || v.screen || ""), p_version: APP_BUILD, p_ua: navigator.userAgent.slice(0, 200) });
+  } catch (x) {}
+}
+addEventListener("error", ev => reportErr(ev.error || ev.message));
+addEventListener("unhandledrejection", ev => reportErr(ev.reason, "Promesse"));
 const $app = document.getElementById("app");
 const F = n => Math.round(Number(n) || 0).toLocaleString("fr-FR").replace(/[  ]/g, " ") + " FCFA";
 const Fs = n => Math.round(Number(n) || 0).toLocaleString("fr-FR").replace(/[  ]/g, " ");
@@ -1259,6 +1274,7 @@ function DemoBackend() {
         salaries: db.salaries.filter(x => pg || own(x)), payroll: db.payroll.filter(x => pg || own(x)), subs: mg ? db.subs : [],
         handovers: cs ? (db.handovers || []) : [], kitchen: (db.kitchen || []).filter(o => (cs || me.head || o.waitress_id === me.id) && (["attente", "prep", "pret", "a_decider", "revente"].includes(o.status) || Date.now() - new Date(o.created_at) < 18 * 3600e3)), recipes: db.recipes || [], platform: { holder_name: "BIYONG BIYONG SIMON STEVE (BISMO AGENCY)", om_number: "691468175", mtn_number: "673383951", om_tpl: null, mtn_tpl: null, sub_push: true } });
     },
+    logError() {},
     async rpc(name, args) { const f = R[name]; if (!f) throw bizErr("Action inconnue."); db = LS.get(KEY) || db; const r = f(args || {}); save(); return r; },
     async momoPush(ticket, phone, operator) { // démo : le client « valide » sur son téléphone au bout de 6 secondes
       const c = ctx(), t = tk(ticket); if (t.waitress_id !== c.id) E("Ce ticket appartient à une autre serveuse."); if (t.status !== "sent") E("Envoyez d’abord la commande à la caisse.");
@@ -1384,6 +1400,7 @@ function LiveBackend() {
         tickets: tickets.map(t => { const { ticket_items, ...r } = t; return { ...r, items: ticket_items || [] }; }), holdings, vouchers, remits, audit, moves, days: closed,
         shifts, attendance, leaves, salaries, payroll, subs, platform: plat[0] || {}, kitchen: kitchen || [], recipes: recipes || [], handovers: (handovers || []).reverse() };
     },
+    logError(a) { try { sb.rpc("gb_log_error", a).then(() => {}, () => {}); } catch (e) {} },
     async rpc(name, args) { const { data, error } = await sb.rpc(name, args || {}); if (error) { const e = toErr(error); if (/non soldé/.test(error.message)) e.pending = true; throw e; } return data; },
     staffCreate: (name, role, pin) => fn("staff_create", { name, role, pin }, true),
     momoPush: (ticket, phone, operator) => fn("momo_push", { ticket, phone, operator }, true),
@@ -1547,7 +1564,7 @@ async function logout(silent) {
 const A = {};
 async function run(fn) {
   if (V.busy) return; V.busy = true; render();
-  try { await fn(); } catch (e) { if (e.auth) { await logout(true); } toast(e.message || String(e), "err"); }
+  try { await fn(); } catch (e) { if (e.auth) { await logout(true); } if (e instanceof TypeError || e instanceof ReferenceError || e instanceof RangeError) reportErr(e); toast(e.message || String(e), "err"); }
   finally { V.busy = false; render(); }
 }
 const ask = (title, text, ok, a, d, danger) => { V.menu = false; V.modal = { type: "confirm", title, text, ok, a, d, danger }; render(); };
@@ -1795,7 +1812,7 @@ function vLogin() {
   }
   return `<div class="login"><div class="row" style="justify-content:flex-end"><button class="btn ghost sm" data-a="help">${ico("help")} Aide</button>${themeBtn()}</div>${bismo(false)}<div class="hero"><div class="brandmark">GesCo<span> Bar</span></div><p>Chaque boisson a son ticket. Chaque ticket a sa serveuse.</p></div>
     ${demo ? `<div class="demo"><b>Mode démo</b> : données d’exemple enregistrées dans ce navigateur. Code du bar <b>DEMO</b>. PIN : serveuses Aline <b>1111</b>, Brigitte <b>2222</b>, Carine <b>3333</b> · caisse Mireille <b>0000</b> · directeur Hervé <b>5555</b> · PDG Marcel <b>9999</b>.</div>` : ""}
-    ${tabs}${body}${installBox()}<p class="mu" style="text-align:center;font-size:12px;margin:14px 0 0"><a href="/conditions" target="_blank" rel="noopener">Conditions générales</a> · <a href="/remboursement" target="_blank" rel="noopener">Remboursement</a></p></div>`;
+    ${tabs}${body}${installBox()}<p class="mu" style="text-align:center;font-size:12px;margin:14px 0 0"><a href="/conditions" target="_blank" rel="noopener">Conditions générales</a> · <a href="/remboursement" target="_blank" rel="noopener">Remboursement</a> · <a href="/confidentialite" target="_blank" rel="noopener">Confidentialité</a></p></div>`;
 }
 function installBox() {
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
