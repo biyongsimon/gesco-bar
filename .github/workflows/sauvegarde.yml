@@ -44,7 +44,7 @@ jobs:
           supabase db dump --remote="$DB_URL" -f copie/schema.sql
           supabase db dump --remote="$DB_URL" -f copie/data.sql --data-only --use-copy -x "storage.buckets_vectors" -x "storage.vector_indexes"
           for f in roles schema data; do test -s "copie/$f.sql" || { echo "::error::copie/$f.sql est vide"; exit 1; }; done
-          grep -q "public.bars" copie/data.sql || { echo "::error::la table des bars est absente de la copie"; exit 1; }
+          grep -Eq 'COPY "?public"?\."?bars"?' copie/data.sql || { echo "::error::la table des bars est absente de la copie"; exit 1; }
           date -u +"%Y-%m-%dT%H:%M:%SZ" > copie/date.txt
           ls -la copie
       - if: steps.verif.outputs.ok == '1'
