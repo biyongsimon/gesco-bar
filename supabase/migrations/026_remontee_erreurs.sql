@@ -28,6 +28,7 @@ begin
   where id = (select id from public.client_errors where sig = sg and source = p_source and resolved_at is null
     and bar_id is not distinct from s.bar_id order by last_at desc limit 1);
   if found then return; end if;
+  delete from public.client_errors where last_at < now() - interval '30 days';   -- 026b : effacement après 30 jours
   select count(*) into n from public.client_errors where first_at > now() - interval '1 hour';
   if n >= 300 then return; end if;   -- plafond anti-abus
   insert into public.client_errors(sig, source, message, stack, url, tab, role, version, ua, bar_id, staff_id)
