@@ -33,8 +33,9 @@ async function test(nom, fn, opts = {}) {
     await page.goto(DEMO);
     await page.evaluate(() => { localStorage.clear(); localStorage.setItem("gesco-ntf-ask", "1"); });
     await page.reload();
+    page.on("load", () => { if (page.url().includes("/dist/web/")) errs.length = 0; });
     await fn(page);
-    ok(!errs.length, "Erreur JavaScript : " + errs[0]);
+    ok(!errs.length || page.url().includes("/dist/web/"), "Erreur JavaScript : " + errs[0]);
     bilan.push([nom, true]); console.log(`✔ ${nom} (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
   } catch (e) {
     bilan.push([nom, false]); console.log(`✘ ${nom}\n    ${String(e.message).split("\n")[0]}`);
@@ -144,6 +145,36 @@ async function tousLesOnglets(page) {
     await login(page, "Carine");
     ok(/Prévenez votre PDG/.test(await page.textContent(".lockv")), "la serveuse ne voit pas la consigne");
     ok(!(await page.$("#re_msg")), "la serveuse peut envoyer une demande");
+  });
+
+  await test("Démarrage normal : aucun écran de secours", async page => {
+    await login(page, "Brigitte"); await page.waitForTimeout(8600);
+    ok(!(await page.$("#gesco-rescue")), "l'écran de secours s'affiche alors que l'application marche");
+    ok(await page.evaluate(() => window.__gescoOK === true), "l'application ne signale pas son démarrage");
+  });
+
+  await test("Écran blanc : la garde prévient BISMO et propose de réparer", async page => {
+    const recu = [];
+    await page.route(/cdn\.jsdelivr\.net/, r => r.abort());   // bibliothèque introuvable = l'application ne peut pas démarrer
+    await page.route(/supabase\.co\/rest\/v1\/rpc\/gb_log_error/, r => { recu.push(r.request().postDataJSON()); r.fulfill({ status: 204, body: "" }); });
+    page.removeAllListeners("pageerror");   // ici les erreurs JavaScript sont voulues
+    await page.goto("file://" + path.resolve(__dirname, "../dist/web/index.html"));
+    await page.waitForSelector("#gesco-rescue", { timeout: 15000 });
+    ok(/n’a pas pu démarrer/.test(await page.textContent("#gesco-rescue")), "message de l'écran de secours absent");
+    ok(await page.$('#gesco-rescue button[onclick*="__gescoRepair"]'), "bouton « Réparer » absent");
+    await page.waitForTimeout(500);
+    ok(recu.length === 1 && /^DÉMARRAGE/.test(recu[0].p_message), "le rapport de démarrage n'a pas été envoyé");
+    ok(/Fichier non chargé|createClient|supabase/i.test(recu[0].p_stack || recu[0].p_message), "la cause n'est pas dans le rapport");
+  }, { ctx: MOBILE });
+
+  await test("Erreur hors réseau : gardée puis envoyée au retour du réseau", async page => {
+    await login(page, "Brigitte");
+    const ctx = page.context(); await ctx.setOffline(true);
+    await page.evaluate(() => { window.__envoyes = []; B.logError = a => { if (!navigator.onLine) return errKeep(a); window.__envoyes.push(a); }; reportErr(new TypeError("panne simulée hors réseau")); });
+    ok(await page.evaluate(() => JSON.parse(localStorage.getItem("gesco-errq") || "[]").length) === 1, "l'erreur n'est pas gardée hors réseau");
+    await ctx.setOffline(false); await page.evaluate(() => errFlush());
+    ok(await page.evaluate(() => window.__envoyes.length === 1 && /hors réseau/.test(window.__envoyes[0].p_stack)), "l'erreur n'est pas envoyée au retour du réseau");
+    ok(await page.evaluate(() => !localStorage.getItem("gesco-errq")), "la file n'est pas vidée");
   });
 
   await browser.close();

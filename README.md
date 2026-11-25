@@ -203,3 +203,9 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - **Tests** (`.github/workflows/tests.yml`) : `node tests/ui.cjs` (15 scénarios sur la démo, chaque rôle, téléphone et ordinateur) et `tests/serveur.sql` (règles du serveur sur la vraie base, transaction annulée). Le CI vérifie aussi que `dist/` est à jour.
 - **Erreurs** : les plantages de l'application et de la console remontent dans la console éditeur (onglet Erreurs), regroupés, effacés après 30 jours. Migration `026_remontee_erreurs.sql`.
 - **Légal** : page `/confidentialite`, conditions générales mises à jour (paiement sur téléphone, suspension et réactivation).
+
+## v4.18 — Alertes et écran blanc
+- **Erreurs hors réseau** : gardées sur l'appareil (20 au plus) et envoyées au retour du réseau.
+- **Alertes de l'éditeur** : console → Réglages → « Alertes sur cet appareil ». Notification à chaque nouvelle erreur (ou erreur revenue après correction), application qui ne démarre pas, site en panne. 12 alertes par heure au plus. Abonnements séparés de ceux du personnel (`gb_private.admin_push`). Migration `027_alertes_editeur.sql`, fonction `gesco-push` (option `admins`).
+- **Écran blanc** : une garde indépendante du code principal détecte un démarrage raté (bibliothèque non chargée, erreur au lancement, 25 s sans affichage), prévient l'éditeur et propose « Réessayer » / « Réparer l'application » (vide le cache et le service worker, garde les données locales).
+- **Surveillance** (`.github/workflows/surveillance.yml`, `tests/surveillance.cjs`) : après chaque envoi, attend que la nouvelle version soit en ligne et vérifie qu'elle démarre ; toutes les 2 h, vérifie application, console, fonctions serveur et base. Panne → erreur « Surveillance du site » dans la console + alerte.

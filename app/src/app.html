@@ -578,6 +578,48 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
 <div id="app"><div class="empty"><span class="spin"></span></div></div>
 
 <script>window.GESCO_CONFIG = /*CONFIG*/;</script>
+<script>
+/* Garde au démarrage : si GesCo ne s'affiche pas (bibliothèque non chargée, ancienne version abîmée, erreur au lancement),
+   BISMO Agency est prévenu et la personne peut réparer l'application sans perdre ses données. Indépendante du reste du code. */
+(function () {
+  var errs = [], shown = false;
+  function add(m, st) { if (errs.length < 5) errs.push(String(m || "erreur").slice(0, 300) + (st ? "\n" + String(st).slice(0, 900) : "")); }
+  addEventListener("error", function (e) { var t = e.target; if (t && t !== window && (t.src || t.href)) add("Fichier non chargé : " + (t.src || t.href)); else add(e.message, e.error && e.error.stack); }, true);
+  addEventListener("unhandledrejection", function (e) { var r = e.reason; add(r && r.message || r, r && r.stack); });
+  function send() {
+    var C = window.GESCO_CONFIG; if (!C || C.mode !== "live" || !window.fetch) return;
+    var tok = C.key; try { var a = JSON.parse(localStorage.getItem("gesco-auth") || "null"); if (a && a.access_token && a.expires_at * 1000 > Date.now()) tok = a.access_token; } catch (x) {}
+    var body = JSON.stringify({ p_message: "DÉMARRAGE : GesCo ne s'est pas affiché" + (errs[0] ? " — " + errs[0].split("\n")[0] : " (délai dépassé)"), p_stack: errs.join("\n---\n") || null,
+      p_source: "app", p_url: location.pathname, p_tab: "démarrage", p_version: "__BUILD__", p_ua: navigator.userAgent.slice(0, 200) });
+    var go = function (t) { return fetch(C.url + "/rest/v1/rpc/gb_log_error", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", apikey: C.key, Authorization: "Bearer " + t }, body: body }); };
+    go(tok).then(function (r) { if (!r.ok && tok !== C.key) go(C.key); }).catch(function () {
+      try { var q = JSON.parse(localStorage.getItem("gesco-errq") || "[]"); q.push(JSON.parse(body)); localStorage.setItem("gesco-errq", JSON.stringify(q.slice(-20))); } catch (x) {} });
+  }
+  window.__gescoRepair = function () {
+    var done = function () { location.reload(); };
+    try {
+      var jobs = [];
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+      if (window.caches && caches.keys) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+      Promise.all(jobs).then(done, done); setTimeout(done, 4000);
+    } catch (x) { done(); }
+  };
+  function rescue() {
+    if (window.__gescoOK || shown) return; shown = true; send();
+    var d = document.createElement("div"); d.id = "gesco-rescue";
+    d.setAttribute("style", "position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:#f3f6f3;color:#13201a;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;text-align:center");
+    d.innerHTML = '<div style="max-width:420px"><div style="font-size:44px">⚠</div><h1 style="font-size:22px;margin:8px 0">GesCo n’a pas pu démarrer</h1>' +
+      '<p style="margin:0 0 6px">BISMO Agency a été prévenu automatiquement.</p><p style="margin:0 0 18px;color:#5b6a62">Vos tickets en attente restent gardés sur cet appareil.</p>' +
+      '<button onclick="location.reload()" style="display:block;width:100%;padding:14px;margin:0 0 10px;border:0;border-radius:12px;background:#0f5c3c;color:#fff;font:600 16px inherit">Réessayer</button>' +
+      '<button onclick="window.__gescoRepair()" style="display:block;width:100%;padding:14px;border:1px solid #dbe3dd;border-radius:12px;background:#fff;color:#13201a;font:600 16px inherit">Réparer l’application</button>' +
+      '<p style="margin:14px 0 0;font-size:13px;color:#5b6a62">« Réparer » recharge la dernière version de GesCo. Vos données ne sont pas effacées.</p></div>';
+    (document.body || document.documentElement).appendChild(d);
+  }
+  // Une erreur au lancement : on attend 8 s ; sans erreur visible (réseau lent), on laisse 25 s avant de conclure
+  setTimeout(function () { if (errs.length) rescue(); }, 8000);
+  setTimeout(rescue, 25000);
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <!--SUPABASE-->
 <script>
@@ -597,8 +639,16 @@ function reportErr(e, kind) {
       p_url: location.pathname, p_tab: String(v.tab || v.screen || ""), p_version: APP_BUILD, p_ua: navigator.userAgent.slice(0, 200) });
   } catch (x) {}
 }
-addEventListener("error", ev => reportErr(ev.error || ev.message));
+addEventListener("error", ev => { if (ev.error || ev.message) reportErr(ev.error || ev.message); });
 addEventListener("unhandledrejection", ev => reportErr(ev.reason, "Promesse"));
+// Hors réseau : l'erreur est gardée sur l'appareil (20 au plus) et envoyée dès le retour du réseau
+function errKeep(a) { try { const q = JSON.parse(localStorage.getItem("gesco-errq") || "[]");
+  q.push(Object.assign({}, a, { p_stack: "Survenue hors réseau le " + new Date().toLocaleString("fr-FR") + "\n" + (a.p_stack || "") }));
+  localStorage.setItem("gesco-errq", JSON.stringify(q.slice(-20))); } catch (e) {} }
+function errFlush() { try { if (!navigator.onLine || typeof B === "undefined" || !B || !B.logError) return; const q = JSON.parse(localStorage.getItem("gesco-errq") || "[]"); if (!q.length) return;
+  localStorage.removeItem("gesco-errq"); q.forEach(a => B.logError(a)); } catch (e) {} }
+addEventListener("online", () => setTimeout(errFlush, 3000));
+setTimeout(errFlush, 6000);
 const $app = document.getElementById("app");
 const F = n => Math.round(Number(n) || 0).toLocaleString("fr-FR").replace(/[  ]/g, " ") + " FCFA";
 const Fs = n => Math.round(Number(n) || 0).toLocaleString("fr-FR").replace(/[  ]/g, " ");
@@ -1387,7 +1437,8 @@ function LiveBackend() {
         tickets: tickets.map(t => { const { ticket_items, ...r } = t; return { ...r, items: ticket_items || [] }; }), holdings, vouchers, remits, audit, moves, days: closed,
         shifts, attendance, leaves, salaries, payroll, subs, platform: plat[0] || {}, kitchen: kitchen || [], recipes: recipes || [], handovers: (handovers || []).reverse() };
     },
-    logError(a) { try { sb.rpc("gb_log_error", a).then(() => {}, () => {}); } catch (e) {} },
+    logError(a) { try { if (!navigator.onLine) return errKeep(a);
+      sb.rpc("gb_log_error", a).then(r => { if (r && r.error && /fetch|network|load failed|timeout/i.test(r.error.message || "")) errKeep(a); }, () => errKeep(a)); } catch (e) {} },
     async rpc(name, args) { const { data, error } = await sb.rpc(name, args || {}); if (error) { const e = toErr(error); if (/non soldé/.test(error.message)) e.pending = true; throw e; } return data; },
     staffCreate: (name, role, pin) => fn("staff_create", { name, role, pin }, true),
     momoPush: (ticket, phone, operator) => fn("momo_push", { ticket, phone, operator }, true),
@@ -1537,7 +1588,7 @@ async function pushSub() {
   } catch (e) { V.pushOk = false; console.warn("push", e); }
 }
 async function pushUnsub() { try { if (CFG.mode !== "live" || !navigator.serviceWorker) return; const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
-  if (sub) { await B.rpc("gb_push_unregister", { p_endpoint: sub.endpoint }).catch(() => {}); await sub.unsubscribe(); } } catch (e) {} }
+  if (sub) await B.rpc("gb_push_unregister", { p_endpoint: sub.endpoint }).catch(() => {}); } catch (e) {} }
 async function logout(silent) {
   await pushUnsub();
   try { await B.logout(); } catch (e) {}
@@ -3668,6 +3719,7 @@ function render() {
   else if (V.locked) html = vLock() + bismo(true);
   else html = vApp() + bismo(true);
   const nt = V.screen === "app" && V.ntf ? `<div class="ntf ${V.ntf.kind}" role="alert" data-a="ntfClose"><span class="ntf-i">${ico({ order: "orders", ok: "check", staff: "clock" }[V.ntf.kind] || "alert")}</span><span class="grow"><b>${esc(V.ntf.title)}</b><small>${esc(V.ntf.body)}</small></span></div>` : "";
+  if (!window.__gescoOK) { window.__gescoOK = true; const rs = document.getElementById("gesco-rescue"); if (rs) rs.remove(); }
   $app.innerHTML = html + nt + vModal() + (V.toast ? `<div class="toast ${V.toast.kind || ""}" role="status">${esc(V.toast.msg)}</div>` : "");
   if (fid) { const el = document.getElementById(fid); if (el && el !== document.activeElement) { el.focus({ preventScroll: true }); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) {} } }
 }

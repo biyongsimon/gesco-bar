@@ -290,6 +290,7 @@ async function boot() {
 
 /* ── Icônes (traits simples, couleur du texte) ── */
 const IC = {
+  bell: '<path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
   card: '<rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h19"/><path d="M6.5 15h4"/>',
   chat: '<path d="M21 14.5a2.5 2.5 0 0 1-2.5 2.5H8l-5 4V5.5A2.5 2.5 0 0 1 5.5 3h13A2.5 2.5 0 0 1 21 5.5z"/><path d="M8 9h8M8 12.5h5"/>',
@@ -332,17 +333,40 @@ const nAvis = () => (V.data.avis || []).filter(a => !a.admin_seen_at).length;
 const nErr = () => (V.data.errs || []).filter(e => !e.resolved_at).length;
 const devName = ua => { ua = ua || ""; const os = /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iPhone" : /Windows/.test(ua) ? "Windows" : /Mac OS/.test(ua) ? "Mac" : /Linux/.test(ua) ? "Linux" : "Appareil";
   const br = /Edg\//.test(ua) ? "Edge" : /SamsungBrowser/.test(ua) ? "Samsung Internet" : /OPR\//.test(ua) ? "Opera" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : ""; return os + (br ? " · " + br : ""); };
+// Alertes de l'éditeur : abonnement push de cet appareil (séparé de celui du personnel)
+async function alertSub() {
+  if (!("PushManager" in window) || !navigator.serviceWorker) throw new Error("Ce navigateur ne reçoit pas de notifications. Sur iPhone, installez d’abord la console sur l’écran d’accueil.");
+  if (Notification.permission === "denied") throw new Error("Notifications bloquées pour ce site : autorisez-les dans les réglages du navigateur (icône à gauche de l’adresse), puis réessayez.");
+  if (Notification.permission !== "granted" && (await Notification.requestPermission()) !== "granted") throw new Error("Notifications non autorisées.");
+  const reg = await navigator.serviceWorker.ready; let sub = await reg.pushManager.getSubscription();
+  if (!sub) { const r = await fetch(CFG.url + "/functions/v1/gesco-push", { method: "POST", headers: { "Content-Type": "application/json", apikey: CFG.key }, body: JSON.stringify({ action: "key" }) }).then(x => x.json());
+    const k = r.key.replace(/-/g, "+").replace(/_/g, "/"), raw = atob(k + "=".repeat((4 - k.length % 4) % 4));
+    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: Uint8Array.from(raw, c => c.charCodeAt(0)) }); }
+  const j = sub.toJSON(); await rpc("gb_pf_push_register", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_ua: navigator.userAgent.slice(0, 200) });
+  return j.endpoint;
+}
+async function alertState() { try { const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration(); const sub = reg && await reg.pushManager.getSubscription();
+  V.alerts = await rpc("gb_pf_push_state", { p_endpoint: sub ? sub.endpoint : "" }); } catch (e) { V.alerts = { ici: false, appareils: 0 }; } render(); }
+function alertRow() {
+  if (!V.alerts) { setTimeout(alertState, 0); V.alerts = { chargement: true }; }
+  const a = V.alerts; if (a.chargement) return `<div class="mu">…</div>`;
+  return `<div class="row" style="align-items:center;gap:10px">${a.ici ? `<span class="pill ok">${ic("check")} Activées sur cet appareil</span><button class="btn soft sm" data-a="alertTest" ${V.busy ? "disabled" : ""}>Envoyer une alerte de test</button><button class="btn ghost sm" data-a="alertOff" ${V.busy ? "disabled" : ""}>Arrêter ici</button>`
+    : `<button class="btn" data-a="alertOn" ${V.busy ? "disabled" : ""}>${ic("bell")} Recevoir les alertes sur cet appareil</button>`}<span class="mu" style="font-size:13px">${a.appareils || 0} appareil(s) abonné(s)</span></div>`;
+}
 function vErreurs() {
   const all = V.data.errs || [], open = all.filter(e => !e.resolved_at), done = all.filter(e => e.resolved_at);
   const ROL = { pdg: "PDG", directeur: "Directeur", caisse: "Caisse", serveuse: "Serveuse", cuisine: "Cuisine" };
   const card = e => `<div class="card stack" style="gap:8px;${e.resolved_at ? "opacity:.6" : ""}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><b style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;overflow-wrap:anywhere;min-width:0">${esc(e.message)}</b>
       ${e.resolved_at ? `<span class="pill ok">Corrigée</span>` : `<button class="btn soft sm" data-a="errDone" data-id="${e.id}" ${V.busy ? "disabled" : ""}>${ic("check")} Corrigée</button>`}</div>
-    <div class="row" style="gap:6px">${e.count > 1 ? `<span class="pill bad">${e.count} fois</span>` : ""}<span class="pill">${e.source === "console" ? "Console éditeur" : e.bar_name ? esc(e.bar_name) + " · " + esc(e.bar_code || "") : "Écran de connexion"}</span>
+    <div class="row" style="gap:6px">${e.count > 1 ? `<span class="pill bad">${e.count} fois</span>` : ""}<span class="pill">${e.source === "surveillance" ? "Surveillance du site" : e.source === "console" ? "Console éditeur" : e.bar_name ? esc(e.bar_name) + " · " + esc(e.bar_code || "") : "Écran de connexion"}</span>
       ${e.role ? `<span class="pill">${ROL[e.role] || esc(e.role)}${e.staff_name ? " · " + esc(e.staff_name) : ""}</span>` : ""}${e.tab ? `<span class="pill">Onglet ${esc(e.tab)}</span>` : ""}<span class="pill">${esc(devName(e.ua))}</span></div>
+    ${/^https:\/\/github\.com\//.test(e.url || "") ? `<a href="${esc(e.url)}" target="_blank" rel="noopener" style="font-size:13px">Voir le contrôle sur GitHub</a>` : ""}
     <div class="mu" style="font-size:12.5px">Dernière fois ${ago(e.last_at)}${e.count > 1 ? ` · première fois ${ago(e.first_at)}` : ""} · version ${esc(e.version || "?")}</div>
     ${e.stack ? `<details><summary class="mu" style="cursor:pointer;font-size:13px">Détail technique</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;margin:8px 0 0;max-height:240px;overflow:auto">${esc(e.stack)}</pre></details>` : ""}</div>`;
-  return `<div class="ph"><div><h1>Erreurs</h1><p class="mu" style="margin:4px 0 0">Les plantages de l’application chez les bars (et dans cette console), remontés automatiquement. Une même erreur est regroupée avec son nombre d’occurrences. Les messages normaux (PIN faux, stock insuffisant, réseau coupé…) ne sont jamais remontés.</p></div>
+  const ban = V.alerts && !V.alerts.chargement && !V.alerts.ici ? `<div class="card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px"><span style="flex:1 1 260px">${ic("bell")} Soyez prévenu sur cet appareil dès qu’une erreur apparaît, même console fermée.</span><button class="btn" data-a="alertOn" ${V.busy ? "disabled" : ""}>Activer les alertes</button></div>` : "";
+  if (!V.alerts) setTimeout(alertState, 0);
+  return ban + `<div class="ph"><div><h1>Erreurs</h1><p class="mu" style="margin:4px 0 0">Les plantages de l’application chez les bars (et dans cette console), remontés automatiquement. Une même erreur est regroupée avec son nombre d’occurrences. Les messages normaux (PIN faux, stock insuffisant, réseau coupé…) ne sont jamais remontés.</p></div>
     ${open.length ? `<button class="btn soft" data-a="errDone" ${V.busy ? "disabled" : ""}>${ic("check")} Tout marquer comme corrigé</button>` : ""}</div>
     ${open.length ? `<div class="stack">${open.map(card).join("")}</div>` : `<div class="card"><div class="empty">${ic("check")} Aucune erreur en cours. Tout fonctionne chez les bars.</div></div>`}
     ${done.length ? `<h3 style="margin:22px 0 10px">Corrigées ces 14 derniers jours</h3><div class="stack">${done.map(card).join("")}</div>` : ""}`;
@@ -552,6 +576,9 @@ function vReglages() {
         <p class="mu" style="margin:0;font-size:13px">Si un raccourci de transfert direct fonctionne sur votre téléphone, saisissez-le avec {numero} et {montant} : le bouton « Payer » des bars préremplira le transfert. Laissez vide pour ouvrir le menu de l’opérateur.</p>
         <label class="f">Orange Money<input id="s_omt" value="${esc(p.om_tpl || "")}" placeholder="#150*1*1*{numero}*{montant}#"></label><label class="f">MTN MoMo<input id="s_mtnt" value="${esc(p.mtn_tpl || "")}" placeholder="*126*1*1*{numero}*{montant}#"></label></div></details>
       <button class="btn" data-a="saveSettings" ${V.busy ? "disabled" : ""}>Enregistrer</button></div>
+    <div class="card stack" style="max-width:640px;margin-top:14px"><h3>Alertes sur cet appareil</h3>
+      <p class="mu" style="margin:0;font-size:13px">Une notification arrive ici, même console fermée, dès qu’une nouvelle erreur apparaît chez un bar, qu’une application ne démarre pas ou que le site ne répond plus. Activez-la sur votre téléphone et sur votre ordinateur.</p>
+      ${alertRow()}</div>
     <div class="card stack" style="max-width:640px;margin-top:14px"><h3>Contact BISMO Agency affiché aux bars</h3>
       <p class="mu" style="margin:0;font-size:13px">Montré sur l’écran d’un bar suspendu, à côté de la demande de réactivation : bouton d’appel et bouton WhatsApp.</p>
       <div class="row"><label class="f grow">Téléphone<input id="s_phone" inputmode="tel" value="${esc(p.phone || "")}" placeholder="6XXXXXXXX"></label><label class="f grow">WhatsApp (avec l’indicatif)<input id="s_wa" inputmode="tel" value="${esc(p.whatsapp || "")}" placeholder="2376XXXXXXXX"></label></div>
@@ -707,6 +734,9 @@ const A = {
     await rpc("gb_pf_suspend", { p_bar: d.id, p_on: d.v === "1", p_reason: d.v === "1" ? val("p_reason") : null }); delete V.f.p_reason; await loadAll(); if (V.thr) await loadMsgs(V.thr);
     toast(d.v === "1" ? "Accès suspendu : le bar voit le motif et peut demander la réactivation." : "Accès rétabli : la demande de réactivation est close et le bar est prévenu."); }),
   kyc: d => run(async () => { await rpc("gb_pf_kyc", { p_bar: d.id, p_status: d.v }); await loadAll(); toast("Statut mis à jour."); }),
+  alertOn: () => run(async () => { await alertSub(); await rpc("gb_pf_push_test"); await alertState(); toast("Alertes activées : une notification de test arrive dans quelques secondes."); }),
+  alertOff: () => run(async () => { const reg = await navigator.serviceWorker.getRegistration(), sub = reg && await reg.pushManager.getSubscription(); if (sub) await rpc("gb_pf_push_unregister", { p_endpoint: sub.endpoint }); await alertState(); toast("Alertes arrêtées sur cet appareil."); }),
+  alertTest: () => run(async () => { await rpc("gb_pf_push_test"); toast("Alerte de test envoyée."); }),
   errDone: d => run(async () => { await rpc("gb_pf_error_resolve", { p_id: d.id ? +d.id : null }); V.data.errs = await rpc("gb_pf_errors"); toast(d.id ? "Erreur marquée comme corrigée." : "Toutes les erreurs sont marquées comme corrigées."); }),
   proofOpen: d => run(async () => { const { data, error } = await sb.storage.from("preuves").createSignedUrl(d.p, 600); if (error) throw new Error("Preuve introuvable."); window.open(data.signedUrl, "_blank", "noopener"); }),
   doc: d => run(async () => { const { data, error } = await sb.storage.from("kyc").createSignedUrl(d.p, 600); if (error) throw new Error("Document introuvable."); window.open(data.signedUrl, "_blank", "noopener"); }),

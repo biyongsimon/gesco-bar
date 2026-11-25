@@ -1,0 +1,37 @@
+# Surveillance du site en ligne (le « point 4 » : GesCo qui ne s'affiche plus chez les bars).
+# - après chaque envoi sur GitHub : attend que la nouvelle version soit en ligne, puis vérifie qu'elle démarre vraiment ;
+# - toutes les 2 heures : vérifie que l'application, la console, les fonctions serveur et la base répondent.
+# En cas de panne : l'erreur apparaît dans la console éditeur (onglet Erreurs) et une alerte part sur les appareils de l'éditeur.
+name: Surveillance
+on:
+  push: { branches: [main] }
+  schedule:
+    - cron: "23 */2 * * *"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency: { group: surveillance, cancel-in-progress: true }
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Installation de Chrome
+        run: npm i --no-save --no-package-lock playwright@1.63.0 && npx playwright install --with-deps chromium
+      - name: Contrôle du site en ligne
+        env:
+          ATTENDRE_VERSION: ${{ github.event_name == 'push' && '1' || '0' }}
+        run: node tests/surveillance.cjs
+      - name: Alerte à l'éditeur
+        if: failure() && env.DB_URL != ''
+        run: |
+          resume=$(cat surveillance.txt 2>/dev/null || echo "contrôle interrompu")
+          # les variables psql ne sont remplacées que dans les commandes lues sur l'entrée standard
+          echo "select public.gb_log_error(:'msg', :'det', 'surveillance', :'lien', 'site', :'ver', 'GitHub Actions');" | psql "$DB_URL" -v ON_ERROR_STOP=1 \
+            -v msg="SURVEILLANCE : $resume" -v det="Exécution ${{ github.run_id }} · ${{ github.event_name }}" \
+            -v lien="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" -v ver="${GITHUB_SHA::8}"
