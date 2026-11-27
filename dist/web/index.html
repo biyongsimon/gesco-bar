@@ -609,7 +609,7 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
     var C = window.GESCO_CONFIG; if (!C || C.mode !== "live" || !window.fetch) return;
     var tok = C.key; try { var a = JSON.parse(localStorage.getItem("gesco-auth") || "null"); if (a && a.access_token && a.expires_at * 1000 > Date.now()) tok = a.access_token; } catch (x) {}
     var body = JSON.stringify({ p_message: "DÉMARRAGE : GesCo ne s'est pas affiché" + (errs[0] ? " — " + errs[0].split("\n")[0] : " (délai dépassé)"), p_stack: errs.join("\n---\n") || null,
-      p_source: "app", p_url: location.pathname, p_tab: "démarrage", p_version: "435c2804", p_ua: navigator.userAgent.slice(0, 200) });
+      p_source: "app", p_url: location.pathname, p_tab: "démarrage", p_version: "f48bcdef", p_ua: navigator.userAgent.slice(0, 200) });
     var go = function (t) { return fetch(C.url + "/rest/v1/rpc/gb_log_error", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", apikey: C.key, Authorization: "Bearer " + t }, body: body }); };
     go(tok).then(function (r) { if (!r.ok && tok !== C.key) go(C.key); }).catch(function () {
       try { var q = JSON.parse(localStorage.getItem("gesco-errq") || "[]"); q.push(JSON.parse(body)); localStorage.setItem("gesco-errq", JSON.stringify(q.slice(-20))); } catch (x) {} });
@@ -645,7 +645,7 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
 "use strict";
 /* ═══════════════ Outils ═══════════════ */
 const CFG = window.GESCO_CONFIG;
-const APP_BUILD = "435c2804";
+const APP_BUILD = "f48bcdef";
 /* Remontée des erreurs inattendues vers la console éditeur (jamais les messages métier, réseau ou de session) */
 const ERR_SEEN = {};
 function reportErr(e, kind) {
@@ -974,6 +974,14 @@ function DemoBackend() {
         if (!["remit_r1", "remit_r2", "remit_r3"].includes(k)) E("Réglage inconnu : " + k); if (!(Number.isInteger(v) && v >= 0 && v <= 600)) E("Délai invalide (0 à 600 minutes)."); o[k] = v; });
       const a = o.remit_r1 ?? 20, b = o.remit_r2 ?? 45, d = o.remit_r3 ?? 90; if (a > 0 && ((b >= 1 && b <= a) || (d >= 1 && d <= b))) E("Les délais doivent aller croissant (1er rappel, puis caisse, puis directeur).");
       db.bar.opts = o; log(c, "reglages_modifies", p_patch); return o; },
+    gb_kitchen_stats({ p_days } = {}) { const c = ctx(); if (!["cuisine", "pdg", "directeur"].includes(c.role)) E("Réservé à la cuisine et à la direction.");
+      const n = Math.min(31, Math.max(1, +p_days || 7)), d1 = bizDate(), out = [], dish = p => !!p && (p.category === "Cuisine" || ["plat", "portion"].includes(p.unit));
+      for (let x = 0; x < n; x++) { const dd = new Date(new Date(d1 + "T12:00:00") - x * 864e5).toLocaleDateString("sv-SE"), ids = new Set(db.days.filter(d => d.business_date === dd).map(d => d.id));
+        const T = db.tickets.filter(t => ids.has(t.day_id)), tid = new Set(T.map(t => t.id)), K = (db.kitchen || []).filter(o => tid.has(o.ticket_id));
+        const it = T.filter(t => ["cashed", "paid"].includes(t.status)).flatMap(t => t.items).filter(i => dish(db.products.find(p => p.id === i.product_id)));
+        out.push({ jour: dd, sortis: K.filter(o => ["pret", "servi"].includes(o.status)).reduce((a, o) => a + o.qty, 0), pertes: K.filter(o => ["perte", "personnel"].includes(o.status)).reduce((a, o) => a + o.qty, 0),
+          vendus: it.reduce((a, i) => a + i.qty, 0), montant: it.reduce((a, i) => a + i.qty * i.unit_price, 0), courses: (db.expenses || []).filter(e => e.category === "Courses du marché" && e.day === dd).reduce((a, e) => a + e.amount, 0) }); }
+      return out; },
     gb_bar_logo({ p_path }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG change le logo."); if (p_path && !/^data:image\/png;base64,/.test(p_path)) E("Fichier non valide."); db.bar.logo_path = p_path || null; log(c, "reglages_modifies", { logo: !!p_path }); },
     gb_kitchen_toggle({ p_on }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG active le module Cuisine."); db.bar.kitchen_on = !!p_on; log(c, "module_cuisine", { actif: !!p_on }); },
     gb_recipe_set({ p_dish, p_items }) { const c = ctx(); caisse(c); const d = prod(p_dish); db.recipes = (db.recipes || []).filter(r => r.dish_id !== p_dish);
@@ -1744,7 +1752,7 @@ A.logout = () => ask("Se déconnecter ?", V.outbox.length ? `${V.outbox.length} 
 A.logoutGo = () => logout();
 A.close = () => { V.modal = null; render(); };
 A.okModal = () => { const m = V.modal; V.modal = null; render(); if (m && A[m.a]) A[m.a](m.d || {}); };
-A.go = d => { if (["day", "plats", "kitchen"].includes(d.v)) V.mk = undefined; V.menu = false; V.modal = null; V.f.gq = ""; if (V.tab !== d.v) { V.tab = d.v; V.secT = Date.now(); V.top = 1; } lazyLoad(); render(); if (V.top) { V.top = 0; try { scrollTo({ top: 0 }); } catch (e) {} } };
+A.go = d => { if (["day", "plats", "kitchen"].includes(d.v)) V.mk = undefined; if (d.v === "kitchen") V.ks = undefined; V.menu = false; V.modal = null; V.f.gq = ""; if (V.tab !== d.v) { V.tab = d.v; V.secT = Date.now(); V.top = 1; } lazyLoad(); render(); if (V.top) { V.top = 0; try { scrollTo({ top: 0 }); } catch (e) {} } };
 A.tab = A.go;
 function lazyLoad() { const k = V.tab; if (k === "stock" && (!V.rea || !V.rea.at || Date.now() - V.rea.at > 60000)) A.reaLoad(); if ((k === "rev" || k === "home") && isPdg()) A.loadRev(); if (k === "acc") A.loadAcc(); if ((k === "pres" || k === "paie") && isMgr()) A.loadStats(); }
 A.wf = d => { V.wf = d.v; render(); };
@@ -2338,7 +2346,7 @@ function vKitchen() {
   const cooks = S.staff.filter(x => x.active && x.role === "cuisine").length;
   const roleNote = ROLE() === "cuisine" ? "" : !cooks ? `<div class="note warn" style="margin-bottom:14px">Aucun cuisinier dans l’équipe : ajoutez-en un (Équipe → rôle « Cuisine ») pour que les bons avancent. Seule la cuisine marque un plat commencé ou prêt.</div>`
     : `<div class="note info" style="margin-bottom:14px">Vous suivez la cuisine en direct pour vos comptes. C’est le cuisinier qui fait avancer les bons ; la serveuse confirme le retrait de ses plats.</div>`;
-  return `${roleNote}${kDecide()}${board}
+  return `${roleNote}${kDecide()}${board}${kProd()}
     <p class="mu" style="margin:6px 4px 12px">Chaque bon porte la couleur et le nom de sa serveuse : seule elle est prévenue quand le plat est prêt, et elle confirme le retrait.</p>${wall}
     ${served.length ? `<div class="card"><h3>Derniers plats servis</h3><div class="list">${served.map(o => `<div class="li"><div class="grow"><b>${o.qty}× ${esc(prodName(o.product_id))}</b><div class="mu">Bon ${o.bon} · ${esc(o.label || "")} · ${esc(staffName(o.waitress_id))}</div></div><span class="mu">${o.served_at ? hm(o.served_at) : ""}</span></div>`).join("")}</div></div>` : ""}`;
 }
@@ -2540,6 +2548,31 @@ A.dishPick = d => { Object.assign(V.f, { np_n: d.v, np_c: "Cuisine", np_u: "plat
 const DESK_MQ = window.matchMedia ? matchMedia("(min-width:900px)") : { matches: false };
 const desk = () => !!DESK_MQ.matches;
 try { DESK_MQ.addEventListener("change", () => { if (V.screen === "app") render(); }); } catch (e) {}
+/* Production de la cuisine (cuisinier) et coût matière (courses du marché / plats vendus) */
+function kProd() {
+  if (!S.day || !["cuisine", "pdg", "directeur"].includes(ROLE())) return "";
+  if (V.ks === undefined) { V.ks = null; B.rpc("gb_kitchen_stats", { p_days: 7 }).then(r => { V.ks = r || []; render(); }).catch(() => { V.ks = []; }); }
+  mkLoad();
+  const DT = dayT(), byId = new Map(DT.map(t => [t.id, t])), K = (S.kitchen || []).filter(o => byId.has(o.ticket_id)), out = K.filter(o => ["pret", "servi"].includes(o.status));
+  const price = o => { const it = (byId.get(o.ticket_id).items || []).find(i => i.product_id === o.product_id); return it ? it.unit_price : ((S.products.find(p => p.id === o.product_id) || {}).price || 0); };
+  const P = {}; out.forEach(o => { const x = P[o.product_id] = P[o.product_id] || { n: prodName(o.product_id), q: 0, m: 0 }; x.q += o.qty; x.m += o.qty * price(o); });
+  const rows = Object.values(P).sort((a, b) => b.q - a.q), q = sum(rows, x => x.q), m = sum(rows, x => x.m);
+  const wip = sum(K.filter(o => ["attente", "prep"].includes(o.status)), o => o.qty), lost = sum(K.filter(o => ["perte", "personnel"].includes(o.status)), o => o.qty);
+  const T = platStats().tot, sold = T.paidM + T.cashedM, crs = V.mk ? sum(V.mk.items || [], x => x.amount) : 0, ratio = sold ? Math.round(crs / sold * 100) : null;
+  const rc = r => r == null ? "" : r <= 35 ? "ok" : r <= 45 ? "warn" : "bad";
+  const wk = (V.ks || []).filter(d => d.sortis || d.vendus || d.courses), wS = sum(wk, d => d.montant), wC = sum(wk, d => d.courses), wR = wS ? Math.round(wC / wS * 100) : null;
+  return `<div class="card stack" style="margin-top:14px"><div class="between" style="flex-wrap:wrap;gap:4px 10px"><h3>${ROLE() === "cuisine" ? "Ma production du jour" : "Production de la cuisine"}</h3><b class="num">${q} plat${q > 1 ? "s" : ""} · ${F(m)}</b></div>
+    ${rows.length ? `<div class="scroll"><table class="ptab"><tr><th>Plat</th><th>Sortis</th><th>Valeur (FCFA)</th></tr>${rows.map(x => `<tr><td>${esc(x.n)}</td><td class="num">${x.q}</td><td class="num">${Fs(x.m)}</td></tr>`).join("")}</table></div>` : `<div class="empty">Aucun plat sorti de la cuisine aujourd’hui.</div>`}
+    <div class="chips">${wip ? `<span class="pill warn">${wip} en cours</span>` : ""}${lost ? `<span class="pill bad">${lost} perdu(s) ou repas du personnel</span>` : ""}</div>
+    <p class="mu" style="margin:0">Plats prêts ou servis, au prix du ticket.</p></div>
+  <div class="card stack"><div class="between"><h3>Coût matière</h3>${ratio != null ? `<span class="pill ${rc(ratio)}">${ratio} %</span>` : ""}</div>
+    <div class="list">${[["Courses du marché aujourd’hui", F(crs)], ["Plats vendus (payés) aujourd’hui", F(sold)]].map(([l, v]) => `<div class="between" style="padding:6px 0"><span class="mu">${l}</span><b class="num">${v}</b></div>`).join("")}</div>
+    ${wk.length ? `<div class="scroll"><table class="ptab"><tr><th>Jour</th><th>Plats</th><th>Ventes</th><th>Courses</th><th>Coût</th></tr>${wk.map(d => { const r = d.montant ? Math.round(d.courses / d.montant * 100) : null;
+      return `<tr><td>${dfr(d.jour, { weekday: "short", day: "numeric" })}</td><td class="num">${d.vendus}</td><td class="num">${Fs(d.montant)}</td><td class="num">${Fs(d.courses)}</td><td class="num ${r == null ? "" : r > 45 ? "bad-t" : r > 35 ? "warn-t" : "ok-t"}">${r == null ? "—" : r + " %"}</td></tr>`; }).join("")}
+      <tr class="tot"><td><b>7 jours</b></td><td class="num"><b>${sum(wk, d => d.vendus)}</b></td><td class="num"><b>${Fs(wS)}</b></td><td class="num"><b>${Fs(wC)}</b></td><td class="num"><b>${wR == null ? "—" : wR + " %"}</b></td></tr></table></div>` : ""}
+    <p class="mu" style="margin:0">Part des ventes de plats dépensée au marché. Repère : 30 à 35 % est sain ; au-delà de 45 %, cherchez le gaspillage ou des plats sortis sans passer par la caisse. Les achats se font souvent la veille : regardez la semaine plutôt qu’un seul jour.</p></div>`;
+}
+
 /* Plats du jour (caissière) : l'argent des plats, pas la progression en cuisine */
 function platStats() {
   const DT = dayT(), byId = new Map(DT.map(t => [t.id, t])), P = id => S.products.find(p => p.id === id);

@@ -214,6 +214,26 @@ async function tousLesOnglets(page) {
     ok(await page.$('[data-a="repPdf"][data-wa]'), "bouton WhatsApp du rapport absent chez le directeur");
   }, { ctx: { viewport: { width: 360, height: 780 }, acceptDownloads: true } });
 
+  await test("Cuisinier : production du jour et coût matière", async page => {
+    await login(page, "Brigitte");
+    const id = await page.evaluate(() => crypto.randomUUID()), plat = await page.evaluate(() => S.products.find(p => p.name === "Ndolé"));
+    await rpc(page, "gb_ticket_create", { p_id: id, p_client: "Table prod" }); await rpc(page, "gb_ticket_set_qty", { p_ticket: id, p_product: plat.id, p_qty: 2 });
+    await rpc(page, "gb_ticket_send", { p_ticket: id });
+    await login(page, "Paul"); const bons = await page.evaluate(id => S.kitchen.filter(o => o.ticket_id === id).map(o => o.id), id);
+    for (const b of bons) { await rpc(page, "gb_kitchen_step", { p_id: b, p_status: "prep" }); await rpc(page, "gb_kitchen_step", { p_id: b, p_status: "pret" }); }
+    await rpc(page, "gb_market_add", { p_items: [{ a: "Feuilles de ndolé", m: 2100 }], p_method: "cash" });
+    await page.evaluate(() => A.go({ v: "kitchen" })); await page.waitForFunction(() => V.ks && V.mk && V.mk.items, null, { timeout: 4000 }); await page.waitForTimeout(100);
+    const t = await page.textContent("#app");
+    ok(/Ma production du jour/.test(t) && /Ndolé/.test(t), "carte de production absente");
+    ok(await page.evaluate(n => (document.body.textContent.match(/(\d+) plats? ·/) || [])[1] >= 2, plat.price), "plats sortis mal comptés");
+    ok(/Coût matière/.test(t), "coût matière absent");
+    await login(page, "Brigitte"); const tot = await page.evaluate(id => S.tickets.find(t => t.id === id).total, id);
+    await rpc(page, "gb_ticket_cash", { p_ticket: id, p_method: "cash", p_received: tot });
+    await login(page, "Hervé"); await page.evaluate(() => A.go({ v: "kitchen" })); await page.waitForFunction(() => V.ks && V.mk && V.mk.items, null, { timeout: 4000 }); await page.waitForTimeout(100);
+    ok(/Production de la cuisine/.test(await page.textContent("#app")) && await page.$(".card .pill.ok, .card .pill.warn, .card .pill.bad"), "coût matière (%) absent chez le directeur");
+    const st = await page.evaluate(() => V.ks[0]); ok(st.courses >= 2100 && st.montant >= 2 * 3500 && st.sortis >= 2, "statistiques du jour fausses : " + JSON.stringify(st));
+  });
+
   await test("Abonnement : mode test caché (petit montant, 1 mois)", async page => {
     await login(page, "Marcel");
     await page.evaluate(() => { S.bar.sub_test_price = 200; V.f.ab_p = "gold"; A.go({ v: "abo" }); }); await page.waitForTimeout(150);

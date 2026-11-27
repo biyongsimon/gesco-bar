@@ -235,3 +235,7 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Bon de commande : tableau produits / quantités / casiers / case « Livré », prix habituels en option (indicatifs), cadres de signature et cachet.
 - Le directeur a maintenant la rubrique Journée (rapports de clôture) ; la notification de clôture ouvre directement le rapport (`?tab=day&rapport=<id>`).
 - Réglages → « Logo et en-tête des documents » (PDG) : logo réduit en PNG 320 px dans le stockage `produits`, téléphone des documents (migration 030 : `bars.logo_path`, `gb_bar_logo`, `opts.phone`).
+
+## v4.23 — Production de la cuisine et coût matière
+- Écran Cuisine : « Ma production du jour » (cuisinier) / « Production de la cuisine » (directeur, PDG) : plats sortis (prêts ou servis) par plat, valeur au prix du ticket, plats en cours, pertes.
+- Carte « Coût matière » : courses du marché ÷ plats vendus (payés), du jour et des 7 derniers jours (`gb_kitchen_stats`, migration 031), repères 35 % / 45 %.
