@@ -115,6 +115,55 @@ async function tousLesOnglets(page) {
     ok((await rpc(page, "gb_kitchen_step", { p_id: bon, p_status: "servi" })).ok, "la serveuse ne peut pas confirmer le retrait");
   });
 
+  await test("Caissière : rubrique Plats (sans écran cuisine) et courses payées avec le tiroir", async page => {
+    await login(page, "Brigitte");
+    const id = await page.evaluate(() => crypto.randomUUID());
+    const plat = await page.evaluate(() => S.products.find(p => p.name === "Ndolé"));
+    await rpc(page, "gb_ticket_create", { p_id: id, p_client: "Table plats" }); await rpc(page, "gb_ticket_set_qty", { p_ticket: id, p_product: plat.id, p_qty: 2 });
+    ok((await rpc(page, "gb_ticket_send", { p_ticket: id })).ok, "envoi des plats");
+    await login(page, "Paul");
+    const rc = await rpc(page, "gb_market_add", { p_items: [{ a: "Tomates", m: 1500 }], p_method: "tiroir" }); ok(!rc.ok && /Seule la caisse/.test(rc.e), "le cuisinier a pu payer avec le tiroir");
+    await login(page, "Mireille");
+    const nav = await page.evaluate(() => navFor()); ok(nav.includes("plats") && !nav.includes("kitchen"), "menu de la caissière : " + nav.join(","));
+    ok(await page.evaluate(() => !KDS_OK()), "la caissière peut encore ouvrir l'écran mural");
+    await page.evaluate(() => A.go({ v: "plats" })); await page.waitForTimeout(150);
+    const t1 = await page.evaluate(() => document.querySelector("main, #app").textContent);
+    ok(/Ndolé/.test(t1) && /Reste à encaisser/.test(t1) && /Contrôle cuisine \/ caisse/.test(t1), "relevé des plats incomplet");
+    const st = await page.evaluate(() => platStats().tot); ok(st.sent >= 2 && st.sentM >= 2 * plat.price, "plats non payés mal comptés : " + JSON.stringify(st));
+    // Le client paie : les plats passent en « payés »
+    await login(page, "Brigitte"); const tot = await page.evaluate(id => S.tickets.find(t => t.id === id).total, id);
+    ok((await rpc(page, "gb_ticket_cash", { p_ticket: id, p_method: "cash", p_received: tot })).ok, "encaissement");
+    await login(page, "Mireille");
+    const st2 = await page.evaluate(() => platStats().tot); ok(st2.cashed + st2.paid >= 2 && st2.sent === st.sent - 2, "plats payés mal comptés : " + JSON.stringify(st2));
+    // Courses payées avec le tiroir : retirées des espèces attendues
+    await page.evaluate(() => A.go({ v: "day" })); await page.waitForFunction(() => V.mk && V.mk.items, null, { timeout: 4000 });
+    const lit = () => page.evaluate(() => { const r = [...document.querySelectorAll(".between")].find(e => /Espèces attendues en caisse/.test(e.textContent)); return +r.querySelector(".num").textContent.replace(/\D/g, ""); });
+    const avant = await lit();
+    ok(await page.$('.segs [data-v="tiroir"].on'), "le tiroir n'est pas proposé par défaut à la caissière");
+    await page.fill("#mk_a0", "Tomates"); await page.fill("#mk_m0", "1500"); await page.click('[data-a="mkSave"]');
+    await page.waitForFunction(() => V.mk && V.mk.tiroir_jour === 1500, null, { timeout: 4000 });
+    ok(await lit() === avant - 1500, `espèces attendues non diminuées (${avant} → ${await lit()})`);
+    ok(/Courses payées avec le tiroir/.test(await page.textContent("#app")), "ligne des courses absente du comptage");
+    const r = await rpc(page, "gb_day_close", { p_counted: avant - 1500, p_force: true }); ok(r.ok, "clôture : " + r.e);
+    ok(r.v.ecart === 0 && r.v.depenses_caisse === 1500 && r.v.plats.qte >= 2 && r.v.boissons === r.v.ventes - r.v.plats.montant, "rapport de clôture : " + JSON.stringify({ e: r.v.ecart, d: r.v.depenses_caisse, p: r.v.plats }));
+    await page.evaluate(s => { V.modal = { type: "summary", s }; render(); }, r.v); await page.waitForTimeout(100);
+    const rap = await page.evaluate(() => document.body.textContent);
+    ok(/Plats vendus/.test(rap) && /dont plats/.test(rap) && /Courses payées avec le tiroir/.test(rap), "le rapport n'affiche pas plats, boissons et courses");
+  });
+
+  await test("Saisie d'un montant : le curseur reste à la fin malgré l'actualisation", async page => {
+    await login(page, "Brigitte");
+    const id = await page.evaluate(() => crypto.randomUUID());
+    const p = await page.evaluate(() => S.products.find(p => p.category !== "Cuisine" && p.active && !p.parent_id).id);
+    await rpc(page, "gb_ticket_create", { p_id: id, p_client: "Table curseur" }); await rpc(page, "gb_ticket_set_qty", { p_ticket: id, p_product: p, p_qty: 2 });
+    ok((await rpc(page, "gb_ticket_send", { p_ticket: id })).ok, "envoi");
+    await page.evaluate(id => { V.open[id] = true; render(); }, id); await page.waitForTimeout(150);
+    const sel = `[id="rcv_${id}"]`; await page.click(sel);
+    for (const ch of "15000") { await page.keyboard.type(ch); await page.waitForTimeout(320); }   // une actualisation entre chaque chiffre
+    const v = await page.inputValue(sel); ok(v === "15000", `montant saisi « ${v} » au lieu de « 15000 »`);
+    await page.keyboard.type("a"); await page.waitForTimeout(320); ok(await page.inputValue(sel) === "15000", "une lettre a été acceptée dans le montant");
+  });
+
   await test("Abonnement : mode test caché (petit montant, 1 mois)", async page => {
     await login(page, "Marcel");
     await page.evaluate(() => { S.bar.sub_test_price = 200; V.f.ab_p = "gold"; A.go({ v: "abo" }); }); await page.waitForTimeout(150);

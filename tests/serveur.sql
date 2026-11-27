@@ -78,6 +78,21 @@ begin
   perform public.gb_kitchen_step(ko, 'servi');
   perform pg_temp.ok((select status from public.kitchen_orders where id = ko) = 'servi', 'la serveuse de la table confirme le retrait');
 
+  -- Plats payés et courses payées avec le tiroir : la clôture retire les courses des espèces attendues
+  perform public.gb_ticket_cash(t2, 'cash', 3000);
+  perform pg_temp.as_user(u_cai);
+  perform public.gb_remit(s_srv, 3000);
+  perform pg_temp.as_user(u_cui);
+  e := pg_temp.err('select public.gb_market_add(''[{"a":"Tomates","m":1500}]''::jsonb, ''tiroir'')');
+  perform pg_temp.ok(e like 'Seule la caisse%', 'le cuisinier ne peut pas prendre l''argent du tiroir');
+  perform pg_temp.as_user(u_cai);
+  perform public.gb_market_add('[{"a":"Tomates","q":"1 seau","m":1500}]'::jsonb, 'tiroir');
+  perform pg_temp.ok((public.gb_market_list()->>'tiroir_jour')::int = 1500, 'les courses payées avec le tiroir sont comptées (1 500 FCFA)');
+  r := public.gb_day_close(2700, false);
+  perform pg_temp.ok((r->>'attendu')::int = 2700 and (r->>'ecart')::int = 0, 'espèces attendues = versements 4 200 − courses 1 500 = 2 700 FCFA');
+  perform pg_temp.ok((r->'plats'->>'montant')::int = 3000 and (r->'plats'->>'qte')::int = 1 and (r->>'boissons')::int = 1200 and (r->>'depenses_caisse')::int = 1500,
+    'le rapport de clôture sépare plats (3 000) et boissons (1 200)');
+
   -- Abonnement : prix de test caché (1 mois, petit montant) puis effacé après paiement
   update public.bars set sub_test_price = 200 where id = bar;
   r := public.gb_admin_sub_push_start(u_pdg, 'gold', 12, 'mtn', '670000000');

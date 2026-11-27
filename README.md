@@ -214,3 +214,11 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - 36 photos d'assiettes (plats camerounais, plats de restaurant, accompagnements) générées pour GesCo, dans `app/public/produits/plat-*.webp` (384 px, WebP).
 - Reconnues d'après le nom du plat (comme les bouteilles), affichées dans la prise de commande, l'écran Cuisine et le catalogue de plats (vignettes) ; un ingrédient ne prend jamais la photo d'un plat.
 - Démo : 6 plats de plus (Ndolé, Eru, Plantain mûr frit, Spaghetti bolognaise, Steak frites, Burger maison) pour tester plats chauds et bières.
+
+## v4.20 — La caissière suit l'argent des plats, courses payées avec le tiroir
+- La caissière n'a plus l'écran Cuisine ni l'écran mural (le directeur et le PDG les gardent) ; ses tickets n'affichent plus l'avancement des plats.
+- Nouvelle rubrique « Plats » (caissière, module Cuisine) : relevé du jour par plat (prix du ticket, quantité, montant), plats payés / reste à encaisser / total, contrôle cuisine–caisse (plats sortis et pas encore payés, avec serveuse et table), pertes au coût de revient. Sur ordinateur : colonne « Plats du jour ».
+- Courses du marché dans Journée pour la caissière, avec le paiement « Tiroir de la caisse » : retiré des espèces attendues à la relève et à la clôture (migration 028, `expenses.method = 'tiroir'`, `gb_private.tiroir_out`).
+- Rapport de clôture : ventes dont boissons / dont plats, tableau des plats vendus, courses payées avec le tiroir.
+- Correction : en saisissant un montant (billet reçu, espèces comptées, prime, retenue, QR), le curseur revenait au début à chaque actualisation (« 00051 » au lieu de « 15000 »). Champs numériques passés en texte à clavier numérique.
+- Correction : les tableaux des fenêtres (rapport de clôture « Par serveuse ») étaient écrasés à hauteur nulle sur téléphone.

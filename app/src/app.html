@@ -163,6 +163,7 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
 .mkrow input{min-width:0}
 .desk3{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1.1fr) minmax(0,.85fr);gap:16px;align-items:start}
 .kpanel .li{padding:8px 0}
+.ptab th:not(:first-child),.ptab td.num{text-align:right;white-space:nowrap}.ptab tr.tot td{border-top:2px solid var(--line)}
 .kbd-hint{display:none}
 kbd{font:600 11px/1 var(--body);padding:2px 5px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--surface)}
 .kboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px;align-items:start}
@@ -256,6 +257,7 @@ th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05
 .scrim{position:fixed;inset:0;background:rgba(5,12,9,.55);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
 @media (min-width:640px){.scrim{align-items:center}}
 .sheet{background:var(--surface);border-radius:16px;padding:18px;width:100%;max-width:440px;max-height:88vh;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.sheet>*{flex-shrink:0}
 .receipt{background:#fff;color:#111;border-radius:10px;padding:16px;font:14px/1.5 ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;border:1px dashed #999}
 .receipt hr{border:0;border-top:1px dashed #999;margin:8px 0}
 .receipt .c{text-align:center}
@@ -760,6 +762,9 @@ function DemoBackend() {
   const own = (c, t) => { if (!["caisse", "pdg"].includes(c.role) && t.waitress_id !== c.id) E("Ce ticket appartient à une autre serveuse."); };
   const counter = t => (db.staff.find(s => s.id === t.waitress_id) || {}).role === "caisse"; // vente comptoir de la caisse
   // Cuisine (démo) : mêmes règles que le serveur
+  // Espèces sorties du tiroir (courses payées par la caisse) depuis l'ouverture de la journée
+  const tiroirOut = since => { const od = since || (db.days.find(x => x.status === "open") || {}).opened_at; if (!od) return 0;
+    return (db.expenses || []).filter(e => e.method === "tiroir" && e.created_at >= od).reduce((x, e) => x + e.amount, 0); };
   const isDish = p => !!(db.bar.kitchen_on && p && (p.category === "Cuisine" || ["plat", "portion"].includes(p.unit)));
   const kTake = (t, pid, q, c) => { if (q <= 0) return; db.kitchen = db.kitchen || []; db.bar.next_bon = db.bar.next_bon || 1;
     db.kitchen.push({ id: uuid(), ticket_id: t.id, product_id: pid, waitress_id: t.waitress_id, label: t.client_label, ticket_no: t.number, bon: db.bar.next_bon++, qty: q, status: "attente", created_at: now(), started_at: null, ready_at: null, served_at: null });
@@ -927,25 +932,29 @@ function DemoBackend() {
       const hs = db.handovers.filter(h => h.day_id === d.id); if (hs.some(h => !h.confirmed_at)) E("Une relève attend déjà la confirmation de la caisse suivante.");
       const prev = hs[hs.length - 1], t0 = prev ? prev.created_at : d.opened_at, T = db.tickets.filter(t => t.day_id === d.id), at = t => t.cashed_at || t.paid_at || t.updated_at;
       const sold = T.filter(t => ["cashed", "paid"].includes(t.status) && at(t) >= t0), cashAll = db.remits.filter(r => r.day_id === d.id).reduce((x, r) => x + r.received, 0);
-      const chg = T.filter(t => t.change_status === "given").reduce((x, t) => x + (t.change_due || 0), 0), exp = cashAll - chg, by = {};
+      const chg = T.filter(t => t.change_status === "given").reduce((x, t) => x + (t.change_due || 0), 0), exp = cashAll - chg - tiroirOut(d.opened_at), by = {};
       sold.forEach(t => { const n = (db.staff.find(x => x.id === t.waitress_id) || {}).name || "?"; by[n] = by[n] || { nom: n, ventes: 0, tickets: 0 }; by[n].ventes += t.total; by[n].tickets++; });
       const sm = { ventes: sold.reduce((x, t) => x + t.total, 0), tickets: sold.length, mobile_money: sold.filter(t => t.status === "paid" && t.pay_method === "momo").reduce((x, t) => x + t.total, 0),
-        especes_versees: db.remits.filter(r => r.day_id === d.id && r.created_at >= t0).reduce((x, r) => x + r.received, 0), attendu: exp, compte: p_counted, ecart: p_counted - exp,
+        especes_versees: db.remits.filter(r => r.day_id === d.id && r.created_at >= t0).reduce((x, r) => x + r.received, 0), depenses_caisse: tiroirOut(t0), attendu: exp, compte: p_counted, ecart: p_counted - exp,
         ecart_service: (p_counted - exp) - (prev ? prev.diff : 0), debut: t0, fin: now(), serveuses: Object.values(by) };
       const h = { id: uuid(), day_id: d.id, from_staff: c.id, to_staff: null, period_start: t0, counted: p_counted, expected: exp, diff: p_counted - exp, summary: sm, note: (p_note || "").trim() || null, created_at: now(), confirmed_at: null };
       db.handovers.push(h); log(c, "releve_caisse", { ventes: sm.ventes, compte: p_counted, ecart_service: sm.ecart_service }); return { ...sm, id: h.id }; },
     gb_handover_confirm({ p_id }) { const c = ctx(); caisse(c); const h = (db.handovers || []).find(x => x.id === p_id && !x.confirmed_at) || E("Relève introuvable ou déjà confirmée.");
       if (h.from_staff === c.id && c.role === "caisse") E("C’est la caissière qui prend le service qui confirme la relève."); h.to_staff = c.id; h.confirmed_at = now(); log(c, "releve_confirmee", { fond_de_caisse: h.counted }); },
     gb_market_add({ p_items, p_method }) { const c = ctx(); if (!["cuisine", "caisse", "pdg", "directeur"].includes(c.role)) E("Action réservée à la cuisine, la caisse et la direction.");
+      const meth = ["cash", "momo", "tiroir"].includes(p_method) ? p_method : "cash";
+      if (meth === "tiroir" && !["caisse", "pdg", "directeur"].includes(c.role)) E("Seule la caisse peut payer avec l’argent du tiroir.");
+      if (meth === "tiroir" && !db.days.find(x => x.status === "open")) E("Aucune journée de service ouverte : le tiroir n’a pas encore d’espèces.");
       if (!(p_items || []).length) E("Ajoutez au moins un article."); let tot = 0;
       p_items.forEach(it => { const a = String(it.a || "").trim().slice(0, 60), m = Math.round(+it.m); if (!a) E("Indiquez l’article acheté."); if (!(m > 0)) E(`Indiquez le montant de « ${a} ».`);
-        db.expenses.push({ id: uuid(), day: bizDate(), category: "Courses du marché", label: a + (String(it.q || "").trim() ? " · " + String(it.q).trim().slice(0, 40) : ""), amount: m, method: p_method === "momo" ? "momo" : "cash", created_by: c.id, created_at: now() }); tot += m; });
+        db.expenses.push({ id: uuid(), day: bizDate(), category: "Courses du marché", label: a + (String(it.q || "").trim() ? " · " + String(it.q).trim().slice(0, 40) : ""), amount: m, method: meth, created_by: c.id, created_at: now() }); tot += m; });
       log(c, "courses_marche", { articles: p_items.length, total: tot }); return p_items.length; },
     gb_market_list({ p_day } = {}) { const c = ctx(); if (!["cuisine", "caisse", "pdg", "directeur"].includes(c.role)) E("Action réservée à la cuisine, la caisse et la direction.");
       const dd = p_day || bizDate(), M = db.expenses.filter(e => e.category === "Courses du marché"), wk = new Date(new Date(dd + "T12:00:00") - 7 * 864e5).toLocaleDateString("sv-SE");
-      return { day: dd, items: M.filter(e => e.day === dd).map(e => ({ id: e.id, label: e.label, amount: e.amount, method: e.method, by: (db.staff.find(x => x.id === e.created_by) || {}).name, at: e.created_at })), week: M.filter(e => e.day > wk && e.day <= dd).reduce((x, e) => x + e.amount, 0) }; },
+      return { day: dd, items: M.filter(e => e.day === dd).map(e => ({ id: e.id, label: e.label, amount: e.amount, method: e.method, by: (db.staff.find(x => x.id === e.created_by) || {}).name, at: e.created_at })), week: M.filter(e => e.day > wk && e.day <= dd).reduce((x, e) => x + e.amount, 0), tiroir_jour: tiroirOut() }; },
     gb_market_delete({ p_id }) { const c = ctx(), e = db.expenses.find(x => x.id === p_id && x.category === "Courses du marché") || E("Achat introuvable.");
       if (!(["caisse", "pdg"].includes(c.role) || e.created_by === c.id)) E("Seule la personne qui l’a saisi ou la caisse peut le retirer.");
+      if (e.method === "tiroir") { const od = db.days.find(x => x.status === "open"); if (!od || e.created_at < od.opened_at) E("Cet achat payé avec le tiroir appartient à une journée clôturée : il ne peut plus être retiré."); }
       db.expenses = db.expenses.filter(x => x !== e); log(c, "courses_retirees", { article: e.label, montant: e.amount }); },
     gb_kitchen_toggle({ p_on }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG active le module Cuisine."); db.bar.kitchen_on = !!p_on; log(c, "module_cuisine", { actif: !!p_on }); },
     gb_recipe_set({ p_dish, p_items }) { const c = ctx(); caisse(c); const d = prod(p_dish); db.recipes = (db.recipes || []).filter(r => r.dish_id !== p_dish);
@@ -1065,7 +1074,14 @@ function DemoBackend() {
           tickets: sold.filter(t => t.waitress_id === st.id).length, corrections: sum(ts.filter(t => t.waitress_id === st.id), t => t.corrections),
           annules: ts.filter(t => t.waitress_id === st.id && t.status === "cancelled").length, ecart_versements: sum(rem.filter(r => r.waitress_id === st.id), r => r.diff),
           bouteilles_en_main: sum(db.holdings.filter(h => h.waitress_id === st.id), h => Math.max(0, h.qty)) })) };
-      const exp = cashIn - changeOut;
+      const PL = {}; sold.forEach(t => t.items.forEach(i => { const p = db.products.find(x => x.id === i.product_id); if (!p || !(p.category === "Cuisine" || ["plat", "portion"].includes(p.unit))) return;
+        const k = p.name + "|" + i.unit_price, x = PL[k] = PL[k] || { plat: p.name, qte: 0, prix: i.unit_price, montant: 0 }; x.qte += i.qty; x.montant += i.qty * i.unit_price; }));
+      const pd = Object.values(PL).sort((a, b) => b.montant - a.montant), tir = tiroirOut(d.opened_at);
+      s.plats = { montant: sum(pd, x => x.montant), qte: sum(pd, x => x.qte), detail: pd }; s.boissons = s.ventes - s.plats.montant; s.depenses_caisse = tir;
+      s.cuisine_pertes = (db.kitchen || []).filter(o => ["perte", "personnel"].includes(o.status) && o.decided_at && o.decided_at >= d.opened_at).map(o => { const p = db.products.find(x => x.id === o.product_id) || {};
+        return { plat: p.name, qte: o.qty, issue: o.status, valeur: o.qty * (p.cost || 0), note: o.note }; });
+      s.services = (db.handovers || []).filter(h => h.day_id === d.id).map(h => ({ caisse: (db.staff.find(x => x.id === h.from_staff) || {}).name, relaye_par: (db.staff.find(x => x.id === h.to_staff) || {}).name, heure: h.created_at, ventes: h.summary.ventes, compte: h.counted, ecart_service: h.summary.ecart_service }));
+      const exp = cashIn - changeOut - tir;
       Object.assign(d, { status: "closed", closed_at: now(), closed_by: c.id, counted_cash: +p_counted, expected_cash: exp, summary: s });
       log(c, "journee_cloturee", { date: d.business_date, ventes: s.ventes, attendu: exp, compte: +p_counted, ecart: +p_counted - exp });
       return { ...s, attendu: exp, compte: +p_counted, ecart: +p_counted - exp, date: d.business_date };
@@ -1697,7 +1713,7 @@ A.logout = () => ask("Se déconnecter ?", V.outbox.length ? `${V.outbox.length} 
 A.logoutGo = () => logout();
 A.close = () => { V.modal = null; render(); };
 A.okModal = () => { const m = V.modal; V.modal = null; render(); if (m && A[m.a]) A[m.a](m.d || {}); };
-A.go = d => { V.menu = false; V.modal = null; V.f.gq = ""; if (V.tab !== d.v) { V.tab = d.v; V.secT = Date.now(); V.top = 1; } lazyLoad(); render(); if (V.top) { V.top = 0; try { scrollTo({ top: 0 }); } catch (e) {} } };
+A.go = d => { if (["day", "plats", "kitchen"].includes(d.v)) V.mk = undefined; V.menu = false; V.modal = null; V.f.gq = ""; if (V.tab !== d.v) { V.tab = d.v; V.secT = Date.now(); V.top = 1; } lazyLoad(); render(); if (V.top) { V.top = 0; try { scrollTo({ top: 0 }); } catch (e) {} } };
 A.tab = A.go;
 function lazyLoad() { const k = V.tab; if (k === "stock" && (!V.rea || !V.rea.at || Date.now() - V.rea.at > 60000)) A.reaLoad(); if ((k === "rev" || k === "home") && isPdg()) A.loadRev(); if (k === "acc") A.loadAcc(); if ((k === "pres" || k === "paie") && isMgr()) A.loadStats(); }
 A.wf = d => { V.wf = d.v; render(); };
@@ -1809,7 +1825,7 @@ A.check = () => run(async () => { const c = (V.f.vcode || "").trim().replace(/^G
 A.useV = d => run(async () => { await call("gb_voucher_use", { p_voucher: d.v }); toast("Bon honoré et marqué utilisé."); V.vres = null; V.f.vcode = ""; await refresh(); });
 A.loadRev = () => run(async () => { V.rev = await call("gb_revenue", {}); });
 A.close1 = d => run(async () => { const n = num("cnt"); if (n == null) throw bizErr("Saisissez les espèces comptées dans la caisse.");
-  try { const s = await call("gb_day_close", { p_counted: n, p_force: !!d.force }); V.f.cnt = ""; V.modal = { type: "summary", s }; await refresh(); }
+  try { const s = await call("gb_day_close", { p_counted: n, p_force: !!d.force }); V.f.cnt = ""; V.mk = undefined; V.modal = { type: "summary", s }; await refresh(); }
   catch (e) { if (e.pending) { ask("Clôturer quand même ?", e.message + " Les tickets non soldés resteront ouverts sur la journée suivante.", "Forcer la clôture", "close1", { force: 1 }, true); return; } throw e; } });
 A.showDay = d => { const x = S.days.find(y => y.id === d.id); if (x) { V.modal = { type: "summary", s: { ...x.summary, attendu: x.expected_cash, compte: x.counted_cash, ecart: (x.counted_cash || 0) - (x.expected_cash || 0), date: x.business_date } }; render(); } };
 A.resetDemo = () => ask("Réinitialiser la démo ?", "Toutes les données de démonstration de ce navigateur seront remplacées par l’exemple de départ.", "Réinitialiser", "resetDemoGo", {}, true);
@@ -2142,6 +2158,7 @@ const isDishP = p => !!(S && S.bar && S.bar.kitchen_on && p && (p.category === "
 const KST = { attente: "en attente", prep: "en préparation", pret: "PRÊT à récupérer", servi: "servi ✓" };
 const kHue = s => [...String(s || "?")].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
 function kStrip(t) {
+  if (ROLE() === "caisse") return "";   // la caissière suit l'argent des plats (rubrique Plats), pas leur avancement en cuisine
   const ks = (S.kitchen || []).filter(o => o.ticket_id === t.id && ["attente", "prep", "pret", "servi"].includes(o.status)); if (!ks.length) return "";
   return `<div class="kstrip">${ks.map(o => `<span class="kchip ${o.status}">${ico("kitchen")}<b>${o.qty}× ${esc(prodName(o.product_id))}</b> · bon ${o.bon} · ${KST[o.status]}</span>${o.status === "pret" && o.waitress_id === S.me.id ? `<button class="btn amber sm" data-a="kPick" data-id="${o.id}">Je l’ai récupéré</button>` : ""}`).join("")}</div>`;
 }
@@ -2160,7 +2177,7 @@ function kCard(o) {
     ${kept.length ? `<div class="kreuse"><span>♻ <b>${sum(kept, k => k.qty)} ${esc(p.name)}</b> gardé${sum(kept, k => k.qty) > 1 ? "s" : ""} (bon ${kept.map(k => k.bon).join(", ")}, depuis ${hm(kept[0].decided_at)})</span>${can ? `<button class="btn amber sm" data-a="kReuse" data-id="${o.id}" data-k="${kept[0].id}">Servir le plat gardé</button>` : ""}</div>` : ""}
     ${can ? `<div class="row">${acts}</div>` : `<div class="kview">${{ attente: "En attente de la cuisine", prep: "En préparation", pret: "Prêt : attend " + esc(staffName(o.waitress_id)) }[o.status] || ""}</div>`}</div>`;
 }
-const KDS_OK = () => ["cuisine", "caisse", "pdg", "directeur"].includes(ROLE());
+const KDS_OK = () => ["cuisine", "pdg", "directeur"].includes(ROLE());
 const kdsActive = () => !!(V.kds && V.screen === "app" && S && V.tab === "kitchen" && KDS_OK());
 function vKitchen() {
   if (!S.bar.kitchen_on) return `<div class="card stack"><h3>Module Cuisine</h3><p class="mu" style="margin:0">Le module Cuisine n’est pas activé. ${isPdg() ? "Activez-le dans Réglages." : "Le PDG l’active dans Réglages (formule Snack Gold et plus)."}</p></div>`;
@@ -2301,7 +2318,7 @@ A.hovOk = d => run(async () => { await B.rpc("gb_handover_confirm", { p_id: d.id
 function vHov(m) { const s = m.s || {};
   return `<h2>Bilan de votre service</h2><p class="mu" style="margin:0">${s.debut ? `De ${hm(s.debut)} à ${hm(s.fin)}` : ""}. La caissière suivante doit confirmer le fond de caisse.</p>
     <div class="list">${[["Ventes du service", F(s.ventes || 0)], ["Tickets", s.tickets || 0], ["Espèces versées par les serveuses", F(s.especes_versees || 0)], ["Mobile Money", F(s.mobile_money || 0)],
-      ["Espèces attendues dans le tiroir", F(s.attendu || 0)], ["Espèces comptées", F(s.compte || 0)], ["Écart de votre service", `<b class="${(s.ecart_service || 0) < 0 ? "bad-t" : ""}">${F(s.ecart_service || 0)}</b>`]]
+      ...(s.depenses_caisse ? [["Courses payées avec le tiroir", "− " + F(s.depenses_caisse)]] : []), ["Espèces attendues dans le tiroir", F(s.attendu || 0)], ["Espèces comptées", F(s.compte || 0)], ["Écart de votre service", `<b class="${(s.ecart_service || 0) < 0 ? "bad-t" : ""}">${F(s.ecart_service || 0)}</b>`]]
       .map(([l, v]) => `<div class="between" style="padding:6px 0"><span class="mu">${l}</span><span class="num">${v}</span></div>`).join("")}</div>
     ${(s.serveuses || []).length ? `<h3>Par serveuse</h3><div class="list">${s.serveuses.map(w => `<div class="between" style="padding:5px 0"><span>${esc(w.nom)}</span><span class="num">${F(w.ventes)} · ${w.tickets} ticket(s)</span></div>`).join("")}</div>` : ""}
     <button class="btn" data-a="close">Fermer</button>`; }
@@ -2335,26 +2352,30 @@ const mkSync = () => { V.mkl = (V.mkl || [{}]).map((l, i) => ({ a: V.f["mk_a" + 
   Object.keys(V.f).filter(k => /^mk_[aqm]\d+$/.test(k)).forEach(k => delete V.f[k]); return V.mkl; };
 function marketCard() {
   if (!["cuisine", "caisse", "pdg", "directeur"].includes(ROLE())) return "";
-  if (V.mk === undefined) { V.mk = null; B.rpc("gb_market_list", {}).then(r => { V.mk = r; render(); }).catch(() => { V.mk = { items: [], week: 0 }; }); }
-  const m = V.mk, lines = V.mkl || (V.mkl = [{}]);
+  mkLoad(); const m = V.mk, lines = V.mkl || (V.mkl = [{}]);
   return `<div class="card stack"><div class="between" style="flex-wrap:wrap;gap:6px"><h3>Courses du marché</h3>${m ? `<span class="mu">Aujourd’hui <b class="num">${F(sum(m.items, x => x.amount))}</b> · 7 jours ${F(m.week || 0)}</span>` : ""}</div>
-    <p class="mu" style="margin:0">Achats en gros pour la cuisine : tomate, oignons, piment, condiments, riz… Ils entrent dans les dépenses de la compta. Pas besoin de peser chaque plat.</p>
+    <p class="mu" style="margin:0">Achats en gros pour la cuisine : tomate, oignons, piment, condiments, riz… Ils entrent dans les dépenses de la compta. Pas besoin de peser chaque plat.${mkMeths().some(([k]) => k === "tiroir") ? " <b>Tiroir</b> : l’argent sort de la caisse, il est retiré des espèces attendues au comptage." : ""}</p>
     <div class="chips">${MK_QUICK.map(a => `<button class="chip" data-a="mkQuick" data-v="${a}">${a}</button>`).join("")}</div>
     ${lines.map((l, i) => `<div class="row mkrow"><input class="grow" id="mk_a${i}" data-k="mk_a${i}" value="${esc(V.f["mk_a" + i] ?? l.a ?? "")}" placeholder="Article" aria-label="Article">
       <input style="flex:1 1 120px" id="mk_q${i}" data-k="mk_q${i}" value="${esc(V.f["mk_q" + i] ?? l.q ?? "")}" placeholder="Quantité (2 seaux)" aria-label="Quantité">
       <input style="flex:1 1 110px" id="mk_m${i}" type="number" inputmode="numeric" data-k="mk_m${i}" value="${esc(V.f["mk_m" + i] ?? l.m ?? "")}" placeholder="Montant FCFA" aria-label="Montant en FCFA">
       ${lines.length > 1 ? `<button class="btn ghost sm" data-a="mkDel" data-i="${i}" aria-label="Retirer la ligne">×</button>` : ""}</div>`).join("")}
     <div class="row" style="align-items:center"><button class="btn ghost sm" data-a="mkAdd">+ Ligne</button><span class="grow"></span>
-      <div class="segs">${[["cash", "Espèces"], ["momo", "Mobile Money"]].map(([k, l]) => `<button class="${(V.f.mk_pm || "cash") === k ? "on" : ""}" data-a="setF" data-k2="mk_pm" data-v="${k}" aria-pressed="${(V.f.mk_pm || "cash") === k}">${l}</button>`).join("")}</div>
+      <div class="segs" role="group" aria-label="Payé avec">${mkMeths().map(([k, l]) => `<button class="${mkPm() === k ? "on" : ""}" data-a="setF" data-k2="mk_pm" data-v="${k}" aria-pressed="${mkPm() === k}">${l}</button>`).join("")}</div>
       <button class="btn" data-a="mkSave">Enregistrer les courses</button></div>
-    ${m && m.items.length ? `<div class="list">${m.items.map(x => `<div class="li"><div class="grow">${esc(x.label)}<div class="mu">${esc(x.by || "")} · ${hm(x.at)}${x.method === "momo" ? " · Mobile Money" : ""}</div></div><b class="num">${F(x.amount)}</b><button class="btn ghost sm" data-a="mkRm" data-id="${x.id}" aria-label="Retirer ${esc(x.label)}">×</button></div>`).join("")}</div>` : ""}</div>`;
+    ${m && m.items.length ? `<div class="list">${m.items.map(x => `<div class="li"><div class="grow">${esc(x.label)}<div class="mu">${esc(x.by || "")} · ${hm(x.at)}${x.method === "momo" ? " · Mobile Money" : x.method === "tiroir" ? " · tiroir de la caisse" : ""}</div></div><b class="num">${F(x.amount)}</b><button class="btn ghost sm" data-a="mkRm" data-id="${x.id}" aria-label="Retirer ${esc(x.label)}">×</button></div>`).join("")}</div>` : ""}</div>`;
 }
+const mkLoad = () => { if (V.mk === undefined) { V.mk = null; B.rpc("gb_market_list", {}).then(r => { V.mk = r; render(); }).catch(() => { V.mk = { items: [], week: 0, tiroir_jour: 0 }; }); } };
+const mkTiroir = () => { mkLoad(); return (V.mk && V.mk.tiroir_jour) || 0; };
+// Mode de paiement des courses : « tiroir » = argent pris dans la caisse pendant la journée ouverte (caisse et direction seulement)
+const mkMeths = () => [...(["caisse", "pdg", "directeur"].includes(ROLE()) && S.day ? [["tiroir", "Tiroir de la caisse"]] : []), ["cash", ROLE() === "caisse" ? "Autres espèces" : "Espèces"], ["momo", "Mobile Money"]];
+const mkPm = () => { const ok = mkMeths().map(([k]) => k), v = V.f.mk_pm; return ok.includes(v) ? v : ROLE() === "caisse" && ok.includes("tiroir") ? "tiroir" : "cash"; };
 A.mkAdd = () => { mkSync().push({}); render(); };
 A.mkDel = d => { mkSync().splice(+d.i, 1); render(); };
 A.mkQuick = d => { const l = mkSync(), e = l.find(x => !(x.a || "").trim()); if (e) e.a = d.v; else l.push({ a: d.v }); render(); };
 A.mkSave = () => run(async () => { const l = mkSync().filter(x => (x.a || "").trim() || x.m); if (!l.length) throw bizErr("Ajoutez au moins un article.");
   const items = l.map(x => ({ a: (x.a || "").trim(), q: (x.q || "").trim(), m: Math.round(+String(x.m || "").replace(/\s/g, "")) || 0 }));
-  const n = await B.rpc("gb_market_add", { p_items: items, p_method: V.f.mk_pm || "cash" }); V.mkl = [{}]; V.mk = await B.rpc("gb_market_list", {}); toast(`${n} achat(s) enregistré(s) dans les dépenses.`); });
+  const n = await B.rpc("gb_market_add", { p_items: items, p_method: mkPm() }); V.mkl = [{}]; V.mk = await B.rpc("gb_market_list", {}); toast(`${n} achat(s) enregistré(s) dans les dépenses.`); });
 A.mkRm = d => run(async () => { await B.rpc("gb_market_delete", { p_id: d.id }); V.mk = await B.rpc("gb_market_list", {}); toast("Achat retiré."); });
 
 /* Catalogue de plats */
@@ -2375,8 +2396,52 @@ A.dishPick = d => { Object.assign(V.f, { np_n: d.v, np_c: "Cuisine", np_u: "plat
 const DESK_MQ = window.matchMedia ? matchMedia("(min-width:900px)") : { matches: false };
 const desk = () => !!DESK_MQ.matches;
 try { DESK_MQ.addEventListener("change", () => { if (V.screen === "app") render(); }); } catch (e) {}
+/* Plats du jour (caissière) : l'argent des plats, pas la progression en cuisine */
+function platStats() {
+  const DT = dayT(), byId = new Map(DT.map(t => [t.id, t])), P = id => S.products.find(p => p.id === id);
+  const rows = new Map(), add = (k, f, q, v) => { k[f] += q; k[f + "M"] += v; };
+  const tot = { paid: 0, paidM: 0, cashed: 0, cashedM: 0, sent: 0, sentM: 0 };
+  DT.filter(t => ["sent", "cashed", "paid"].includes(t.status)).forEach(t => (t.items || []).forEach(i => {
+    const p = P(i.product_id); if (!isDishP(p) || !(i.qty > 0)) return;
+    const key = i.product_id + "|" + i.unit_price, r = rows.get(key) || { name: p.name, price: i.unit_price, paid: 0, paidM: 0, cashed: 0, cashedM: 0, sent: 0, sentM: 0 };
+    add(r, t.status, i.qty, i.qty * i.unit_price); add(tot, t.status, i.qty, i.qty * i.unit_price); rows.set(key, r); }));
+  const K = (S.kitchen || []).filter(o => byId.has(o.ticket_id)), out = K.filter(o => ["pret", "servi"].includes(o.status));
+  const unpaid = {}; out.forEach(o => { const t = byId.get(o.ticket_id); if (t.status !== "sent") return; const u = unpaid[t.id] = unpaid[t.id] || { t, items: [], m: 0, q: 0 }; u.q += o.qty;
+    const it = (t.items || []).find(i => i.product_id === o.product_id); u.items.push(o.qty + "× " + prodName(o.product_id)); u.m += o.qty * (it ? it.unit_price : ((P(o.product_id) || {}).price || 0)); });
+  const odd = out.filter(o => byId.get(o.ticket_id).status === "cancelled");
+  const lost = (S.kitchen || []).filter(o => ["perte", "personnel"].includes(o.status) && S.day && o.decided_at && new Date(o.decided_at) >= new Date(S.day.opened_at));
+  return { rows: [...rows.values()].sort((a, b) => (b.paidM + b.cashedM + b.sentM) - (a.paidM + a.cashedM + a.sentM)), tot, out: sum(out, o => o.qty),
+    unpaid: Object.values(unpaid), unpaidQ: sum(Object.values(unpaid), u => u.q), odd, oddQ: sum(odd, o => o.qty), lost, lostV: sum(lost, o => o.qty * ((P(o.product_id) || {}).cost || 0)), dec: (S.kitchen || []).filter(o => o.status === "a_decider").length };
+}
+function vPlats() {
+  if (!S.bar.kitchen_on) return `<div class="card"><p class="mu" style="margin:0">Le module Cuisine n’est pas activé.</p></div>`;
+  if (!S.day) return `<div class="card stack"><h3>Plats du jour</h3><p class="mu" style="margin:0">Aucune journée ouverte. Les plats commandés apparaîtront ici dès le premier ticket.</p></div>`;
+  const x = platStats(), T = x.tot, payQ = T.paid + T.cashed, payM = T.paidM + T.cashedM, n = q => `${q} plat${q > 1 ? "s" : ""}`;
+  return `<div class="kpis">${kpi("Plats payés", F(payM), "", `${n(payQ)}${T.cashed ? ` · ${F(T.cashedM)} pas encore en caisse` : ""}`)}${kpi("Reste à encaisser", F(T.sentM), T.sent ? "hl" : "", `${n(T.sent)} servis ou en cours, pas encore payés`)}${kpi("Total des plats commandés", F(payM + T.sentM), "", n(payQ + T.sent))}</div>
+    <div class="card"><h3 style="margin-bottom:2px">Relevé des plats du jour</h3><div class="mu" style="margin-bottom:8px">${dfr(S.day.business_date, { weekday: "long", day: "numeric", month: "long" })} · montants en FCFA</div>
+      ${x.rows.length ? `<div class="scroll"><table class="ptab"><tr><th>Plat</th><th>Prix</th><th>Qté</th><th>Montant</th></tr>${x.rows.map(r => { const q = r.paid + r.cashed + r.sent, m = r.paidM + r.cashedM + r.sentM;
+        return `<tr><td><b>${esc(r.name)}</b>${r.sent ? `<div class="mu">dont ${r.sent} à encaisser</div>` : ""}</td><td class="num">${Fs(r.price)}</td><td class="num">${q}</td><td class="num">${Fs(m)}</td></tr>`; }).join("")}
+        <tr class="tot"><td><b>Total</b></td><td></td><td class="num"><b>${payQ + T.sent}</b></td><td class="num"><b>${Fs(payM + T.sentM)}</b></td></tr></table></div>
+        <p class="mu" style="margin:8px 0 0">Prix enregistré sur chaque ticket. « Payés » = le client a payé (espèces versées ou à verser par la serveuse, Mobile Money).</p>` : `<div class="empty">Aucun plat commandé pour le moment.</div>`}</div>
+    <div class="card stack"><h3>Contrôle cuisine / caisse</h3>
+      <div class="list">${[["Plats sortis de la cuisine", x.out], ["Sortis et déjà payés", x.out - x.unpaidQ - x.oddQ], ["Sortis mais pas encore payés", x.unpaidQ]]
+        .map(([l, v]) => `<div class="between" style="padding:6px 0"><span class="mu">${l}</span><b class="num">${v}</b></div>`).join("")}</div>
+      ${x.unpaid.length ? `<div class="list">${x.unpaid.map(u => `<div class="li"><div class="grow"><b>${esc(staffName(u.t.waitress_id))}</b> · ${esc(u.t.client_label || "")}<div class="mu">${u.items.map(esc).join(" · ")}</div></div><b class="num">${F(u.m)}</b></div>`).join("")}</div>
+        <p class="mu" style="margin:0">Ces plats sont déjà chez le client : vérifiez que la serveuse les fait payer avant la fin du service.</p>` : x.out ? `<div class="note ok">Tous les plats sortis de la cuisine sont payés.</div>` : ""}
+      ${x.odd.length ? `<div class="note bad">${x.odd.length} plat(s) sorti(s) de la cuisine sur une commande annulée : ${x.odd.map(o => esc(o.qty + "× " + prodName(o.product_id) + " · " + staffName(o.waitress_id))).join(", ")}. Demandez des explications.</div>` : ""}
+      ${x.dec ? `<div class="note info">${x.dec} plat(s) annulé(s) après préparation : le cuisinier décide s’ils sont revendus, servis au personnel ou perdus.</div>` : ""}</div>
+    ${x.lost.length ? `<div class="card"><div class="between"><h3>Pertes et repas du personnel</h3><b class="num">${F(x.lostV)}</b></div><div class="list">${x.lost.map(o => `<div class="li"><div class="grow">${o.qty}× ${esc(prodName(o.product_id))} <span class="mu">· ${o.status === "perte" ? "perte" : "repas du personnel"}${o.note ? " · " + esc(o.note) : ""}</span></div><span class="num">${F(o.qty * ((S.products.find(p => p.id === o.product_id) || {}).cost || 0))}</span></div>`).join("")}</div>
+      <p class="mu" style="margin:6px 0 0">Valeur au coût de revient : ces plats ne rapportent rien à la caisse.</p></div>` : ""}`;
+}
+function platsPanel() {
+  if (!S.day) return ""; const x = platStats(), T = x.tot;
+  return `<div class="card stack kpanel"><div class="between"><h3>Plats du jour</h3><button class="btn ghost sm" data-a="go" data-v="plats">Ouvrir</button></div>
+    <div class="list">${[["Payés", `${T.paid + T.cashed} plat(s) · ${F(T.paidM + T.cashedM)}`], ["Reste à encaisser", `${T.sent} plat(s) · ${F(T.sentM)}`], ["Total commandé", `<b>${F(T.paidM + T.cashedM + T.sentM)}</b>`]]
+      .map(([l, v]) => `<div class="between" style="padding:5px 0"><span class="mu">${l}</span><span class="num">${v}</span></div>`).join("")}</div>
+    ${x.unpaid.length ? `<span class="pill warn">${x.unpaid.length} table(s) servie(s) pas encore payée(s)</span>` : ""}</div>`;
+}
 function kPanel() {
-  if (!S.bar.kitchen_on) return ""; const K2 = S.kitchen || [], ready = K2.filter(o => o.status === "pret"), late = K2.filter(o => ["attente", "prep"].includes(o.status) && Date.now() - new Date(o.created_at) > 9e5);
+  if (!S.bar.kitchen_on) return ""; if (ROLE() === "caisse") return platsPanel(); const K2 = S.kitchen || [], ready = K2.filter(o => o.status === "pret"), late = K2.filter(o => ["attente", "prep"].includes(o.status) && Date.now() - new Date(o.created_at) > 9e5);
   const dec = K2.filter(o => o.status === "a_decider").length, wait = K2.filter(o => ["attente", "prep"].includes(o.status)).length;
   return `<div class="card stack kpanel"><div class="between"><h3>Cuisine en direct</h3><button class="btn ghost sm" data-a="go" data-v="kitchen">Ouvrir</button></div>
     <div class="chips"><span class="pill">${wait} en cours</span><span class="pill ok">${ready.length} prêt(s)</span>${late.length ? `<span class="pill bad">${late.length} en retard</span>` : ""}${dec ? `<span class="pill warn">${dec} à décider</span>` : ""}</div>
@@ -2396,7 +2461,7 @@ function payBox(t) {
   const ch = r != null && r >= t.total ? r - t.total : null;
   return `<div class="sub stack"><h3>Encaisser</h3>
     <div class="bills">${bills.map(b => `<button data-a="bill" data-t="${t.id}" data-v="${b}" class="${r === b ? "on" : ""}">${b === t.total ? "Compte exact" : Fs(b)}</button>`).join("")}</div>
-    <label class="f" for="rcv_${t.id}">Billet reçu du client (FCFA)<input id="rcv_${t.id}" type="number" inputmode="numeric" data-k="rcv_${t.id}" value="${val("rcv_" + t.id)}" placeholder="${Fs(t.total)}"></label>
+    <label class="f" for="rcv_${t.id}">Billet reçu du client (FCFA)<input id="rcv_${t.id}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-k="rcv_${t.id}" value="${val("rcv_" + t.id)}" placeholder="${Fs(t.total)}"></label>
     ${ch ? `<div class="note warn between"><span>Reliquat à rendre au client</span><b class="num">${F(ch)}</b></div>` : r != null && r < t.total ? `<div class="note bad">Montant inférieur au total.</div>` : ""}
     <div class="row"><button class="btn amber grow" data-a="cash" data-t="${t.id}">Encaisser en espèces</button><button class="btn soft grow" data-a="momo" data-t="${t.id}">Mobile Money</button></div>
     ${ROLE() === "serveuse" ? `<button class="btn grow qrbtn" data-a="qrFor" data-t="${t.id}">${ico("qr")} QR code ou numéro du client</button>` : ""}</div>`;
@@ -2506,7 +2571,8 @@ const SEC = {
   moi: ["Mon espace", "user", "Pointage, permissions et fiches de paie"],
   qr: ["Paiement QR", "qr", "QR code marchand et paiement par numéro du client"],
   abo: ["Abonnement", "star", "Votre formule GesCo Bar et son paiement"],
-  kitchen: ["Cuisine", "kitchen", "Plats à préparer, en préparation et prêts à servir"]
+  kitchen: ["Cuisine", "kitchen", "Plats à préparer, en préparation et prêts à servir"],
+  plats: ["Plats", "kitchen", "Plats commandés et payés aujourd’hui"]
 };
 const NAV = {
   serveuse: ["service", "qr", "planning", "moi"],
@@ -2519,7 +2585,8 @@ function barBlock() { if (!S || !S.bar) return null; const b = S.bar; if (b.susp
   if (b.plan && b.plan !== "beta" && b.plan_until) { const lim = new Date(b.plan_until + "T23:59:59"); lim.setDate(lim.getDate() + 3);
     if (lim < Date.now() && !(b.plan_trial_until && new Date(b.plan_trial_until) > Date.now())) return "expire"; } return null; }
 const navFor = () => { if (barBlock() === "expire" && isMgr()) return ["abo"]; const n = NAV[ROLE()] || NAV.serveuse;
-  return S && S.bar && S.bar.kitchen_on && ["caisse", "directeur", "pdg"].includes(ROLE()) ? [n[0], "kitchen", ...n.slice(1)] : n; };
+  if (!(S && S.bar && S.bar.kitchen_on)) return n;
+  return ROLE() === "caisse" ? [n[0], "plats", ...n.slice(1)] : ["directeur", "pdg"].includes(ROLE()) ? [n[0], "kitchen", ...n.slice(1)] : n; };
 /* ═══════════════ Avis sur le logiciel ═══════════════ */
 const AV_T = [["simple", "Facile à utiliser"], ["rapide", "Fait gagner du temps"], ["fiable", "Caisse plus fiable"], ["utile", "Très utile au bar"], ["manque", "Il manque une fonction"], ["bug", "J’ai eu un bug"], ["lent", "C’est lent"], ["prix", "Le prix"], ["autre", "Autre"]];
 const AV_L = ["", "Très déçu", "Pas satisfait", "Correct", "Satisfait", "Excellent !"];
@@ -2625,7 +2692,7 @@ function lockView(k) {
     <div class="row" style="justify-content:center"><button class="btn soft" data-a="help">${ico("help")} Aide</button>${themeBtn()}<button class="btn bad" data-a="logout">${ico("out")} Se déconnecter</button></div></div>`;
 }
 const norm = x => String(x ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-const METH = { cash: "espèces", momo: "Mobile Money", banque: "banque" };
+const METH = { cash: "espèces", momo: "Mobile Money", banque: "banque", tiroir: "espèces du tiroir de la caisse" };
 
 /* Dates, planning, présences */
 const today = () => new Date(Date.now() - 6 * 3600e3).toLocaleDateString("sv-SE");
@@ -2725,7 +2792,7 @@ function vApp() {
   const VIEW = {
     service: () => wService(), direct: () => (ROLE() === "caisse" ? shiftBanner() : "") + hovBanner() + headLine() + cOps(), sup: () => headLine() + dSup(), home: pHome,
     stock: () => cStock(), vouch: () => cVouch(S.vouchers.filter(v => v.status === "active")), sales: () => cSales(dayT()),
-    rev: cRev, acc: cAcc, paie: pPaie, qr: vQr, abo: vAbo, pres: mPres, planning: vPlanning, team: cTeam, day: () => cDay(dayT()), log: cLog, settings: cSettings, moi: vMoi, kitchen: () => vKitchen() + (S.bar.kitchen_on && !V.kds ? marketCard() : "") };
+    rev: cRev, acc: cAcc, paie: pPaie, qr: vQr, abo: vAbo, pres: mPres, planning: vPlanning, team: cTeam, day: () => cDay(dayT()), log: cLog, settings: cSettings, moi: vMoi, kitchen: () => vKitchen() + (S.bar.kitchen_on && !V.kds ? marketCard() : ""), plats: vPlats };
   const ask = "Notification" in window && Notification.permission === "default" && !LS.get("gesco-ntf-ask", 0) ? `<div class="note info between" style="flex-wrap:wrap;margin-bottom:12px"><span>${ico("alert")} Activez les notifications pour être prévenu(e) même quand le téléphone est en veille.</span><span class="row"><button class="btn sm" data-a="notifOn">Activer</button><button class="btn ghost sm" data-a="notifLater">Plus tard</button></span></div>` : "";
   return header(b) + `<main class="sec" style="--el:${elapsed(V.secT)}ms"><div class="ptitle"><h1>${l}</h1><p class="mu">${d}</p></div>${ask}${VIEW[V.tab]()}</main>`
     + bnav(nav, b) + (V.menu ? drawer(nav, b) : "");
@@ -3077,8 +3144,8 @@ function pPaie() {
         ${p ? `<div class="list">${kv("Salaire de base", F(p.base))}${kv("Prime", "+ " + F(p.bonus))}${kv("Retenue", "− " + F(p.deduction))}${kv("Net payé", `<b>${F(p.net)}</b>`)}${kv("Payé le", `${new Date(p.paid_at).toLocaleDateString("fr-FR")} · ${METH[p.method]}`)}</div>
           <div class="row"><button class="btn soft sm grow" data-a="slip" data-id="${p.id}">Fiche de paie</button><button class="btn bad sm" data-a="payCancel" data-id="${p.id}">Annuler le paiement</button></div>`
         : `<div class="row" style="align-items:flex-end"><label class="f grow" for="sal_${x.id}">Salaire de base mensuel (FCFA)<input id="sal_${x.id}" type="number" inputmode="numeric" data-k="sal_${x.id}" value="${esc(V.f["sal_" + x.id] ?? (base || ""))}" placeholder="Ex. 60000"></label><button class="btn soft" data-a="salSet" data-s="${x.id}">Enregistrer</button></div>
-          ${base && x.active ? `<div class="row"><label class="f grow" for="pb_${x.id}">Prime<input id="pb_${x.id}" type="number" inputmode="numeric" data-k="pb_${x.id}" value="${val("pb_" + x.id)}" placeholder="0"></label>
-            <label class="f grow" for="pd_${x.id}">Retenue<input id="pd_${x.id}" type="number" inputmode="numeric" data-k="pd_${x.id}" value="${val("pd_" + x.id)}" placeholder="0"></label>
+          ${base && x.active ? `<div class="row"><label class="f grow" for="pb_${x.id}">Prime<input id="pb_${x.id}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-k="pb_${x.id}" value="${val("pb_" + x.id)}" placeholder="0"></label>
+            <label class="f grow" for="pd_${x.id}">Retenue<input id="pd_${x.id}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-k="pd_${x.id}" value="${val("pd_" + x.id)}" placeholder="0"></label>
             <label class="f grow" for="pm_${x.id}">Payé par<select id="pm_${x.id}" data-k="pm_${x.id}">${Object.entries(METH).map(([k, l]) => `<option value="${k}" ${(V.f["pm_" + x.id] || "cash") === k ? "selected" : ""}>${l[0].toUpperCase() + l.slice(1)}</option>`).join("")}</select></label></div>
             ${sug ? `<div class="note info between" style="flex-wrap:wrap"><span>Retenue suggérée : ${r.absences} absence(s) × ${F(daily)} (salaire ÷ 26 jours)</span><button class="btn soft sm" data-a="setF" data-k2="pd_${x.id}" data-v="${sug}">Appliquer ${F(sug)}</button></div>` : ""}
             <div class="between"><span class="mu">Net à payer</span><b class="num" style="font:800 22px var(--display)">${F(net)}</b></div>
@@ -3267,7 +3334,7 @@ function vQr() {
   return `<div class="stack">${V.qrPaid ? qrCelebration() : ""}
     <div class="card stack"><h3>Quel ticket encaisser ?</h3><div class="chips">${open.map(x => `<button class="chip pick ${V.qrT === x.id ? "on" : ""}" data-a="qrPick" data-t="${x.id}"><b>${esc(x.client_label)}</b> ${F(x.total)}</button>`).join("")}
       <button class="chip pick ${V.qrT === "libre" ? "on" : ""}" data-a="qrPick" data-t="libre">Montant libre</button></div>
-      ${V.qrT === "libre" ? `<label class="f" for="qr_amt">Montant à payer (FCFA)<input id="qr_amt" type="number" inputmode="numeric" data-k="qr_amt" value="${val("qr_amt")}" placeholder="Ex. 3500"></label>` : ""}
+      ${V.qrT === "libre" ? `<label class="f" for="qr_amt">Montant à payer (FCFA)<input id="qr_amt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-k="qr_amt" value="${val("qr_amt")}" placeholder="Ex. 3500"></label>` : ""}
       ${!open.length ? `<p class="mu" style="margin:0">Aucun ticket envoyé à la caisse en attente de paiement.</p>` : ""}</div>
     <div class="card stack qrcard">${auto ? "" : `<div class="segs" role="group" aria-label="Opérateur">${ops.map(k => `<button class="${V.qrOp === k ? "on " + (k === "orange" ? "warn" : "sky") : ""}" data-a="qrOp" data-v="${k}">${OPS[k][0]}</button>`).join("")}</div>`}
       ${auto ? qrBlock : ussd ? `<div class="qwrap">${qrFancy("tel:" + ussd.replace(/#/g, "%23"))}${t ? `<i class="qring" aria-hidden="true"></i>` : ""}</div><div class="qrsum"><span class="mu">${t ? esc(t.client_label) + " · " : ""}${OPS[V.qrOp][0]}</span><b class="num">${F(amount)}</b><code>${esc(ussd)}</code></div>
@@ -3537,17 +3604,17 @@ A.slip = d => { V.modal = { type: "slip", id: d.id }; render(); };
 function slipText(p, x) { return `${S.bar.legal_name || S.bar.name}\nFICHE DE PAIE · ${monthName(p.month)}\nEmployé : ${x.name} (${ROLES[x.role] || ""})\nSalaire de base : ${F(p.base)}\nPrime : ${F(p.bonus)}\nRetenue : ${F(p.deduction)}\nNET PAYÉ : ${F(p.net)}\nPayé le ${new Date(p.paid_at).toLocaleDateString("fr-FR")} par ${METH[p.method]}`; }
 
 function cDay(DT) {
-  const d = S.day, cashIn = sum(S.remits, r => r.received), out = sum(DT.filter(t => t.change_status === "given"), t => t.change_due), exp = cashIn - out, cnt = num("cnt");
+  const d = S.day, cashIn = sum(S.remits, r => r.received), out = sum(DT.filter(t => t.change_status === "given"), t => t.change_due), tir = d ? mkTiroir() : 0, exp = cashIn - out - tir, cnt = num("cnt");
   const pending = DT.filter(t => ["draft", "sent", "cashed"].includes(t.status)).length;
   return `<div class="stack"><div class="card stack"><div class="between"><h3>Journée de service</h3>${d ? '<span class="pill ok">Ouverte</span>' : '<span class="pill">Aucune</span>'}</div>
     ${d ? `<div><b style="font-size:18px">${dfr(d.business_date, { weekday: "long", day: "numeric", month: "long" })}</b><div class="mu">Ouverte à ${hm(d.opened_at)}. Une vente après minuit compte sur cette journée jusqu’à 6 h.</div></div>
-      <div class="list">${[["Espèces versées par les serveuses", F(cashIn)], ["Monnaie rendue aux clients", "− " + F(out)], ["Espèces attendues en caisse", `<b>${F(exp)}</b>`],
+      <div class="list">${[["Espèces versées par les serveuses", F(cashIn)], ["Monnaie rendue aux clients", "− " + F(out)], ...(tir ? [["Courses payées avec le tiroir", "− " + F(tir)]] : []), ["Espèces attendues en caisse", `<b>${F(exp)}</b>`],
         ["Mobile Money confirmé", F(sum(DT.filter(t => t.status === "paid" && t.pay_method === "momo"), t => t.total))], ["Tickets non soldés", pending ? `<span class="warn-t">${pending}</span>` : "0"]].map(([l, v]) => `<div class="between" style="padding:7px 0"><span class="mu">${l}</span><span class="num">${v}</span></div>`).join("")}</div>
-      ${ROLE() !== "caisse" ? `<div class="note info">La caissière clôture la journée à la fin du service. Le rapport arrive ici automatiquement, avec une notification.</div>` : `<label class="f" for="cnt">Espèces comptées dans la caisse (FCFA)<input id="cnt" type="number" inputmode="numeric" data-k="cnt" value="${val("cnt")}" placeholder="${Fs(exp)}"></label>
+      ${ROLE() !== "caisse" ? `<div class="note info">La caissière clôture la journée à la fin du service. Le rapport arrive ici automatiquement, avec une notification.</div>` : `<label class="f" for="cnt">Espèces comptées dans la caisse (FCFA)<input id="cnt" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-k="cnt" value="${val("cnt")}" placeholder="${Fs(exp)}"></label>
       ${cnt != null ? `<div class="note ${cnt - exp === 0 ? "ok" : "bad"} between"><span>Écart de caisse</span><b class="num">${F(cnt - exp)}</b></div>` : ""}
       <button class="btn amber" data-a="close1">Clôturer la journée</button>`}`
       : `<p class="mu" style="margin:0">La journée s’ouvre automatiquement au premier ticket.</p>`}</div>
-    ${d ? relCard(exp) : ""}<div class="card"><h3>Journées clôturées</h3><div class="list">${S.days.map(x => { const e = (x.counted_cash || 0) - (x.expected_cash || 0);
+    ${d && S.bar.kitchen_on && ROLE() === "caisse" ? marketCard() : ""}${d ? relCard(exp) : ""}<div class="card"><h3>Journées clôturées</h3><div class="list">${S.days.map(x => { const e = (x.counted_cash || 0) - (x.expected_cash || 0);
       return `<div class="li"><div class="grow"><b>${dfr(x.business_date, { weekday: "long", day: "numeric", month: "long" })}</b><div class="mu">Clôturée par ${esc(staffName(x.closed_by))} · ventes ${F(x.summary && x.summary.ventes)} · écart <span class="${e < 0 ? "bad-t" : e > 0 ? "ok-t" : ""}">${F(e)}</span></div></div><button class="btn soft sm" data-a="showDay" data-id="${x.id}">Rapport</button></div>`; }).join("") || '<div class="empty">Aucune journée clôturée pour le moment.</div>'}</div></div></div>`;
 }
 const ACT = { ticket_supprime: "Ticket supprimé", ticket_modifie: "Ticket modifié après envoi", annulation_demandee: "Annulation demandée", annulation_refusee: "Annulation refusée", ticket_rouvert: "Ticket rouvert",
@@ -3611,7 +3678,7 @@ function cAcc() {
       <label class="f" style="flex:1 1 130px" for="ex_day">Date<input id="ex_day" type="date" data-k="ex_day" value="${esc(V.f.ex_day || new Date(Date.now() - 6 * 3600e3).toLocaleDateString("sv-SE"))}"></label>
       <label class="f" style="flex:1 1 130px" for="ex_m">Payé par<select id="ex_m" data-k="ex_m">${[["cash", "Espèces"], ["momo", "Mobile Money"], ["banque", "Banque"]].map(([v, l]) => `<option value="${v}" ${(V.f.ex_m || "cash") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label></div>
       <button class="btn" data-a="addExp">Enregistrer la dépense</button>
-      <div class="list">${r.depenses.map(e => `<div class="li"><div class="grow"><b>${esc(e.category)}</b> · <b class="num">${F(e.amount)}</b><div class="mu">${dfr(e.day)}${e.label ? " · " + esc(e.label) : ""} · ${{ cash: "espèces", momo: "Mobile Money", banque: "banque" }[e.method] || ""}</div></div><button class="btn bad sm" data-a="delExp" data-id="${e.id}">Supprimer</button></div>`).join("") || '<div class="empty">Aucune dépense ce mois-ci.</div>'}</div></div>
+      <div class="list">${r.depenses.map(e => `<div class="li"><div class="grow"><b>${esc(e.category)}</b> · <b class="num">${F(e.amount)}</b><div class="mu">${dfr(e.day)}${e.label ? " · " + esc(e.label) : ""} · ${{ cash: "espèces", momo: "Mobile Money", banque: "banque", tiroir: "tiroir de la caisse" }[e.method] || ""}</div></div><button class="btn bad sm" data-a="delExp" data-id="${e.id}">Supprimer</button></div>`).join("") || '<div class="empty">Aucune dépense ce mois-ci.</div>'}</div></div>
     <div class="grid"><div class="card"><h3>Ventes par catégorie</h3><div class="scroll"><table><tr><th>Catégorie</th><th>Qté</th><th>Ventes</th><th>Marge</th></tr>${r.by_category.map(c => `<tr><td>${esc(c.category)}</td><td>${c.qty}</td><td>${F(c.total)}</td><td>${F(c.total - c.cost)}</td></tr>`).join("") || '<tr><td colspan="4">—</td></tr>'}</table></div></div>
     <div class="card"><h3>Livraisons du mois</h3><div class="scroll"><table><tr><th>Date</th><th>Produit</th><th>Qté</th><th>Montant</th></tr>${r.achats_detail.map(a => `<tr><td>${dfr(a.day)}</td><td>${esc(a.produit)}</td><td>${a.qty}</td><td>${F(a.total)}</td></tr>`).join("") || '<tr><td colspan="4">Aucune livraison saisie</td></tr>'}</table></div></div></div>
     <div class="card"><h3>Recettes jour par jour</h3><div class="scroll"><table><tr><th>Jour</th><th>Tickets</th><th>Espèces</th><th>MoMo</th><th>Total</th></tr>${r.by_day.map(d => `<tr><td>${dfr(d.day)}</td><td>${d.tickets}</td><td>${F(d.cash)}</td><td>${F(d.momo)}</td><td>${F(d.total)}</td></tr>`).join("") || '<tr><td colspan="5">Aucune vente ce mois-ci</td></tr>'}</table></div></div></div>`;
@@ -3637,7 +3704,7 @@ function accCsv(r) {
   const rows = [["Date", "Type", "Catégorie", "Détail", "Mode de paiement", "Recette (FCFA)", "Dépense (FCFA)"]];
   r.by_day.forEach(d => { if (d.cash) rows.push([d.day, "Recette", "Ventes", `${d.tickets} ticket(s)`, "Espèces", d.cash, ""]); if (d.momo) rows.push([d.day, "Recette", "Ventes", "", "Mobile Money", d.momo, ""]); });
   r.achats_detail.forEach(a => rows.push([a.day, "Dépense", "Achats de boissons", `${a.qty} × ${a.produit}`, "", "", a.total]));
-  r.depenses.forEach(e => rows.push([e.day, "Dépense", e.category, e.label || "", { cash: "Espèces", momo: "Mobile Money", banque: "Banque" }[e.method] || "", "", e.amount]));
+  r.depenses.forEach(e => rows.push([e.day, "Dépense", e.category, e.label || "", { cash: "Espèces", momo: "Mobile Money", banque: "Banque", tiroir: "Espèces (tiroir de la caisse)" }[e.method] || "", "", e.amount]));
   rows.sort((a, b) => a[0] === "Date" ? -1 : b[0] === "Date" ? 1 : a[0] < b[0] ? -1 : 1);
   rows.push([], ["Total recettes", "", "", "", "", r.ca, ""], ["Total dépenses", "", "", "", "", "", r.achats + r.charges]);
   return "﻿" + rows.map(l => l.map(v => { const t = String(v ?? ""); return /[;"\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; }).join(";")).join("\r\n");
@@ -3661,12 +3728,14 @@ function vModal() {
       <a class="btn soft grow" href="https://wa.me/?text=${encodeURIComponent(voucherText(v))}" target="_blank" rel="noopener">Envoyer par WhatsApp</a></div><button class="btn ghost" data-a="close">Fermer</button>`; }
   if (m.type === "summary") { const s = m.s || {};
     c = `<h2>Rapport du ${s.date ? dfr(s.date, { weekday: "long", day: "numeric", month: "long" }) : "jour"}</h2>
-      <div class="list">${[["Ventes", F(s.ventes)], ["Tickets vendus", s.tickets], ["Annulés", s.annules], ["Espèces versées", F(s.especes_versees)], ["Monnaie rendue", F(s.monnaie_rendue)], ["Mobile Money", F(s.mobile_money)],
+      <div class="list">${[["Ventes", F(s.ventes)], ...(s.plats && s.plats.qte ? [["· dont boissons", F(s.boissons)], ["· dont plats", `${F(s.plats.montant)} <span class="mu">(${s.plats.qte} plat${s.plats.qte > 1 ? "s" : ""})</span>`]] : []),
+        ["Tickets vendus", s.tickets], ["Annulés", s.annules], ["Espèces versées", F(s.especes_versees)], ["Monnaie rendue", F(s.monnaie_rendue)], ...(s.depenses_caisse ? [["Courses payées avec le tiroir", "− " + F(s.depenses_caisse)]] : []), ["Mobile Money", F(s.mobile_money)],
         ["Bons émis", F(s.bons_emis)], ["Espèces attendues", F(s.attendu)], ["Espèces comptées", F(s.compte)], ["Écart de caisse", `<b class="${s.ecart < 0 ? "bad-t" : s.ecart > 0 ? "ok-t" : ""}">${F(s.ecart)}</b>`]]
         .map(([l, v]) => `<div class="between" style="padding:6px 0"><span class="mu">${l}</span><span class="num">${v}</span></div>`).join("")}</div>
       <h3>Par serveuse</h3><div class="scroll"><table><tr><th>Serveuse</th><th>Ventes</th><th>Tickets</th><th>Corr.</th><th>Écart</th><th>Btl.</th></tr>
         ${(s.serveuses || []).map(w => `<tr><td>${esc(w.nom)}</td><td>${F(w.ventes)}</td><td>${w.tickets}</td><td>${w.corrections}</td><td class="${w.ecart_versements < 0 ? "bad-t" : ""}">${F(w.ecart_versements)}</td><td>${w.bouteilles_en_main}</td></tr>`).join("")}</table></div>
       <p class="mu" style="margin:0">Btl. : bouteilles encore en main au moment de la clôture.</p>
+      ${s.plats && (s.plats.detail || []).length ? `<h3>Plats vendus</h3><div class="scroll"><table><tr><th>Plat</th><th>Qté</th><th>Prix</th><th>Montant</th></tr>${s.plats.detail.map(x => `<tr><td>${esc(x.plat)}</td><td>${x.qte}</td><td>${F(x.prix)}</td><td>${F(x.montant)}</td></tr>`).join("")}<tr><td><b>Total</b></td><td><b>${s.plats.qte}</b></td><td></td><td><b>${F(s.plats.montant)}</b></td></tr></table></div>` : ""}
       ${(s.services || []).length ? `<h3>Services (relèves de caisse)</h3><div class="list">${s.services.map(x => `<div class="between" style="padding:5px 0"><span>${esc(x.caisse || "")}${x.relaye_par ? " → " + esc(x.relaye_par) : ""} <span class="mu">· ${x.heure ? hm(x.heure) : ""}</span></span><span class="num">${F(x.ventes || 0)} · écart ${F(x.ecart_service || 0)}</span></div>`).join("")}</div>` : ""}
       ${(s.cuisine_pertes || []).length ? `<h3>Cuisine : pertes et repas du personnel</h3><div class="list">${s.cuisine_pertes.map(x => `<div class="between" style="padding:5px 0"><span>${x.qte}× ${esc(x.plat)} <span class="mu">· ${x.issue === "perte" ? "perte" : "personnel"}${x.note ? " · " + esc(x.note) : ""}</span></span><span class="num">${F(x.valeur || 0)}</span></div>`).join("")}</div>` : ""}
       <button class="btn" data-a="close">Fermer</button>`; }
@@ -3749,7 +3818,7 @@ function render() {
   const nt = V.screen === "app" && V.ntf ? `<div class="ntf ${V.ntf.kind}" role="alert" data-a="ntfClose"><span class="ntf-i">${ico({ order: "orders", ok: "check", staff: "clock" }[V.ntf.kind] || "alert")}</span><span class="grow"><b>${esc(V.ntf.title)}</b><small>${esc(V.ntf.body)}</small></span></div>` : "";
   if (!window.__gescoOK) { window.__gescoOK = true; const rs = document.getElementById("gesco-rescue"); if (rs) rs.remove(); }
   $app.innerHTML = html + nt + vModal() + (V.toast ? `<div class="toast ${V.toast.kind || ""}" role="status">${esc(V.toast.msg)}</div>` : "");
-  if (fid) { const el = document.getElementById(fid); if (el && el !== document.activeElement) { el.focus({ preventScroll: true }); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) {} } }
+  if (fid) { const el = document.getElementById(fid); if (el && el !== document.activeElement) { el.focus({ preventScroll: true }); try { if (ss != null) el.setSelectionRange(ss, se); else if (el.type === "number") { const n = el.value.length; el.type = "text"; el.setSelectionRange(n, n); el.type = "number"; } } catch (e) {} } }
 }
 document.addEventListener("click", e => {
   const el = e.target.closest("[data-a]"); if (!el) return;
@@ -3757,7 +3826,9 @@ document.addEventListener("click", e => {
   const a = el.dataset.a; if (!a || !A[a]) return; if (el.tagName === "A") return;
   e.preventDefault(); A[a]({ ...el.dataset }, el);
 });
-document.addEventListener("input", e => { const k = e.target.dataset && e.target.dataset.k; if (!k) return; V.f[k] = e.target.value;
+document.addEventListener("input", e => { const k = e.target.dataset && e.target.dataset.k; if (!k) return;
+  const t = e.target; if (t.type === "text" && t.inputMode === "numeric" && /[^\d]/.test(t.value)) { const p = t.selectionStart, v = t.value, c = v.replace(/[^\d]/g, ""); t.value = c; try { const q = Math.max(0, (p || 0) - (v.slice(0, p || 0).length - v.slice(0, p || 0).replace(/[^\d]/g, "").length)); t.setSelectionRange(q, q); } catch (x) {} }
+  V.f[k] = t.value;
   if (/^(rcv_|cnt$|q_|gq$|pb_|pd_|qr_amt$|pimg_q$)/.test(k)) { clearTimeout(window.__r); window.__r = setTimeout(render, /^(q_|gq|pimg_q)/.test(k) ? 120 : 250); } });
 document.addEventListener("change", e => { const t = e.target;
   if (t.id === "id_file") { window.__idFile = t.files && t.files[0] || null; render(); return; }
