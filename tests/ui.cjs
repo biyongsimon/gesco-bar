@@ -164,6 +164,35 @@ async function tousLesOnglets(page) {
     await page.keyboard.type("a"); await page.waitForTimeout(320); ok(await page.inputValue(sel) === "15000", "une lettre a été acceptée dans le montant");
   });
 
+  await test("Rappel de versement : bandeau serveuse, retard visible à la caisse, réglage du PDG", async page => {
+    await login(page, "Brigitte");
+    const id = await page.evaluate(() => crypto.randomUUID());
+    const p = await page.evaluate(() => S.products.find(p => p.category !== "Cuisine" && p.active && !p.parent_id).id);
+    await rpc(page, "gb_ticket_create", { p_id: id, p_client: "Table rappel" }); await rpc(page, "gb_ticket_set_qty", { p_ticket: id, p_product: p, p_qty: 1 });
+    await rpc(page, "gb_ticket_send", { p_ticket: id }); const tot = await page.evaluate(id => S.tickets.find(t => t.id === id).total, id);
+    ok((await rpc(page, "gb_ticket_cash", { p_ticket: id, p_method: "cash", p_received: tot })).ok, "encaissement");
+    await page.evaluate(() => A.go({ v: "service" })); await page.waitForTimeout(100);
+    ok(!/Pensez à verser/.test(await page.textContent("#app")), "rappel affiché trop tôt");
+    // L'encaissement date de 50 minutes
+    await page.evaluate(id => { const k = Object.keys(localStorage).find(x => /^gesco-demo-v\d+$/.test(x)); const d = JSON.parse(localStorage.getItem(k));
+      d.tickets.filter(t => t.status === "cashed" && t.pay_method === "cash").forEach(t => t.cashed_at = new Date(Date.now() - 50 * 60000).toISOString()); localStorage.setItem(k, JSON.stringify(d)); }, id);
+    await login(page, "Brigitte"); await page.evaluate(() => A.go({ v: "service" })); await page.waitForTimeout(100);
+    ok(/Pensez à verser/.test(await page.textContent("#app")), "bandeau de rappel absent chez la serveuse");
+    await login(page, "Mireille"); await page.evaluate(() => A.go({ v: "direct" })); await page.waitForTimeout(100);
+    ok(/depuis 5\d min/.test(await page.textContent("#app")), "retard de versement non signalé à la caisse");
+    await login(page, "Marcel"); await page.evaluate(() => A.go({ v: "settings" })); await page.waitForTimeout(100);
+    ok(/Rappel de versement des espèces/.test(await page.textContent("#app")), "réglage des rappels absent");
+    await page.fill("#rr2", "10"); await page.click('[data-a="saveRemit"]'); await page.waitForTimeout(150);
+    ok(await page.evaluate(() => (S.bar.opts || {}).remit_r2 === undefined), "délais non croissants acceptés");
+    await page.fill("#rr1", "15"); await page.fill("#rr2", "30"); await page.fill("#rr3", "60"); await page.click('[data-a="saveRemit"]'); await page.waitForTimeout(150);
+    ok(await page.evaluate(() => S.bar.opts.remit_r1 === 15 && S.bar.opts.remit_r3 === 60), "délais non enregistrés");
+    // « Ma paie » cachée sans salaire ni paiement (cuisinier de la démo)
+    await login(page, "Paul"); await page.evaluate(() => A.go({ v: "moi" })); await page.waitForTimeout(100);
+    ok(!/Ma paie/.test(await page.textContent("#app")), "« Ma paie » affichée sans aucun salaire");
+    await login(page, "Aline"); await page.evaluate(() => A.go({ v: "moi" })); await page.waitForTimeout(100);
+    ok(/Ma paie/.test(await page.textContent("#app")), "« Ma paie » absente alors qu'un salaire existe");
+  });
+
   await test("Abonnement : mode test caché (petit montant, 1 mois)", async page => {
     await login(page, "Marcel");
     await page.evaluate(() => { S.bar.sub_test_price = 200; V.f.ab_p = "gold"; A.go({ v: "abo" }); }); await page.waitForTimeout(150);

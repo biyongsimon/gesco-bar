@@ -956,6 +956,10 @@ function DemoBackend() {
       if (!(["caisse", "pdg"].includes(c.role) || e.created_by === c.id)) E("Seule la personne qui l’a saisi ou la caisse peut le retirer.");
       if (e.method === "tiroir") { const od = db.days.find(x => x.status === "open"); if (!od || e.created_at < od.opened_at) E("Cet achat payé avec le tiroir appartient à une journée clôturée : il ne peut plus être retiré."); }
       db.expenses = db.expenses.filter(x => x !== e); log(c, "courses_retirees", { article: e.label, montant: e.amount }); },
+    gb_bar_opts({ p_patch }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG modifie ces réglages."); const o = { ...(db.bar.opts || {}) };
+      Object.entries(p_patch || {}).forEach(([k, v]) => { if (!["remit_r1", "remit_r2", "remit_r3"].includes(k)) E("Réglage inconnu : " + k); if (!(Number.isInteger(v) && v >= 0 && v <= 600)) E("Délai invalide (0 à 600 minutes)."); o[k] = v; });
+      const a = o.remit_r1 ?? 20, b = o.remit_r2 ?? 45, d = o.remit_r3 ?? 90; if (a > 0 && ((b >= 1 && b <= a) || (d >= 1 && d <= b))) E("Les délais doivent aller croissant (1er rappel, puis caisse, puis directeur).");
+      db.bar.opts = o; log(c, "reglages_modifies", p_patch); return o; },
     gb_kitchen_toggle({ p_on }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG active le module Cuisine."); db.bar.kitchen_on = !!p_on; log(c, "module_cuisine", { actif: !!p_on }); },
     gb_recipe_set({ p_dish, p_items }) { const c = ctx(); caisse(c); const d = prod(p_dish); db.recipes = (db.recipes || []).filter(r => r.dish_id !== p_dish);
       (p_items || []).forEach(i => { const q = +i.q; if (!(q > 0)) return; if (i.i === p_dish) E("Un plat ne peut pas être son propre ingrédient."); prod(i.i); db.recipes.push({ dish_id: p_dish, ingredient_id: i.i, qty: q }); });
@@ -1429,7 +1433,7 @@ function LiveBackend() {
       const uid = sd.session.user.id;
       const [staff, bars, products, days] = await Promise.all([
         q(sb.from("staff").select("id,name,role,active,user_id,head").order("name")),
-        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status,om_code,mtn_code,om_ussd,mtn_ussd,push_enabled,plan,plan_until,plan_trial_until,trial_plan,suspended,suspend_reason,suspended_at,kitchen_on,plan_cfg,sub_test_price").limit(1)),
+        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status,om_code,mtn_code,om_ussd,mtn_ussd,push_enabled,plan,plan_until,plan_trial_until,trial_plan,suspended,suspend_reason,suspended_at,kitchen_on,plan_cfg,sub_test_price,opts").limit(1)),
         q(sb.from("products").select("*").order("sort")),
         q(sb.from("service_days").select("*").eq("status", "open").limit(1))]);
       const meRow = staff.find(s => s.user_id === uid && s.active); if (!meRow || !bars.length) { const e = bizErr("Compte non rattaché à un bar ou désactivé."); e.auth = true; throw e; }
@@ -1521,6 +1525,10 @@ const isCounter = t => (S.staff.find(s => s.id === t.waitress_id) || {}).role ==
 const unitOf = p => p && p.unit && p.unit !== "bouteille" ? p.unit : "";
 const sold = t => t.status === "cashed" || t.status === "paid";
 const cashOf = t => t.received ?? t.total;
+// Rappel de versement : délais (minutes) réglés par le PDG ; âge du plus ancien encaissement en espèces non versé
+const remitR = () => { const o = (S && S.bar && S.bar.opts) || {}; return [o.remit_r1 ?? 20, o.remit_r2 ?? 45, o.remit_r3 ?? 90]; };
+const remitAge = ts => { const c = ts.filter(t => t.status === "cashed" && t.pay_method === "cash"); if (!c.length) return null;
+  return Math.floor((Date.now() - Math.min(...c.map(t => new Date(t.cashed_at || t.updated_at || t.created_at).getTime()))) / 60000); };
 const sum = (a, f) => a.reduce((x, y) => x + (f(y) || 0), 0);
 const dayT = () => S.tickets.filter(t => S.day && t.day_id === S.day.id);
 
@@ -2503,7 +2511,9 @@ function wService() {
   const inHand = sum(hold, h => Math.max(0, h.qty)), owe = sum(hold, h => Math.max(0, -h.qty));
   const lists = { open: mine.filter(t => ["draft", "sent"].includes(t.status)), cash: mine.filter(t => t.status === "cashed" || (t.status === "paid" && t.change_status === "pending")), done: mine.filter(t => t.status === "paid" && t.change_status !== "pending") };
   const L = lists[V.wf] || lists.open, salle = isHead() ? S.tickets.filter(t => t.waitress_id !== S.me.id && ["draft", "sent", "cashed"].includes(t.status) && !isCounter(t) && t.total > 0).length : 0;
-  return shiftBanner() + headLine() +
+  const age = remitAge(mine), [r1] = remitR();
+  const remind = cashHand && age != null && r1 > 0 && age >= r1 ? `<div class="note warn between" style="margin-bottom:14px;flex-wrap:wrap;gap:8px" role="alert"><span>💵 <b>Pensez à verser ${F(cashHand)} à la caisse</b> : encaissé depuis ${age} min.</span></div>` : "";
+  return shiftBanner() + headLine() + remind +
     `<div class="kpis">${kpi("Mes ventes du jour", F(sum(today.filter(sold), t => t.total)), "", `${today.filter(sold).length} ticket(s)`)}
     ${kpi("Espèces à remettre", F(cashHand), cashHand ? "hl" : "", cashHand ? "À verser à la caisse" : "Rien à verser")}
     ${kpi("Tickets en cours", lists.open.length)}${kpi("Bouteilles en main", inHand, owe ? "hl" : "", owe ? `${owe} à prendre à la caisse` : "")}</div>
@@ -3094,8 +3104,8 @@ function vMoi() {
       <button class="btn" data-a="leaveReq">Envoyer la demande ${ROLE() === "directeur" ? "au PDG" : "au directeur"}</button></div>
     <div class="card"><h3>Mes demandes</h3><div class="list">${lv.map(l => `<div class="li"><div class="grow"><b>${dfr(l.day_from)}${l.day_to !== l.day_from ? " → " + dfr(l.day_to) : ""}</b><div class="mu">${esc(l.reason)}</div></div><span class="pill ${LST[l.status][0]}">${LST[l.status][1]}</span></div>`).join("") || '<div class="empty">Aucune demande pour le moment.</div>'}</div></div>
     <div class="card"><h3>Mon historique de présence</h3><div class="list">${att.slice(0, 14).map(a => `<div class="between" style="padding:9px 0"><span>${dfr(a.day, { weekday: "long", day: "numeric", month: "short" })}${a.arrived_at ? `<br><span class="mu">arrivée ${hm(a.arrived_at)}${a.left_at ? ", départ " + hm(a.left_at) : ""}</span>` : ""}</span>${attPill(a)}</div>`).join("") || '<div class="empty">Aucun pointage enregistré.</div>'}</div></div>
-    <div class="card stack"><h3>Ma paie</h3>${sal ? `<div class="between"><span class="mu">Salaire de base</span><b class="num">${F(sal.salary)}</b></div>` : ""}
-      <div class="list">${pays.map(p => `<div class="li"><div class="grow"><b>${monthName(p.month)}</b><div class="mu">Payé le ${new Date(p.paid_at).toLocaleDateString("fr-FR")} · ${METH[p.method]}</div></div><b class="num">${F(p.net)}</b><button class="btn soft sm" data-a="slip" data-id="${p.id}">Fiche de paie</button></div>`).join("") || '<div class="empty">Aucun salaire enregistré pour le moment.</div>'}</div></div></div>`;
+    ${sal || pays.length ? `<div class="card stack"><h3>Ma paie</h3>${sal ? `<div class="between"><span class="mu">Salaire de base</span><b class="num">${F(sal.salary)}</b></div>` : ""}
+      <div class="list">${pays.map(p => `<div class="li"><div class="grow"><b>${monthName(p.month)}</b><div class="mu">Payé le ${new Date(p.paid_at).toLocaleDateString("fr-FR")} · ${METH[p.method]}</div></div><b class="num">${F(p.net)}</b><button class="btn soft sm" data-a="slip" data-id="${p.id}">Fiche de paie</button></div>`).join("") || '<div class="empty">Aucun paiement enregistré pour le moment.</div>'}</div></div>` : ""}</div>`;
 }
 
 /* ═══════════════ PDG : accueil et paie ═══════════════ */
@@ -3165,7 +3175,8 @@ function cDirect(act, toRecv, pend, cancels, momo) {
   const P1 = `    ${todo.length ? `<div class="card"><h3>À traiter maintenant</h3><div class="list">${todo.join("")}</div></div>` : ""}
 `, P2 = `    <div class="card"><h3>Versements des serveuses</h3><div class="list">${ws.map(w => {
       const c = toRecv.filter(t => t.waitress_id === w.id && t.pay_method === "cash"), amt = sum(c, cashOf), owe = S.holdings.filter(h => h.waitress_id === w.id && h.qty < 0);
-      return `<div class="li" style="align-items:flex-start"><div class="grow"><b>${esc(w.name)}</b> <span class="mu">· espèces en main</span> <b class="num">${F(amt)}</b>
+      const ag = amt ? remitAge(c) : null, [, r2, r3] = remitR(), late = ag != null && r2 > 0 && ag >= r2;
+      return `<div class="li" style="align-items:flex-start"><div class="grow"><b>${esc(w.name)}</b> <span class="mu">· espèces en main</span> <b class="num">${F(amt)}</b>${late ? ` <span class="pill ${r3 > 0 && ag >= r3 ? "bad" : "warn"}">depuis ${ag} min</span>` : ""}
         ${c.map(t => `<div class="mu">N°${t.number} ${esc(t.client_label)} · total ${F(t.total)}${t.change_due ? ` · perçu ${F(t.received)}, reliquat ${F(t.change_due)}` : ""}</div>`).join("")}
         ${owe.length ? `<div class="warn-t" style="font-size:13px;margin-top:4px">À remettre : ${owe.map(h => `${-h.qty} × ${esc(prodName(h.product_id))}`).join(", ")}</div>` : ""}</div>
         <div class="stack" style="min-width:min(100%,250px)">${c.length ? `<div class="row"><input class="grow" id="rem_${w.id}" type="number" inputmode="numeric" data-k="rem_${w.id}" value="${val("rem_" + w.id)}" placeholder="Reçu : ${Fs(amt)}" aria-label="Montant reçu de ${esc(w.name)}"><button class="btn sm" data-a="remit" data-w="${w.id}">Valider</button></div>` : ""}
@@ -3525,8 +3536,21 @@ function cSettings() {
     ${payCfgCard()}
     <div class="card stack"><h3>Réglages du bar</h3><div class="row"><label class="f grow" for="b_n">Nom<input id="b_n" data-k="b_n" value="${esc(V.f.b_n ?? b.name)}"></label><label class="f grow" for="b_c">Ville et quartier<input id="b_c" data-k="b_c" value="${esc(V.f.b_c ?? (b.city || ""))}"></label></div>
       <button class="btn" data-a="saveBar">Enregistrer les réglages</button></div>
+    ${remitCard()}
     <div class="card stack"><h3>Code du bar</h3><div class="code-big num">${esc(b.code)}</div><button class="btn soft" data-a="go" data-v="team">Installer l’application sur les téléphones</button></div></div>`;
 }
+
+function remitCard() {
+  const [r1, r2, r3] = remitR(), inp = (k, v, l) => `<label class="f grow" for="${k}">${l}<input id="${k}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-k="${k}" value="${esc(V.f[k] ?? v)}"></label>`;
+  return `<div class="card stack"><div class="between"><h3>Rappel de versement des espèces</h3><span class="pill ${r1 ? "ok" : ""}">${r1 ? "Actif" : "Coupé"}</span></div>
+    <p class="mu" style="margin:0">Quand une serveuse a encaissé en espèces sans verser à la caisse, GesCo la prévient, même application fermée. Si l’argent n’arrive toujours pas, la caisse puis le directeur sont prévenus. Délais en minutes ; 0 coupe le rappel.</p>
+    <div class="row">${inp("rr1", r1, "Rappel à la serveuse")}${inp("rr2", r2, "Prévenir la caisse")}${inp("rr3", r3, "Prévenir le directeur")}</div>
+    <button class="btn" data-a="saveRemit">Enregistrer les rappels</button></div>`;
+}
+A.saveRemit = () => run(async () => { const g = k => { const v = num(k); return v == null ? null : v; }, p = {};
+  [["rr1", "remit_r1"], ["rr2", "remit_r2"], ["rr3", "remit_r3"]].forEach(([k, o]) => { const v = g(k); if (v != null) p[o] = v; });
+  if (!Object.keys(p).length) throw bizErr("Indiquez au moins un délai.");
+  S.bar.opts = await B.rpc("gb_bar_opts", { p_patch: p }); ["rr1", "rr2", "rr3"].forEach(k => delete V.f[k]); toast("Rappels enregistrés."); render(); });
 
 /* ═══════════════ Actions : menu, recherche, planning, présences, paie ═══════════════ */
 A.menu = () => { V.menu = !V.menu; if (V.menu) V.menuT = Date.now(); render(); };

@@ -14,7 +14,7 @@ begin perform set_config('request.jwt.claims', json_build_object('sub', u, 'role
 do $$
 declare
   u_pdg uuid := gen_random_uuid(); u_srv uuid := gen_random_uuid(); u_cai uuid := gen_random_uuid(); u_cui uuid := gen_random_uuid();
-  bar uuid; s_srv uuid; s_cai uuid; s_cui uuid; biere uuid; plat uuid; t1 uuid := gen_random_uuid(); t2 uuid := gen_random_uuid();
+  bar uuid; s_srv uuid; s_cai uuid; s_cui uuid; biere uuid; plat uuid; t1 uuid := gen_random_uuid(); t2 uuid := gen_random_uuid(); t3 uuid := gen_random_uuid();
   st text; total int; ko uuid; r jsonb; e text;
 begin
   -- Bar d'essai : PDG, serveuse, caissière, cuisinier
@@ -92,6 +92,24 @@ begin
   perform pg_temp.ok((r->>'attendu')::int = 2700 and (r->>'ecart')::int = 0, 'espèces attendues = versements 4 200 − courses 1 500 = 2 700 FCFA');
   perform pg_temp.ok((r->'plats'->>'montant')::int = 3000 and (r->'plats'->>'qte')::int = 1 and (r->>'boissons')::int = 1200 and (r->>'depenses_caisse')::int = 1500,
     'le rapport de clôture sépare plats (3 000) et boissons (1 200)');
+
+  -- Rappel de versement : 1er rappel à 20 min, caisse à 45, directeur à 90 (sans doublon)
+  perform pg_temp.as_user(u_srv);
+  perform public.gb_ticket_create(t3, 'Table rappel'); perform public.gb_ticket_set_qty(t3, biere, 1); perform public.gb_ticket_send(t3); perform public.gb_ticket_cash(t3, 'cash', 600);
+  perform set_config('request.jwt.claims', '', true);
+  update public.tickets set cashed_at = now() - interval '10 min' where id = t3; perform gb_private.remit_reminders();
+  perform pg_temp.ok(not exists (select 1 from gb_private.remit_alerts where staff_id = s_srv), 'pas de rappel avant 20 minutes');
+  update public.tickets set cashed_at = now() - interval '25 min' where id = t3; perform gb_private.remit_reminders(); perform gb_private.remit_reminders();
+  perform pg_temp.ok((select level from gb_private.remit_alerts where staff_id = s_srv) = 1, 'rappel à la serveuse après 20 minutes');
+  update public.tickets set cashed_at = now() - interval '95 min' where id = t3; perform gb_private.remit_reminders();
+  perform pg_temp.ok((select level from gb_private.remit_alerts where staff_id = s_srv) = 3, 'directeur prévenu après 90 minutes');
+  perform pg_temp.as_user(u_cai); perform public.gb_remit(s_srv, 600); perform gb_private.remit_reminders();
+  perform pg_temp.ok(not exists (select 1 from gb_private.remit_alerts where staff_id = s_srv), 'le rappel s''arrête dès le versement');
+  e := pg_temp.err('select public.gb_bar_opts(''{"remit_r1":5}'')');
+  perform pg_temp.ok(e like 'Seul le PDG%', 'seul le PDG règle les rappels');
+  perform pg_temp.as_user(u_pdg);
+  e := pg_temp.err('select public.gb_bar_opts(''{"remit_r2":10}'')');
+  perform pg_temp.ok(e like 'Les délais%', 'les délais doivent aller croissant');
 
   -- Abonnement : prix de test caché (1 mois, petit montant) puis effacé après paiement
   update public.bars set sub_test_price = 200 where id = bar;

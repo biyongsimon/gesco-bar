@@ -222,3 +222,9 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Rapport de clôture : ventes dont boissons / dont plats, tableau des plats vendus, courses payées avec le tiroir.
 - Correction : en saisissant un montant (billet reçu, espèces comptées, prime, retenue, QR), le curseur revenait au début à chaque actualisation (« 00051 » au lieu de « 15000 »). Champs numériques passés en texte à clavier numérique.
 - Correction : les tableaux des fenêtres (rapport de clôture « Par serveuse ») étaient écrasés à hauteur nulle sur téléphone.
+
+## v4.21 — Rappel de versement des espèces
+- Toutes les 5 minutes (pg_cron `gesco-rappel-versement` → `gb_private.remit_reminders()`, migration 029) : une serveuse qui garde des espèces encaissées non versées est prévenue après 20 min, la caisse après 45 min, le directeur (ou le PDG) après 90 min. Un seul rappel par niveau, il s'arrête dès le versement.
+- Délais réglables par le PDG (Réglages → « Rappel de versement des espèces », `bars.opts`, `gb_bar_opts`), 0 coupe le rappel.
+- Dans l'application : bandeau « Pensez à verser » chez la serveuse, durée affichée dans « Versements des serveuses » à la caisse.
+- « Ma paie » n'apparaît dans Mon espace que si un salaire ou un paiement est enregistré pour la personne.
