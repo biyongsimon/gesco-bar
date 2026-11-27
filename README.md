@@ -239,3 +239,8 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 ## v4.23 — Production de la cuisine et coût matière
 - Écran Cuisine : « Ma production du jour » (cuisinier) / « Production de la cuisine » (directeur, PDG) : plats sortis (prêts ou servis) par plat, valeur au prix du ticket, plats en cours, pertes.
 - Carte « Coût matière » : courses du marché ÷ plats vendus (payés), du jour et des 7 derniers jours (`gb_kitchen_stats`, migration 031), repères 35 % / 45 %.
+
+## v4.24 — Ardoise (crédit client) et options du bar
+- Réglages → « Options du bar » (PDG) : les fonctions s'activent selon l'établissement (`bars.opts.f_*`). Première option : l'ardoise.
+- Ardoise (migration 032) : clients ouverts par le directeur ou le PDG (nom, WhatsApp, plafond, note) ; la serveuse demande « Mettre à l'ardoise » sur un ticket envoyé, la caisse valide ou refuse (notifications) ; au-delà du plafond, seuls le directeur et le PDG valident. Rubrique « Ardoise » : total dû, soldes avec jauge de plafond, remboursement (espèces → tiroir via un versement au nom de la caisse, ou Mobile Money), rappel WhatsApp prérempli, historique.
+- Clôture : ventes à l'ardoise et remboursements du jour dans le rapport et le PDF.

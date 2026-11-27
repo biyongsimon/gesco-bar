@@ -609,7 +609,7 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
     var C = window.GESCO_CONFIG; if (!C || C.mode !== "live" || !window.fetch) return;
     var tok = C.key; try { var a = JSON.parse(localStorage.getItem("gesco-auth") || "null"); if (a && a.access_token && a.expires_at * 1000 > Date.now()) tok = a.access_token; } catch (x) {}
     var body = JSON.stringify({ p_message: "DÉMARRAGE : GesCo ne s'est pas affiché" + (errs[0] ? " — " + errs[0].split("\n")[0] : " (délai dépassé)"), p_stack: errs.join("\n---\n") || null,
-      p_source: "app", p_url: location.pathname, p_tab: "démarrage", p_version: "f48bcdef", p_ua: navigator.userAgent.slice(0, 200) });
+      p_source: "app", p_url: location.pathname, p_tab: "démarrage", p_version: "dc1f5c93", p_ua: navigator.userAgent.slice(0, 200) });
     var go = function (t) { return fetch(C.url + "/rest/v1/rpc/gb_log_error", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", apikey: C.key, Authorization: "Bearer " + t }, body: body }); };
     go(tok).then(function (r) { if (!r.ok && tok !== C.key) go(C.key); }).catch(function () {
       try { var q = JSON.parse(localStorage.getItem("gesco-errq") || "[]"); q.push(JSON.parse(body)); localStorage.setItem("gesco-errq", JSON.stringify(q.slice(-20))); } catch (x) {} });
@@ -645,7 +645,7 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
 "use strict";
 /* ═══════════════ Outils ═══════════════ */
 const CFG = window.GESCO_CONFIG;
-const APP_BUILD = "f48bcdef";
+const APP_BUILD = "dc1f5c93";
 /* Remontée des erreurs inattendues vers la console éditeur (jamais les messages métier, réseau ou de session) */
 const ERR_SEEN = {};
 function reportErr(e, kind) {
@@ -724,6 +724,8 @@ function notifyNew() { // chacun est prévenu de ce qui le concerne, avec un gé
   const r = ROLE(), me = S.me.id, td = today(), K = new Map();
   if (r === "caisse") S.tickets.filter(t => !isCounter(t) && (t.status === "sent" || t.cancel_requested || (t.status === "cashed" && t.pay_method === "momo")))
     .forEach(t => K.set(`t:${t.id}:${t.status}:${t.cancel_requested ? 1 : 0}`, ["order", t.cancel_requested ? "Annulation demandée" : t.status === "cashed" ? "Mobile Money à vérifier" : "Nouvelle commande", `${staffName(t.waitress_id)} · ${t.client_label} · ${F(t.total)}`]));
+  if (r === "caisse") S.tickets.filter(t => t.status === "cashed" && t.pay_method === "credit").forEach(t => K.set("cr:" + t.id, ["order", "Ardoise demandée", `${staffName(t.waitress_id)} · ${credName(t.credit_client)} · ${F(t.total)}`]));
+  if (r === "serveuse") S.tickets.filter(t => t.waitress_id === me && t.status === "paid" && t.pay_method === "credit").forEach(t => K.set("crok:" + t.id, ["ok", "Ardoise validée", `${t.client_label} · ${F(t.total)}`]));
   if (r === "caisse") S.tickets.filter(t => t.status === "paid" && t.pay_method === "momo" && !isCounter(t)).forEach(t => K.set("m:" + t.id, ["ok", "Paiement Mobile Money reçu", `${staffName(t.waitress_id)} · ${t.client_label} · ${F(t.total)}`]));
   if (r === "cuisine") (S.kitchen || []).filter(o => o.status === "a_decider").forEach(o => K.set("kd:" + o.id, ["info", "Plat annulé après préparation", `${o.qty}× ${prodName(o.product_id)} · bon ${o.bon} : revendre, repas du personnel ou perte ?`]));
   if (r === "caisse") (S.handovers || []).filter(h => !h.confirmed_at && h.from_staff !== me).forEach(h => K.set("hv:" + h.id, ["info", "Relève de caisse", `${staffName(h.from_staff)} vous passe la caisse avec ${F(h.counted)} : vérifiez et confirmez.`]));
@@ -748,7 +750,7 @@ const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentC
 
 /* ═══════════════ Moteur DÉMO (données locales, mêmes règles que le serveur) ═══════════════ */
 function DemoBackend() {
-  const KEY = "gesco-demo-v15";
+  const KEY = "gesco-demo-v16";
   let db = LS.get(KEY), sess = LS.get(KEY + "-sess");
   const listeners = [];
   const save = () => LS.set(KEY, db);
@@ -759,6 +761,7 @@ function DemoBackend() {
   const ctx = () => { const s = db.staff.find(x => x.id === sess && x.active); if (!s) E("Session invalide. Reconnectez-vous."); return s; };
   const caisse = c => { if (!["caisse", "pdg"].includes(c.role)) E("Action réservée à la caisse."); };
   const pdg = c => { if (c.role !== "pdg") E("Action réservée au PDG."); };
+  const crRole = c => { if (!["caisse", "pdg", "directeur"].includes(c.role)) E("Action réservée à la caisse et à la direction."); };
   const mgr = c => { if (!["directeur", "pdg"].includes(c.role)) E("Action réservée au directeur ou au PDG."); };
   const canManage = (c, s) => { if (c.role === "pdg" && s.role !== "pdg") return; if (c.role === "directeur" && ["caisse", "serveuse"].includes(s.role)) return;
     E(s.role === "pdg" ? "Seul le PDG modifie son propre compte." : "Le directeur gère seulement la caisse et les serveuses."); };
@@ -971,6 +974,7 @@ function DemoBackend() {
       db.expenses = db.expenses.filter(x => x !== e); log(c, "courses_retirees", { article: e.label, montant: e.amount }); },
     gb_bar_opts({ p_patch }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG modifie ces réglages."); const o = { ...(db.bar.opts || {}) };
       Object.entries(p_patch || {}).forEach(([k, v]) => { if (k === "phone") { if (typeof v !== "string" || v.length > 40) E("Téléphone invalide."); o[k] = v; return; }
+        if (/^f_(ardoise|vides|vip|porte|nuit|garde|print|mural|recettes)$/.test(k)) { if (typeof v !== "boolean") E("Option invalide."); o[k] = v; return; }
         if (!["remit_r1", "remit_r2", "remit_r3"].includes(k)) E("Réglage inconnu : " + k); if (!(Number.isInteger(v) && v >= 0 && v <= 600)) E("Délai invalide (0 à 600 minutes)."); o[k] = v; });
       const a = o.remit_r1 ?? 20, b = o.remit_r2 ?? 45, d = o.remit_r3 ?? 90; if (a > 0 && ((b >= 1 && b <= a) || (d >= 1 && d <= b))) E("Les délais doivent aller croissant (1er rappel, puis caisse, puis directeur).");
       db.bar.opts = o; log(c, "reglages_modifies", p_patch); return o; },
@@ -982,6 +986,31 @@ function DemoBackend() {
         out.push({ jour: dd, sortis: K.filter(o => ["pret", "servi"].includes(o.status)).reduce((a, o) => a + o.qty, 0), pertes: K.filter(o => ["perte", "personnel"].includes(o.status)).reduce((a, o) => a + o.qty, 0),
           vendus: it.reduce((a, i) => a + i.qty, 0), montant: it.reduce((a, i) => a + i.qty * i.unit_price, 0), courses: (db.expenses || []).filter(e => e.category === "Courses du marché" && e.day === dd).reduce((a, e) => a + e.amount, 0) }); }
       return out; },
+    gb_credit_client_save({ p_id, p_name, p_phone, p_limit, p_active = true, p_note }) { const c = ctx(); mgr(c); if (!(db.bar.opts || {}).f_ardoise) E("L’ardoise n’est pas activé (Réglages → Options du bar).");
+      if (String(p_name || "").trim().length < 2) E("Indiquez le nom du client."); if (p_limit == null || p_limit < 0) E("Indiquez le plafond de l’ardoise."); db.credit_clients = db.credit_clients || [];
+      let k = p_id ? db.credit_clients.find(x => x.id === p_id) || E("Client introuvable.") : null; if (!k) { k = { id: uuid(), created_at: now() }; db.credit_clients.push(k); }
+      Object.assign(k, { name: String(p_name).trim(), phone: String(p_phone || "").trim() || null, limit: +p_limit, active: p_active !== false, note: String(p_note || "").trim() || null }); log(c, "ardoise_client", { client: k.name, plafond: k.limit }); return k.id; },
+    gb_credit_list() { const c = ctx(); crRole(c); const bal = id => (db.credit_moves || []).filter(m => m.client_id === id).reduce((a, m) => a + (m.kind === "dette" ? m.amount : -m.amount), 0);
+      return (db.credit_clients || []).map(k => { const M = (db.credit_moves || []).filter(m => m.client_id === k.id), D = M.filter(m => m.kind === "dette");
+        return { id: k.id, name: k.name, phone: k.phone, limit: k.limit, active: k.active, note: k.note, balance: bal(k.id), last: M.map(m => m.at).sort().pop() || null, last_debt: D.map(m => m.at).sort().pop() || null }; })
+        .sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name)); },
+    gb_credit_history({ p_client }) { const c = ctx(); crRole(c); return (db.credit_moves || []).filter(m => m.client_id === p_client).map(m => ({ ...m })).sort((a, b) => a.at < b.at ? 1 : -1); },
+    gb_ticket_credit({ p_ticket, p_client }) { const c = ctx(); if (!(db.bar.opts || {}).f_ardoise) E("L’ardoise n’est pas activé (Réglages → Options du bar)."); const t = tk(p_ticket);
+      if (t.waitress_id !== c.id) E("Ce ticket appartient à une autre serveuse."); if (t.status !== "sent") E("Envoyez d’abord la commande à la caisse."); if (t.cancel_requested) E("Une annulation est en attente sur ce ticket.");
+      const k = (db.credit_clients || []).find(x => x.id === p_client && x.active) || E("Ce client n’a pas d’ardoise ouverte.");
+      Object.assign(t, { status: "cashed", pay_method: "credit", credit_client: k.id, received: t.total, change_due: 0, change_status: "none", cashed_at: now(), updated_at: now() }); },
+    gb_credit_validate({ p_ticket, p_ok }) { const c = ctx(); crRole(c); const t = tk(p_ticket); if (t.status !== "cashed" || t.pay_method !== "credit") E("Aucune ardoise en attente sur ce ticket.");
+      const k = db.credit_clients.find(x => x.id === t.credit_client), bal = (db.credit_moves || []).filter(m => m.client_id === k.id).reduce((a, m) => a + (m.kind === "dette" ? m.amount : -m.amount), 0);
+      if (!p_ok) { Object.assign(t, { status: "sent", pay_method: null, credit_client: null, received: null, change_due: 0, cashed_at: null, updated_at: now() }); log(c, "ardoise_refusee", { client: k.name, ticket: t.number }); return { ok: false }; }
+      if (bal + t.total > k.limit && !["pdg", "directeur"].includes(c.role)) E(`Plafond dépassé : ${k.name} doit déjà ${F(bal)} pour un plafond de ${F(k.limit)}. Seul le directeur ou le PDG peut valider.`);
+      const d = curDay(c); db.credit_moves.push({ id: uuid(), client_id: k.id, ticket_id: t.id, kind: "dette", amount: t.total, at: now(), ticket: t.number, label: t.client_label, by: c.name, day_id: d });
+      Object.assign(t, { status: "paid", paid_at: now(), updated_at: now() }); log(c, "ardoise_validee", { client: k.name, ticket: t.number, montant: t.total }); return { ok: true, balance: bal + t.total }; },
+    gb_credit_repay({ p_client, p_amount, p_method = "cash" }) { const c = ctx(); caisse(c); const k = (db.credit_clients || []).find(x => x.id === p_client) || E("Client introuvable.");
+      const bal = db.credit_moves.filter(m => m.client_id === k.id).reduce((a, m) => a + (m.kind === "dette" ? m.amount : -m.amount), 0), m = Math.round(+p_amount);
+      if (!(m > 0)) E("Indiquez le montant remboursé."); if (m > bal) E(`${k.name} ne doit que ${F(bal)}.`); const d = curDay(c);
+      db.credit_moves.push({ id: uuid(), client_id: k.id, kind: "remboursement", amount: m, method: p_method === "momo" ? "momo" : "cash", at: now(), by: c.name, day_id: d });
+      if (p_method !== "momo") db.remits.push({ id: uuid(), day_id: d, waitress_id: c.id, expected: m, received: m, diff: 0, ticket_count: 0, created_at: now() });
+      log(c, "ardoise_remboursee", { client: k.name, montant: m }); return { balance: bal - m }; },
     gb_bar_logo({ p_path }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG change le logo."); if (p_path && !/^data:image\/png;base64,/.test(p_path)) E("Fichier non valide."); db.bar.logo_path = p_path || null; log(c, "reglages_modifies", { logo: !!p_path }); },
     gb_kitchen_toggle({ p_on }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG active le module Cuisine."); db.bar.kitchen_on = !!p_on; log(c, "module_cuisine", { actif: !!p_on }); },
     gb_recipe_set({ p_dish, p_items }) { const c = ctx(); caisse(c); const d = prod(p_dish); db.recipes = (db.recipes || []).filter(r => r.dish_id !== p_dish);
@@ -1104,7 +1133,8 @@ function DemoBackend() {
       const PL = {}; sold.forEach(t => t.items.forEach(i => { const p = db.products.find(x => x.id === i.product_id); if (!p || !(p.category === "Cuisine" || ["plat", "portion"].includes(p.unit))) return;
         const k = p.name + "|" + i.unit_price, x = PL[k] = PL[k] || { plat: p.name, qte: 0, prix: i.unit_price, montant: 0 }; x.qte += i.qty; x.montant += i.qty * i.unit_price; }));
       const pd = Object.values(PL).sort((a, b) => b.montant - a.montant), tir = tiroirOut(d.opened_at);
-      s.plats = { montant: sum(pd, x => x.montant), qte: sum(pd, x => x.qte), detail: pd }; s.boissons = s.ventes - s.plats.montant; s.depenses_caisse = tir;
+      s.plats = { montant: sum(pd, x => x.montant), qte: sum(pd, x => x.qte), detail: pd }; s.boissons = s.ventes - s.plats.montant; s.depenses_caisse = tir; s.ardoise = sum(ts.filter(t => t.status === "paid" && t.pay_method === "credit"), t => t.total);
+      s.ardoise_remb = (db.credit_moves || []).filter(m => m.kind === "remboursement" && m.at >= d.opened_at).reduce((x, m) => x + m.amount, 0);
       s.cuisine_pertes = (db.kitchen || []).filter(o => ["perte", "personnel"].includes(o.status) && o.decided_at && o.decided_at >= d.opened_at).map(o => { const p = db.products.find(x => x.id === o.product_id) || {};
         return { plat: p.name, qte: o.qty, issue: o.status, valeur: o.qty * (p.cost || 0), note: o.note }; });
       s.services = (db.handovers || []).filter(h => h.day_id === d.id).map(h => ({ caisse: (db.staff.find(x => x.id === h.from_staff) || {}).name, relaye_par: (db.staff.find(x => x.id === h.to_staff) || {}).name, heure: h.created_at, ventes: h.summary.ventes, compte: h.counted, ecart_service: h.summary.ecart_service }));
@@ -1326,6 +1356,11 @@ function DemoBackend() {
     mk("Brigitte", "Terrasse, 2 messieurs", [["Mützig", 1]]);
     mk("Carine", "Famille Ndongo", [["Castel", 2], ["Orijin", 1]], id => { R.gb_ticket_send({ p_ticket: id }); R.gb_ticket_cash({ p_ticket: id, p_method: "momo" }); });
     as("Mireille"); R.gb_remit({ p_waitress: W("Brigitte"), p_received: 4000 });
+    // Ardoise de démonstration : deux clients habitués
+    db.bar.opts = { f_ardoise: true }; const ago = h => new Date(Date.now() - h * 3600e3).toISOString(), C1 = uuid(), C2 = uuid();
+    db.credit_clients = [{ id: C1, name: "Tonton Paul", phone: "690000001", limit: 30000, active: true, note: "paie le 30 du mois" }, { id: C2, name: "M. Essomba", phone: "677000002", limit: 15000, active: true, note: null }];
+    db.credit_moves = [{ id: uuid(), client_id: C1, kind: "dette", amount: 6500, at: ago(72), label: "Table du fond", by: "Mireille" }, { id: uuid(), client_id: C1, kind: "remboursement", amount: 3000, method: "momo", at: ago(48), by: "Mireille" },
+      { id: uuid(), client_id: C1, kind: "dette", amount: 4200, at: ago(26), label: "Terrasse", by: "Mireille" }, { id: uuid(), client_id: C2, kind: "dette", amount: 14000, at: ago(30), label: "Anniversaire", by: "Hervé" }];
     sess = null; save();
   }
   if (!db || !db.bar) seed();
@@ -1358,7 +1393,7 @@ function DemoBackend() {
         days: cs ? db.days.filter(d => d.status === "closed").sort((a, b) => a.closed_at < b.closed_at ? 1 : -1).slice(0, 30) : [],
         shifts: db.shifts, attendance: db.attendance.filter(a => mg || own(a)).sort((a, b) => a.day < b.day ? 1 : -1), leaves: db.leaves.filter(l => mg || own(l)),
         salaries: db.salaries.filter(x => pg || own(x)), payroll: db.payroll.filter(x => pg || own(x)), subs: mg ? db.subs : [],
-        handovers: cs ? (db.handovers || []) : [], kitchen: (db.kitchen || []).filter(o => (cs || me.head || o.waitress_id === me.id) && (["attente", "prep", "pret", "a_decider", "revente"].includes(o.status) || Date.now() - new Date(o.created_at) < 18 * 3600e3)), recipes: db.recipes || [], platform: { holder_name: "BIYONG BIYONG SIMON STEVE (BISMO AGENCY)", om_number: "691468175", mtn_number: "673383951", om_tpl: null, mtn_tpl: null, sub_push: true } });
+        handovers: cs ? (db.handovers || []) : [], credit: (db.credit_clients || []).map(c => ({ id: c.id, name: c.name, active: c.active })), kitchen: (db.kitchen || []).filter(o => (cs || me.head || o.waitress_id === me.id) && (["attente", "prep", "pret", "a_decider", "revente"].includes(o.status) || Date.now() - new Date(o.created_at) < 18 * 3600e3)), recipes: db.recipes || [], platform: { holder_name: "BIYONG BIYONG SIMON STEVE (BISMO AGENCY)", om_number: "691468175", mtn_number: "673383951", om_tpl: null, mtn_tpl: null, sub_push: true } });
     },
     logError() {},
     async rpc(name, args) { const f = R[name]; if (!f) throw bizErr("Action inconnue."); db = LS.get(KEY) || db; const r = f(args || {}); save(); return r; },
@@ -1471,7 +1506,8 @@ function LiveBackend() {
         q(sb.from("payroll").select("*").order("paid_at", { ascending: false }).limit(300)),
         q(sb.from("subscriptions").select("*").order("created_at", { ascending: false }).limit(50)), q(sb.from("platform_config").select("om_code,mtn_code,phone,whatsapp,holder_name,om_number,mtn_number,om_tpl,mtn_tpl,sub_push").limit(1)),
         q(sb.from("kitchen_orders").select("*").or("status.in.(attente,prep,pret,a_decider,revente),created_at.gte." + new Date(Date.now() - 18 * 3600e3).toISOString()).order("created_at").limit(300)),
-        q(sb.from("recipes").select("dish_id,ingredient_id,qty")), q(sb.from("cash_handovers").select("*").order("created_at", { ascending: false }).limit(20))]);
+        q(sb.from("recipes").select("dish_id,ingredient_id,qty")), q(sb.from("cash_handovers").select("*").order("created_at", { ascending: false }).limit(20)),
+        q(sb.from("credit_clients").select("id,name,active").order("name"))]);
       extra.catch(() => {});
       let tq = sb.from("tickets").select("*, ticket_items(product_id,qty,unit_price)").order("created_at", { ascending: false }).limit(600);
       tq = tq.or("status.in.(draft,sent,cashed),change_status.eq.pending" + (day ? ",day_id.eq." + day.id : ""));
@@ -1481,11 +1517,11 @@ function LiveBackend() {
         q(sb.from("stock_moves").select("*").order("created_at", { ascending: false }).limit(150)),
         q(sb.from("service_days").select("*").eq("status", "closed").order("closed_at", { ascending: false }).limit(30)));
       const [tickets, holdings, vouchers, remits, audit = [], moves = [], closed = []] = await Promise.all(jobs);
-      const [shifts, attendance, leaves, salaries, payroll, subs, plat, kitchen, recipes, handovers] = await extra;
+      const [shifts, attendance, leaves, salaries, payroll, subs, plat, kitchen, recipes, handovers, credit] = await extra;
       subscribe(bars[0].id);
       return { bar: bars[0], me, staff: staff.map(s => ({ id: s.id, name: s.name, role: s.role, active: s.active })), products, day,
         tickets: tickets.map(t => { const { ticket_items, ...r } = t; return { ...r, items: ticket_items || [] }; }), holdings, vouchers, remits, audit, moves, days: closed,
-        shifts, attendance, leaves, salaries, payroll, subs, platform: plat[0] || {}, kitchen: kitchen || [], recipes: recipes || [], handovers: (handovers || []).reverse() };
+        shifts, attendance, leaves, salaries, payroll, subs, platform: plat[0] || {}, kitchen: kitchen || [], recipes: recipes || [], handovers: (handovers || []).reverse(), credit: credit || [] };
     },
     logError(a) { try { if (!navigator.onLine) return errKeep(a);
       sb.rpc("gb_log_error", a).then(r => { if (r && r.error && /fetch|network|load failed|timeout/i.test(r.error.message || "")) errKeep(a); }, () => errKeep(a)); } catch (e) {} },
@@ -1925,7 +1961,8 @@ function kpi(l, v, cls, extra) { return `<div class="kpi ${cls || ""}"><div clas
 function statusPill(t) {
   if (t.status === "draft") return `<span class="pill">Brouillon</span>`;
   if (t.status === "sent") return t.cancel_requested ? `<span class="pill bad">Annulation demandée</span>` : `<span class="pill brand">Envoyé</span>`;
-  if (t.status === "cashed") return t.pay_method === "momo" ? `<span class="pill amber">MoMo à confirmer</span>` : `<span class="pill amber">Espèces à remettre</span>`;
+  if (t.status === "cashed") return t.pay_method === "momo" ? `<span class="pill amber">MoMo à confirmer</span>` : t.pay_method === "credit" ? `<span class="pill amber">Ardoise à valider</span>` : `<span class="pill amber">Espèces à remettre</span>`;
+  if (t.status === "paid" && t.pay_method === "credit") return `<span class="pill ok">Ardoise ✓</span>`;
   if (t.status === "paid") return t.change_status === "pending" ? `<span class="pill warn">Reliquat à rendre</span>` : `<span class="pill ok">Payé ✓</span>`;
   return `<span class="pill">Annulé</span>`;
 }
@@ -2229,7 +2266,7 @@ async function repPdf(s) {
   pdfH(P, "Résumé de la journée");
   pdfTable(P, null, [["Ventes totales", pF(s.ventes)], ...(pl ? [[{ content: "dont boissons", styles: { cellPadding: { left: 7, top: 1.8, bottom: 1.8, right: 1.8 }, textColor: [91, 106, 98] } }, pF(s.boissons)], [{ content: "dont plats", styles: { cellPadding: { left: 7, top: 1.8, bottom: 1.8, right: 1.8 }, textColor: [91, 106, 98] } }, `${pF(pl.montant)} (${pl.qte} plat${pl.qte > 1 ? "s" : ""})`]] : []),
     ["Tickets vendus", String(s.tickets ?? 0)], ["Tickets annulés", String(s.annules ?? 0)], ["Mobile Money", pF(s.mobile_money)], ["Espèces versées par les serveuses", pF(s.especes_versees)],
-    ["Monnaie rendue aux clients", "- " + pF(s.monnaie_rendue)], ...(s.depenses_caisse ? [["Courses payées avec le tiroir", "- " + pF(s.depenses_caisse)]] : []),
+    ["Monnaie rendue aux clients", "- " + pF(s.monnaie_rendue)], ...(s.ardoise ? [["Ventes à l'ardoise (à encaisser plus tard)", pF(s.ardoise)]] : []), ...(s.ardoise_remb ? [["Ardoises remboursées", pF(s.ardoise_remb)]] : []), ...(s.depenses_caisse ? [["Courses payées avec le tiroir", "- " + pF(s.depenses_caisse)]] : []),
     ["Espèces attendues", pF(s.attendu)], ["Espèces comptées", pF(s.compte)], [{ content: "Écart de caisse", styles: { fontStyle: "bold" } }, { content: pF(ec), styles: { fontStyle: "bold", textColor: ec < 0 ? [180, 48, 42] : [19, 32, 26] } }],
     ["Bons de reliquat émis", pF(s.bons_emis)], ...(s.non_soldes ? [["Tickets non soldés à la clôture", String(s.non_soldes)]] : [])],
     { columnStyles: { 1: { halign: "right", cellWidth: 55 } } });
@@ -2548,6 +2585,70 @@ A.dishPick = d => { Object.assign(V.f, { np_n: d.v, np_c: "Cuisine", np_u: "plat
 const DESK_MQ = window.matchMedia ? matchMedia("(min-width:900px)") : { matches: false };
 const desk = () => !!DESK_MQ.matches;
 try { DESK_MQ.addEventListener("change", () => { if (V.screen === "app") render(); }); } catch (e) {}
+/* ═══════════════ Ardoise (crédit client) : la serveuse demande, la caisse valide, la direction ouvre les ardoises ═══════════════ */
+const opt = k => !!(S && S.bar && S.bar.opts && S.bar.opts[k]);
+const credName = id => ((S.credit || []).find(c => c.id === id) || (V.cr || []).find(c => c.id === id) || { name: "Client" }).name;
+const crLoad = force => { if (force || V.cr === undefined) { V.cr = V.cr || null; B.rpc("gb_credit_list", {}).then(r => { V.cr = r || []; render(); }).catch(e => { V.cr = []; toast(e.message, "err"); }); } };
+function credBox(t) {
+  if (!opt("f_ardoise") || ROLE() !== "serveuse") return "";
+  const cl = (S.credit || []).filter(c => c.active); if (!cl.length) return "";
+  if (V.credT !== t.id) return `<button class="btn ghost grow" data-a="credPick" data-t="${t.id}">${ico("ardoise")} Mettre à l’ardoise d’un client</button>`;
+  return `<div class="sub stack"><b>Mettre à l’ardoise</b><p class="mu" style="margin:0">Seulement pour un client autorisé par la direction. La caisse doit valider : si elle refuse, faites payer le client.</p>
+    <label class="f" for="cr_${t.id}">Client<select id="cr_${t.id}" data-k="cr_${t.id}"><option value="">Choisir le client…</option>${cl.map(c => `<option value="${c.id}" ${V.f["cr_" + t.id] === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></label>
+    <div class="row"><button class="btn ghost grow" data-a="credPick" data-t="">Annuler</button><button class="btn grow" data-a="credReq" data-t="${t.id}">Demander l’ardoise à la caisse</button></div></div>`;
+}
+A.credPick = d => { V.credT = d.t || null; render(); };
+A.credReq = d => run(async () => { const c = V.f["cr_" + d.t]; if (!c) throw bizErr("Choisissez le client.");
+  await B.rpc("gb_ticket_credit", { p_ticket: d.t, p_client: c }); V.credT = null; await refresh(); toast(`Ardoise demandée pour ${credName(c)} : la caisse valide.`); });
+A.credOk = d => run(async () => { const r = await B.rpc("gb_credit_validate", { p_ticket: d.t, p_ok: true }); await refresh(); V.cr = undefined; toast(`Ardoise validée : ${credName(d.c)} doit maintenant ${F(r.balance)}.`); });
+A.credNo = d => run(async () => { await B.rpc("gb_credit_validate", { p_ticket: d.t, p_ok: false }); await refresh(); toast("Ardoise refusée : la serveuse est prévenue."); });
+const crRow = t => `<div class="li"><div class="grow"><b>Ardoise demandée</b> · ${esc(staffName(t.waitress_id))}<div class="mu">${esc(credName(t.credit_client))} · ${esc(t.client_label)} · N°${t.number} · ${F(t.total)}</div></div><div class="row"><button class="btn sm" data-a="credOk" data-t="${t.id}" data-c="${t.credit_client}">Valider l’ardoise</button><button class="btn ghost sm" data-a="credNo" data-t="${t.id}">Refuser</button></div></div>`;
+function vArdoise() {
+  if (!opt("f_ardoise")) return `<div class="card"><p class="mu" style="margin:0">L’ardoise n’est pas activée. ${isPdg() ? "Activez-la dans Réglages → Options du bar." : "Le PDG l’active dans Réglages."}</p></div>`;
+  crLoad(); const L = V.cr, mg = isMgr(), f = V.crEdit;
+  if (!L) return `<div class="empty"><span class="spin"></span> Chargement des ardoises…</div>`;
+  const owed = L.filter(c => c.balance > 0), tot = sum(owed, c => c.balance), over = owed.filter(c => c.balance > c.limit).length;
+  const form = mg && f ? `<div class="card stack"><h3>${f.id ? "Modifier l’ardoise" : "Ouvrir une ardoise"}</h3>
+      <div class="row"><label class="f grow" for="crn">Nom du client<input id="crn" data-k="crn" value="${esc(V.f.crn ?? f.name ?? "")}" placeholder="Ex. Papa Joseph"></label>
+      <label class="f grow" for="crp">Téléphone (WhatsApp)<input id="crp" type="tel" inputmode="tel" data-k="crp" value="${esc(V.f.crp ?? f.phone ?? "")}" placeholder="6XX XX XX XX"></label></div>
+      <div class="row"><label class="f grow" for="crl">Plafond (FCFA)<input id="crl" type="text" inputmode="numeric" pattern="[0-9]*" data-k="crl" value="${esc(V.f.crl ?? f.limit ?? 20000)}"></label>
+      <label class="f grow" for="cro">Note (facultatif)<input id="cro" data-k="cro" value="${esc(V.f.cro ?? f.note ?? "")}" placeholder="Ex. paie le 30 du mois"></label></div>
+      ${f.id ? `<label class="mu" style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-a="crAct" ${(V.f.cra ?? f.active) ? "checked" : ""}> Ardoise ouverte (décochez pour la fermer)</label>` : ""}
+      <div class="row"><button class="btn ghost grow" data-a="crEditX">Annuler</button><button class="btn grow" data-a="crSave">Enregistrer</button></div></div>` : "";
+  const wait = S.tickets.filter(t => t.status === "cashed" && t.pay_method === "credit");
+  return `${wait.length ? `<div class="card" style="margin-bottom:14px"><h3>En attente de validation · ${wait.length}</h3><div class="list">${wait.map(crRow).join("")}</div>
+      <p class="mu" style="margin:6px 0 0">Au-delà du plafond, seuls le directeur et le PDG peuvent valider.</p></div>` : ""}<div class="kpis">${kpi("Total dû par les clients", F(tot), tot ? "hl" : "", `${owed.length} client(s)`)}${kpi("Plafond dépassé", over, over ? "alert" : "", over ? "à régler en priorité" : "aucun")}</div>
+    ${form}${mg && !f ? `<div class="row" style="margin-bottom:12px"><button class="btn" data-a="crEdit">+ Ouvrir une ardoise</button></div>` : ""}
+    <div class="stack">${L.map(c => { const pc = c.limit ? Math.min(100, Math.round(c.balance / c.limit * 100)) : 100, rp = V.crPay === c.id;
+      const msg = `Bonjour ${c.name}, votre ardoise chez ${S.bar.name} est de ${F(c.balance)}${c.last_debt ? ` (dernière consommation le ${new Date(c.last_debt).toLocaleDateString("fr-FR")})` : ""}. Merci de passer la régler. Bonne journée !`;
+      return `<div class="card stack" style="gap:8px"><div class="between" style="flex-wrap:wrap;gap:6px"><div><b>${esc(c.name)}</b>${c.active ? "" : ` <span class="pill">Fermée</span>`}<div class="mu">${c.phone ? esc(c.phone) + " · " : ""}plafond ${F(c.limit)}${c.note ? " · " + esc(c.note) : ""}</div></div>
+          <b class="num ${c.balance > c.limit ? "bad-t" : c.balance ? "warn-t" : "ok-t"}" style="font-size:18px">${F(c.balance)}</b></div>
+        <div class="tr" style="height:6px;border-radius:4px;background:var(--sunk);overflow:hidden"><div style="height:100%;width:${pc}%;background:${c.balance > c.limit ? "var(--bad)" : pc > 70 ? "var(--warn)" : "var(--ok)"}"></div></div>
+        ${rp ? `<div class="sub stack"><div class="row"><label class="f grow" for="crm">Montant remboursé<input id="crm" type="text" inputmode="numeric" pattern="[0-9]*" data-k="crm" value="${val("crm")}" placeholder="${Fs(c.balance)}"></label></div>
+          <div class="segs">${[["cash", "Espèces (dans le tiroir)"], ["momo", "Mobile Money"]].map(([k, l]) => `<button class="${(V.f.crw || "cash") === k ? "on" : ""}" data-a="setF" data-k2="crw" data-v="${k}">${l}</button>`).join("")}</div>
+          <div class="row"><button class="btn ghost grow" data-a="crPay" data-id="">Annuler</button><button class="btn grow" data-a="crPayGo" data-id="${c.id}">Enregistrer le remboursement</button></div></div>` : ""}
+        <div class="row">${c.balance && isCaisse() && !rp ? `<button class="btn sm" data-a="crPay" data-id="${c.id}">Remboursement</button>` : ""}${c.balance && c.phone ? `<a class="btn soft sm" href="${waLink(c.phone, msg)}" target="_blank" rel="noopener">${ico("send")} Rappel WhatsApp</a>` : ""}
+          <button class="btn ghost sm" data-a="crHist" data-id="${c.id}">Historique</button>${mg ? `<button class="btn ghost sm" data-a="crEdit" data-id="${c.id}">Modifier</button>` : ""}</div></div>`; }).join("") || `<div class="empty">Aucune ardoise ouverte. ${mg ? "Ouvrez-en une pour chaque client de confiance, avec un plafond." : "La direction ouvre les ardoises."}</div>`}</div>
+    <p class="mu" style="margin:10px 4px">La serveuse demande l’ardoise sur le ticket, la caisse valide. Au-delà du plafond, seuls le directeur et le PDG peuvent valider. Un remboursement en espèces entre dans le tiroir et compte dans les espèces attendues.</p>`;
+}
+A.crEdit = d => { const c = d.id ? (V.cr || []).find(x => x.id === d.id) : {}; ["crn", "crp", "crl", "cro", "cra"].forEach(k => delete V.f[k]); V.crEdit = { ...c }; render(); try { scrollTo({ top: 0, behavior: "smooth" }); } catch (e) {} };
+A.crEditX = () => { V.crEdit = null; render(); };
+A.crAct = () => { V.f.cra = !(V.f.cra ?? V.crEdit.active); render(); };
+A.crSave = () => run(async () => { const f = V.crEdit || {}, lim = num("crl") ?? f.limit ?? 20000;
+  await B.rpc("gb_credit_client_save", { p_id: f.id || null, p_name: V.f.crn ?? f.name ?? "", p_phone: V.f.crp ?? f.phone ?? "", p_limit: lim, p_active: f.id ? (V.f.cra ?? f.active) : true, p_note: V.f.cro ?? f.note ?? "" });
+  V.crEdit = null; V.cr = undefined; S.credit = null; await refresh(); toast("Ardoise enregistrée."); });
+A.crPay = d => { V.crPay = d.id || null; delete V.f.crm; render(); };
+A.crPayGo = d => run(async () => { const m = num("crm"); if (!m) throw bizErr("Indiquez le montant remboursé.");
+  const r = await B.rpc("gb_credit_repay", { p_client: d.id, p_amount: m, p_method: V.f.crw || "cash" }); V.crPay = null; delete V.f.crm; V.cr = undefined; await refresh();
+  toast(r.balance ? `Remboursement enregistré : il reste ${F(r.balance)}.` : "Ardoise soldée ✓"); });
+A.crHist = d => run(async () => { const h = await B.rpc("gb_credit_history", { p_client: d.id }); V.modal = { type: "crHist", c: (V.cr || []).find(x => x.id === d.id) || {}, h }; render(); });
+function crHistView(m) {
+  return `<h2>Ardoise de ${esc(m.c.name || "")}</h2><div class="between"><span class="mu">Reste à payer</span><b class="num" style="font-size:18px">${F(m.c.balance || 0)}</b></div>
+    <div class="list">${(m.h || []).map(x => `<div class="li"><div class="grow"><b>${x.kind === "dette" ? `Consommation${x.ticket ? " · ticket N°" + x.ticket : ""}` : `Remboursement · ${x.method === "momo" ? "Mobile Money" : "espèces"}`}</b>
+      <div class="mu">${new Date(x.at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}${x.label ? " · " + esc(x.label) : ""}${x.by ? " · " + esc(x.by) : ""}</div></div><b class="num ${x.kind === "dette" ? "bad-t" : "ok-t"}">${x.kind === "dette" ? "+" : "−"} ${F(x.amount)}</b></div>`).join("") || '<div class="empty">Aucun mouvement.</div>'}</div>
+    <button class="btn" data-a="close">Fermer</button>`;
+}
+
 /* Production de la cuisine (cuisinier) et coût matière (courses du marché / plats vendus) */
 function kProd() {
   if (!S.day || !["cuisine", "pdg", "directeur"].includes(ROLE())) return "";
@@ -2641,7 +2742,7 @@ function payBox(t) {
     <label class="f" for="rcv_${t.id}">Billet reçu du client (FCFA)<input id="rcv_${t.id}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-k="rcv_${t.id}" value="${val("rcv_" + t.id)}" placeholder="${Fs(t.total)}"></label>
     ${ch ? `<div class="note warn between"><span>Reliquat à rendre au client</span><b class="num">${F(ch)}</b></div>` : r != null && r < t.total ? `<div class="note bad">Montant inférieur au total.</div>` : ""}
     <div class="row"><button class="btn amber grow" data-a="cash" data-t="${t.id}">Encaisser en espèces</button><button class="btn soft grow" data-a="momo" data-t="${t.id}">Mobile Money</button></div>
-    ${ROLE() === "serveuse" ? `<button class="btn grow qrbtn" data-a="qrFor" data-t="${t.id}">${ico("qr")} QR code ou numéro du client</button>` : ""}</div>`;
+    ${ROLE() === "serveuse" ? `<button class="btn grow qrbtn" data-a="qrFor" data-t="${t.id}">${ico("qr")} QR code ou numéro du client</button>` : ""}${credBox(t)}</div>`;
 }
 function ticket(t, opts = {}) {
   const open = !!V.open[t.id], editable = ["draft", "sent"].includes(t.status) && t.waitress_id === S.me.id;
@@ -2659,7 +2760,7 @@ function ticket(t, opts = {}) {
       else if (t.status === "draft") body += `<div class="row"><button class="btn grow" data-a="send" data-t="${t.id}" ${t.total ? "" : "disabled"}>Envoyer à la caisse</button><button class="btn bad" data-a="del" data-t="${t.id}">Supprimer</button></div>`;
       else { body += servedBtn; if (!t.cancel_requested) body += payBox(t); body += `<div class="row"><span class="mu grow">Le client change d’avis ? Corrigez les quantités : chaque correction est tracée.</span>${t.cancel_requested && !isCaisse() ? "" : `<button class="btn bad sm" data-a="del" data-t="${t.id}">${isCaisse() ? "Supprimer" : "Annuler la commande"}</button>`}</div>`; }
     } else {
-      body = lines(t) + `<div class="total"><span class="mu">Total${t.pay_method ? " · " + (t.pay_method === "momo" ? "Mobile Money" : "espèces") : ""}</span><b>${F(t.total)}</b></div>` + changeBlock(t) + servedBtn;
+      body = lines(t) + `<div class="total"><span class="mu">Total${t.pay_method ? " · " + (t.pay_method === "momo" ? "Mobile Money" : t.pay_method === "credit" ? "ardoise de " + esc(credName(t.credit_client)) : "espèces") : ""}</span><b>${F(t.total)}</b></div>` + changeBlock(t) + servedBtn;
       if (ROLE() === "directeur" && !isCounter(t)) body += `<div class="note info">${t.served_at ? `Servie au client à ${hm(t.served_at)}.` : `Envoyée ${ago(t.sent_at || t.created_at)}, pas encore marquée servie.`} La validation reste à la caisse.</div>`;
       if (isCaisse() && t.status === "sent" && !isCounter(t)) body += `<div class="note info">Commande de ${esc(staffName(t.waitress_id))}. Seule la serveuse peut la modifier ; la caisse suit son évolution ici.</div>`;
       if (["caisse", "directeur", "pdg"].includes(ROLE()) && ["draft", "sent"].includes(t.status) && !isCounter(t)) body += `<div class="row"><button class="btn ghost sm" data-a="tkGive" data-t="${t.id}">Confier la table à une autre serveuse</button></div>`;
@@ -2694,7 +2795,7 @@ function wService() {
 }
 
 /* ═══════════════ Cadre commun : rubriques par rôle, menu, recherche ═══════════════ */
-const IC = { phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+const IC = { ardoise: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v18M12 8h4M12 12h4M12 16h2"/>', phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
   kitchen: '<path d="M5 12h14v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z"/><path d="M3 12h18"/><path d="M8.5 8.5c0-1.6 1-1.6 1-3.2M12 8.5c0-1.6 1-1.6 1-3.2M15.5 8.5c0-1.6 1-1.6 1-3.2"/>',
   camera: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
   service: '<path d="M4 7h16l-1.5 11a2 2 0 0 1-2 1.7H7.5a2 2 0 0 1-2-1.7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
@@ -2737,6 +2838,7 @@ const SEC = {
   home: ["Accueil", "home", "Vue d’ensemble de votre bar"],
   stock: ["Stock", "stock", "Inventaire, approvisionnement, carte des produits"],
   vouch: ["Bons", "bon", "Vérifier et suivre les bons de reliquat"],
+  ardoise: ["Ardoise", "ardoise", "Clients qui paient plus tard : soldes, plafonds, remboursements"],
   sales: ["Ventes", "sales", "Ventes du jour par serveuse et par boisson"],
   rev: ["Revenus", "rev", "Revenus mensuels et jour par jour"],
   acc: ["Compta", "acc", "Comptabilité automatique du mois"],
@@ -2764,8 +2866,10 @@ function barBlock() { if (!S || !S.bar) return null; const b = S.bar; if (b.susp
   if (b.plan && b.plan !== "beta" && b.plan_until) { const lim = new Date(b.plan_until + "T23:59:59"); lim.setDate(lim.getDate() + 3);
     if (lim < Date.now() && !(b.plan_trial_until && new Date(b.plan_trial_until) > Date.now())) return "expire"; } return null; }
 const navFor = () => { if (barBlock() === "expire" && isMgr()) return ["abo"]; const n = NAV[ROLE()] || NAV.serveuse;
-  if (!(S && S.bar && S.bar.kitchen_on)) return n;
-  return ROLE() === "caisse" ? [n[0], "plats", ...n.slice(1)] : ["directeur", "pdg"].includes(ROLE()) ? [n[0], "kitchen", ...n.slice(1)] : n; };
+  let r = [...n]; const ins = (after, k) => { const i = r.indexOf(after); r.splice(i < 0 ? r.length : i + 1, 0, k); };
+  if (S && S.bar && S.bar.kitchen_on) { if (ROLE() === "caisse") r.splice(1, 0, "plats"); else if (["directeur", "pdg"].includes(ROLE())) r.splice(1, 0, "kitchen"); }
+  if (opt("f_ardoise") && ["caisse", "directeur", "pdg"].includes(ROLE())) ins(ROLE() === "caisse" ? "vouch" : "sales", "ardoise");
+  return r; };
 /* ═══════════════ Avis sur le logiciel ═══════════════ */
 const AV_T = [["simple", "Facile à utiliser"], ["rapide", "Fait gagner du temps"], ["fiable", "Caisse plus fiable"], ["utile", "Très utile au bar"], ["manque", "Il manque une fonction"], ["bug", "J’ai eu un bug"], ["lent", "C’est lent"], ["prix", "Le prix"], ["autre", "Autre"]];
 const AV_L = ["", "Très déçu", "Pas satisfait", "Correct", "Satisfait", "Excellent !"];
@@ -2971,7 +3075,7 @@ function vApp() {
   const VIEW = {
     service: () => wService(), direct: () => (ROLE() === "caisse" ? shiftBanner() : "") + hovBanner() + headLine() + cOps(), sup: () => headLine() + dSup(), home: pHome,
     stock: () => cStock(), vouch: () => cVouch(S.vouchers.filter(v => v.status === "active")), sales: () => cSales(dayT()),
-    rev: cRev, acc: cAcc, paie: pPaie, qr: vQr, abo: vAbo, pres: mPres, planning: vPlanning, team: cTeam, day: () => cDay(dayT()), log: cLog, settings: cSettings, moi: vMoi, kitchen: () => vKitchen() + (S.bar.kitchen_on && !V.kds ? marketCard() : ""), plats: vPlats };
+    rev: cRev, acc: cAcc, paie: pPaie, qr: vQr, abo: vAbo, pres: mPres, planning: vPlanning, team: cTeam, day: () => cDay(dayT()), log: cLog, settings: cSettings, moi: vMoi, kitchen: () => vKitchen() + (S.bar.kitchen_on && !V.kds ? marketCard() : ""), plats: vPlats, ardoise: vArdoise };
   const ask = "Notification" in window && Notification.permission === "default" && !LS.get("gesco-ntf-ask", 0) ? `<div class="note info between" style="flex-wrap:wrap;margin-bottom:12px"><span>${ico("alert")} Activez les notifications pour être prévenu(e) même quand le téléphone est en veille.</span><span class="row"><button class="btn sm" data-a="notifOn">Activer</button><button class="btn ghost sm" data-a="notifLater">Plus tard</button></span></div>` : "";
   return header(b) + `<main class="sec" style="--el:${elapsed(V.secT)}ms"><div class="ptitle"><h1>${l}</h1><p class="mu">${d}</p></div>${ask}${VIEW[V.tab]()}</main>`
     + bnav(nav, b) + (V.menu ? drawer(nav, b) : "");
@@ -2997,7 +3101,7 @@ function shiftBanner() {
 
 /* ═══════════════ Caisse ═══════════════ */
 function cKpis() {
-  const DT = dayT(), act = S.tickets.filter(t => t.status !== "cancelled"), toRecv = act.filter(t => t.status === "cashed"), pend = act.filter(t => t.change_status === "pending"), vAct = S.vouchers.filter(v => v.status === "active");
+  const DT = dayT(), act = S.tickets.filter(t => t.status !== "cancelled"), toRecv = act.filter(t => t.status === "cashed" && t.pay_method !== "credit"), pend = act.filter(t => t.change_status === "pending"), vAct = S.vouchers.filter(v => v.status === "active");
   return `<div class="kpis">${kpi("Ventes du jour", F(sum(DT.filter(sold), t => t.total)), "", `${DT.filter(sold).length} ticket(s)`)}
     ${kpi("Payé et validé", F(sum(DT.filter(t => t.status === "paid"), t => t.total)))}
     ${kpi("À recevoir", F(sum(toRecv, cashOf)), toRecv.length ? "hl" : "", "Espèces et MoMo chez les serveuses")}
@@ -3007,7 +3111,7 @@ function cKpis() {
 }
 function cOps() {
   const act = S.tickets.filter(t => t.status !== "cancelled"), toRecv = act.filter(t => t.status === "cashed"), pend = act.filter(t => t.change_status === "pending");
-  return cKpis() + cDirect(act, toRecv, pend, act.filter(t => t.cancel_requested), toRecv.filter(t => t.pay_method === "momo"));
+  return cKpis() + cDirect(act, toRecv, pend, act.filter(t => t.cancel_requested), toRecv.filter(t => t.pay_method === "momo"), toRecv.filter(t => t.pay_method === "credit"));
 }
 
 /* ═══════════════ Directeur : supervision ═══════════════ */
@@ -3331,9 +3435,9 @@ function pPaie() {
             <button class="btn" data-a="pay" data-s="${x.id}" ${net > 0 ? "" : "disabled"}>Payer ${esc(x.name)} · ${F(net)}</button>` : ""}`}</div>`; }).join("") || '<div class="card empty">Ajoutez votre équipe dans Équipe.</div>'}</div>`;
 }
 
-function cDirect(act, toRecv, pend, cancels, momo) {
+function cDirect(act, toRecv, pend, cancels, momo, credits = []) {
   const ws = S.staff.filter(s => s.active && s.role === "serveuse");
-  const todo = [
+  const todo = [...credits.map(crRow),
     ...cancels.map(t => `<div class="li"><div class="grow"><b>Annulation demandée</b> · ${esc(staffName(t.waitress_id))}<div class="mu">${esc(t.client_label)} · ${F(t.total)}</div></div><div class="row"><button class="btn sm" data-a="acceptCancel" data-t="${t.id}">Accepter</button><button class="btn ghost sm" data-a="rejectCancel" data-t="${t.id}">Refuser</button></div></div>`),
     ...momo.map(t => `<div class="li"><div class="grow"><b>Mobile Money à vérifier</b> · ${esc(staffName(t.waitress_id))}<div class="mu">${esc(t.client_label)} · N°${t.number} · ${F(t.total)}</div></div><button class="btn sm" data-a="momoOk" data-t="${t.id}">Paiement reçu</button></div>`),
     ...pend.map(t => `<div class="li"><div class="grow"><b>Reliquat de ${F(t.change_due)}</b> · ${esc(staffName(t.waitress_id))}<div class="mu">${esc(t.client_label)} · reçu ${F(t.received)} pour ${F(t.total)}</div></div>
@@ -3705,10 +3809,17 @@ function cSettings() {
     ${payCfgCard()}
     <div class="card stack"><h3>Réglages du bar</h3><div class="row"><label class="f grow" for="b_n">Nom<input id="b_n" data-k="b_n" value="${esc(V.f.b_n ?? b.name)}"></label><label class="f grow" for="b_c">Ville et quartier<input id="b_c" data-k="b_c" value="${esc(V.f.b_c ?? (b.city || ""))}"></label></div>
       <button class="btn" data-a="saveBar">Enregistrer les réglages</button></div>
-    ${docCard()}${remitCard()}
+    ${optCard()}${docCard()}${remitCard()}
     <div class="card stack"><h3>Code du bar</h3><div class="code-big num">${esc(b.code)}</div><button class="btn soft" data-a="go" data-v="team">Installer l’application sur les téléphones</button></div></div>`;
 }
 
+// Options du bar : chaque fonction s'active selon le type d'établissement (snack, lounge, boîte de nuit)
+const F_OPTS = [["f_ardoise", "Ardoise (crédit client)", "Des clients de confiance paient plus tard, avec un plafond. La serveuse demande, la caisse valide, vous suivez les soldes."]];
+function optCard() {
+  return `<div class="card stack"><h3>Options du bar</h3><p class="mu" style="margin:0">Activez seulement ce qui sert dans votre établissement : les écrans restent simples pour l’équipe.</p>
+    <div class="list">${F_OPTS.map(([k, l, d]) => `<div class="li"><div class="grow"><b>${l}</b><div class="mu">${d}</div></div><button class="btn sm ${opt(k) ? "soft" : ""}" data-a="optTog" data-k="${k}" aria-pressed="${opt(k)}">${opt(k) ? "Désactiver" : "Activer"}</button></div>`).join("")}</div></div>`;
+}
+A.optTog = d => run(async () => { const on = !opt(d.k); S.bar.opts = await B.rpc("gb_bar_opts", { p_patch: { [d.k]: on } }); toast(`${(F_OPTS.find(x => x[0] === d.k) || [, "Option"])[1]} : ${on ? "activée" : "désactivée"}.`); render(); });
 // En-tête des documents PDF : logo et téléphone
 function docCard() {
   const b = S.bar, o = b.opts || {}, f = window.__logoFile;
@@ -3943,10 +4054,11 @@ function vModal() {
       ${CFG.mode === "live" ? "" : `<p class="mu" style="margin:0">L’impression est disponible sur l’application en ligne (gescobar-cm.pages.dev), pas dans cette démo.</p>`}
       <div class="row">${CFG.mode === "live" ? `<button class="btn grow" data-a="print">Imprimer le bon</button>` : ""}<button class="btn soft grow" data-a="copyV">Copier le texte</button>
       <a class="btn soft grow" href="https://wa.me/?text=${encodeURIComponent(voucherText(v))}" target="_blank" rel="noopener">Envoyer par WhatsApp</a></div><button class="btn ghost" data-a="close">Fermer</button>`; }
+  if (m.type === "crHist") c = crHistView(m);
   if (m.type === "summary") { const s = m.s || {};
     c = `<h2>Rapport du ${s.date ? dfr(s.date, { weekday: "long", day: "numeric", month: "long" }) : "jour"}</h2>
       <div class="list">${[["Ventes", F(s.ventes)], ...(s.plats && s.plats.qte ? [["· dont boissons", F(s.boissons)], ["· dont plats", `${F(s.plats.montant)} <span class="mu">(${s.plats.qte} plat${s.plats.qte > 1 ? "s" : ""})</span>`]] : []),
-        ["Tickets vendus", s.tickets], ["Annulés", s.annules], ["Espèces versées", F(s.especes_versees)], ["Monnaie rendue", F(s.monnaie_rendue)], ...(s.depenses_caisse ? [["Courses payées avec le tiroir", "− " + F(s.depenses_caisse)]] : []), ["Mobile Money", F(s.mobile_money)],
+        ["Tickets vendus", s.tickets], ["Annulés", s.annules], ["Espèces versées", F(s.especes_versees)], ["Monnaie rendue", F(s.monnaie_rendue)], ...(s.ardoise ? [["Ventes à l’ardoise (à encaisser plus tard)", F(s.ardoise)]] : []), ...(s.ardoise_remb ? [["Ardoises remboursées", F(s.ardoise_remb)]] : []), ...(s.depenses_caisse ? [["Courses payées avec le tiroir", "− " + F(s.depenses_caisse)]] : []), ["Mobile Money", F(s.mobile_money)],
         ["Bons émis", F(s.bons_emis)], ["Espèces attendues", F(s.attendu)], ["Espèces comptées", F(s.compte)], ["Écart de caisse", `<b class="${s.ecart < 0 ? "bad-t" : s.ecart > 0 ? "ok-t" : ""}">${F(s.ecart)}</b>`]]
         .map(([l, v]) => `<div class="between" style="padding:6px 0"><span class="mu">${l}</span><span class="num">${v}</span></div>`).join("")}</div>
       <h3>Par serveuse</h3><div class="scroll"><table><tr><th>Serveuse</th><th>Ventes</th><th>Tickets</th><th>Corr.</th><th>Écart</th><th>Btl.</th></tr>

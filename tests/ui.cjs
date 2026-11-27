@@ -234,6 +234,34 @@ async function tousLesOnglets(page) {
     const st = await page.evaluate(() => V.ks[0]); ok(st.courses >= 2100 && st.montant >= 2 * 3500 && st.sortis >= 2, "statistiques du jour fausses : " + JSON.stringify(st));
   });
 
+  await test("Ardoise : la serveuse demande, la caisse valide, plafond, remboursement dans le tiroir", async page => {
+    const nouveau = async (cl, q) => { const id = await page.evaluate(() => crypto.randomUUID()), p = await page.evaluate(() => S.products.find(p => p.name.startsWith("Castel")).id);
+      await rpc(page, "gb_ticket_create", { p_id: id, p_client: cl }); await rpc(page, "gb_ticket_set_qty", { p_ticket: id, p_product: p, p_qty: q }); await rpc(page, "gb_ticket_send", { p_ticket: id }); return id; };
+    await login(page, "Brigitte"); const t1 = await nouveau("Table ardoise", 2);
+    await page.evaluate(id => { V.open[id] = true; A.go({ v: "service" }); }, t1); await page.waitForTimeout(100);
+    await page.click(`[data-a="credPick"][data-t="${t1}"]`); const tonton = await page.evaluate(() => S.credit.find(c => c.name === "Tonton Paul").id);
+    await page.selectOption(`#cr_${t1}`, tonton); await page.click(`[data-a="credReq"][data-t="${t1}"]`); await page.waitForTimeout(250);
+    ok(await page.evaluate(id => { const t = S.tickets.find(x => x.id === id); return t.status === "cashed" && t.pay_method === "credit"; }, t1), "demande d'ardoise non enregistrée");
+    const t2 = await nouveau("Table Essomba", 3); const ess = await page.evaluate(() => S.credit.find(c => c.name === "M. Essomba").id);
+    ok((await rpc(page, "gb_ticket_credit", { p_ticket: t2, p_client: ess })).ok, "2e demande");
+    await login(page, "Mireille"); await page.evaluate(() => A.go({ v: "direct" })); await page.waitForTimeout(100);
+    ok(/Ardoise demandée/.test(await page.textContent("#app")), "la caisse ne voit pas la demande d'ardoise");
+    await page.click(`[data-a="credOk"][data-t="${t1}"]`); await page.waitForTimeout(250);
+    ok(await page.evaluate(id => S.tickets.find(x => x.id === id).status === "paid", t1), "ardoise non validée par la caisse");
+    const r = await rpc(page, "gb_credit_validate", { p_ticket: t2, p_ok: true }); ok(!r.ok && /Plafond dépassé/.test(r.e), "plafond non respecté : " + JSON.stringify(r));
+    ok(await page.evaluate(() => navFor().includes("ardoise")), "onglet Ardoise absent chez la caissière");
+    const avant = await page.evaluate(() => sum(S.remits, r => r.received));
+    await page.evaluate(() => A.go({ v: "ardoise" })); await page.waitForFunction(() => Array.isArray(V.cr), null, { timeout: 4000 });
+    ok(/Tonton Paul/.test(await page.textContent("#app")), "liste des ardoises vide");
+    await page.click(`[data-a="crPay"][data-id="${tonton}"]`); await page.fill("#crm", "2000"); await page.click(`[data-a="crPayGo"][data-id="${tonton}"]`); await page.waitForTimeout(300);
+    ok(await page.evaluate(a => sum(S.remits, r => r.received) === a + 2000, avant), "le remboursement en espèces n'entre pas dans le tiroir");
+    await login(page, "Marcel"); ok((await rpc(page, "gb_credit_validate", { p_ticket: t2, p_ok: true })).ok, "le PDG ne peut pas valider au-delà du plafond");
+    await login(page, "Brigitte"); const rs = await rpc(page, "gb_credit_client_save", { p_id: null, p_name: "Moi-même", p_phone: "", p_limit: 999999 }); ok(!rs.ok, "une serveuse a ouvert une ardoise");
+    await login(page, "Marcel"); await page.evaluate(() => A.go({ v: "settings" })); await page.waitForTimeout(100);
+    await page.click('[data-a="optTog"][data-k="f_ardoise"]'); await page.waitForTimeout(200);
+    ok(await page.evaluate(() => !navFor().includes("ardoise")), "l'ardoise reste visible après désactivation");
+  });
+
   await test("Abonnement : mode test caché (petit montant, 1 mois)", async page => {
     await login(page, "Marcel");
     await page.evaluate(() => { S.bar.sub_test_price = 200; V.f.ab_p = "gold"; A.go({ v: "abo" }); }); await page.waitForTimeout(150);

@@ -14,7 +14,7 @@ begin perform set_config('request.jwt.claims', json_build_object('sub', u, 'role
 do $$
 declare
   u_pdg uuid := gen_random_uuid(); u_srv uuid := gen_random_uuid(); u_cai uuid := gen_random_uuid(); u_cui uuid := gen_random_uuid();
-  bar uuid; s_srv uuid; s_cai uuid; s_cui uuid; biere uuid; plat uuid; t1 uuid := gen_random_uuid(); t2 uuid := gen_random_uuid(); t3 uuid := gen_random_uuid();
+  bar uuid; s_srv uuid; s_cai uuid; s_cui uuid; biere uuid; plat uuid; t1 uuid := gen_random_uuid(); t2 uuid := gen_random_uuid(); t3 uuid := gen_random_uuid(); t4 uuid := gen_random_uuid(); cl uuid;
   st text; total int; ko uuid; r jsonb; e text;
 begin
   -- Bar d'essai : PDG, serveuse, caissière, cuisinier
@@ -115,6 +115,24 @@ begin
   perform pg_temp.ok(e = 'Fichier non valide.', 'un logo hors du dossier du bar est refusé');
   perform public.gb_bar_logo(bar || '/logo-1.png');
   perform pg_temp.ok((select logo_path from public.bars where id = bar) = bar || '/logo-1.png', 'le PDG enregistre le logo du bar');
+
+  -- Ardoise : option activée par le PDG, la serveuse demande, la caisse valide dans le plafond, remboursement dans le tiroir
+  perform public.gb_bar_opts('{"f_ardoise": true}');
+  cl := public.gb_credit_client_save(null, 'Client test', '690000000', 1000);
+  perform pg_temp.as_user(u_srv);
+  e := pg_temp.err(format('select public.gb_credit_client_save(null, %L, null, 999999)', 'Moi'));
+  perform pg_temp.ok(e <> 'OK', 'une serveuse ne peut pas ouvrir une ardoise');
+  perform public.gb_ticket_create(t4, 'Table ardoise'); perform public.gb_ticket_set_qty(t4, biere, 3); perform public.gb_ticket_send(t4);
+  perform public.gb_ticket_credit(t4, cl);
+  e := pg_temp.err(format('select public.gb_credit_validate(%L, true)', t4));
+  perform pg_temp.ok(e <> 'OK', 'la serveuse ne valide pas sa propre ardoise');
+  perform pg_temp.as_user(u_cai);
+  e := pg_temp.err(format('select public.gb_credit_validate(%L, true)', t4));
+  perform pg_temp.ok(e like 'Plafond dépassé%', 'au-delà du plafond, la caisse ne peut pas valider');
+  perform pg_temp.as_user(u_pdg); r := public.gb_credit_validate(t4, true);
+  perform pg_temp.ok((r->>'balance')::int = 1800, 'le PDG valide au-delà du plafond (1 800 FCFA dus)');
+  perform pg_temp.as_user(u_cai); r := public.gb_credit_repay(cl, 800, 'cash');
+  perform pg_temp.ok((r->>'balance')::int = 1000 and exists (select 1 from public.remittances where waitress_id = s_cai and received = 800), 'remboursement en espèces enregistré dans le tiroir');
 
   -- Abonnement : prix de test caché (1 mois, petit montant) puis effacé après paiement
   update public.bars set sub_test_price = 200 where id = bar;
