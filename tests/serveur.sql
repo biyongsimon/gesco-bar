@@ -14,7 +14,7 @@ begin perform set_config('request.jwt.claims', json_build_object('sub', u, 'role
 do $$
 declare
   u_pdg uuid := gen_random_uuid(); u_srv uuid := gen_random_uuid(); u_cai uuid := gen_random_uuid(); u_cui uuid := gen_random_uuid();
-  bar uuid; s_srv uuid; s_cai uuid; s_cui uuid; biere uuid; plat uuid; t1 uuid := gen_random_uuid(); t2 uuid := gen_random_uuid(); t3 uuid := gen_random_uuid(); t4 uuid := gen_random_uuid(); cl uuid; pk uuid;
+  bar uuid; s_srv uuid; s_cai uuid; s_cui uuid; biere uuid; plat uuid; t1 uuid := gen_random_uuid(); t2 uuid := gen_random_uuid(); t3 uuid := gen_random_uuid(); t4 uuid := gen_random_uuid(); cl uuid; pk uuid; vb uuid;
   st text; total int; ko uuid; r jsonb; e text;
 begin
   -- Bar d'essai : PDG, serveuse, caissière, cuisinier
@@ -136,13 +136,14 @@ begin
 
   -- Emballages : comptage puis vides rendus avec le bon de commande
   perform pg_temp.as_user(u_pdg); perform public.gb_bar_opts('{"f_vides": true}');
-  pk := public.gb_pack_save(null, 'Casier test', 100, 12, array[biere]);
+  insert into public.products(bar_id, name, category, price, stock) values (bar, 'Bière consignée', 'Bières', 650, 100) returning id into vb;
+  pk := public.gb_pack_save(null, 'Casier test', 100, 12, array[vb]);
   perform public.gb_pack_move(pk, 'comptage', 30);
   -- (dans la transaction de test, tout a la même heure : le comptage est daté d'une minute plus tôt)
   update public.packaging_moves set created_at = now() - interval '1 minute' where packaging_id = pk;
   e := pg_temp.err(format('select public.gb_pack_move(%L, ''retour'', 500)', pk));
   perform pg_temp.ok(e like 'Il n''y a que%', 'on ne rend pas plus de vides qu''on en a');
-  r := public.gb_po_create('Dépôt test', '690000000', jsonb_build_array(jsonb_build_object('p', biere, 'q', 12)));
+  r := public.gb_po_create('Dépôt test', '690000000', jsonb_build_array(jsonb_build_object('p', vb, 'q', 12)));
   perform public.gb_po_empties((r->>'id')::uuid, jsonb_build_array(jsonb_build_object('k', pk, 'q', 12)));
   perform public.gb_po_receive((r->>'id')::uuid, null);
   perform pg_temp.ok(gb_private.pack_theo(pk) = 18, 'les vides rendus avec le bon sont retirés à la livraison (30 - 12 = 18)');
