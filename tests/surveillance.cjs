@@ -38,6 +38,13 @@ const bon = m => console.log("✔ " + m);
     if (r.ok && j.key) bon("notifications : le service répond"); else panne(`service de notifications : réponse inattendue (${r.status})`);
   } catch (e) { panne("service de notifications injoignable : " + e.message); }
 
+  // Photos des produits (bouteilles et plats) bien publiées
+  for (const f of ["castel", "plat-poulet-dg", "plat-ndole", "plat-steak-frites"]) {
+    try { const r = await fetch(SITE + "/produits/" + f + ".webp"); const t = r.headers.get("content-type") || "";
+      if (r.ok && /image/.test(t)) bon(`photo ${f} : en ligne`); else panne(`photo ${f} introuvable (${r.status} ${t})`);
+    } catch (e) { panne(`photo ${f} injoignable : ${e.message}`); }
+  }
+
   // 3) L'application et la console s'affichent-elles vraiment ?
   const b = await chromium.launch();
   for (const [nom, url, pret] of [
