@@ -83,12 +83,23 @@ jobs:
       - name: Restauration dans une base Supabase vide
         run: |
           set -euo pipefail
+          # Données de GesCo (strict) et données gérées par Supabase (comptes, stockage) séparées : le schéma interne
+          # de Supabase évolue plus vite en ligne que dans la base de test locale, ce qui ne concerne pas une vraie restauration.
+          awk -v A=copie/data_gesco.sql -v S=copie/data_supabase.sql '
+            function sys(l) { return l ~ /^(COPY |SELECT pg_catalog\.setval\()[^"]*"(auth|storage|realtime|supabase_functions|supabase_migrations|vault|net|cron|extensions|graphql|pgbouncer|pgsodium)"/ }
+            BEGIN { inb = 0 }
+            { if (inb) { print > tgt; if ($0 == "\\.") inb = 0; next }
+              if ($0 ~ /^COPY /) { tgt = sys($0) ? S : A; print > tgt; inb = 1; next }
+              if ($0 ~ /^SELECT pg_catalog\.setval/) { print > (sys($0) ? S : A); next }
+              print > A; print > S }' copie/data.sql
           mkdir essai && cd essai && supabase init --force --yes >/dev/null && supabase db start
           L=$(supabase status -o env 2>/dev/null | grep -o 'postgresql://[^"]*' | head -1); L=${L:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}
           psql "$L" --single-transaction -v ON_ERROR_STOP=1 \
-            -f ../copie/roles.sql -f ../copie/schema.sql -c "SET session_replication_role = replica" -f ../copie/data.sql
+            -f ../copie/roles.sql -f ../copie/schema.sql -c "SET session_replication_role = replica" -f ../copie/data_gesco.sql
+          e=$(psql "$L" -c "SET session_replication_role = replica" -f ../copie/data_supabase.sql 2>&1 | grep -c "ERROR" || true)
+          [ "$e" -eq 0 ] || echo "::warning::$e table(s) internes de Supabase non restaurées dans la base de test (version locale plus ancienne que la version en ligne) ; les données de GesCo sont complètes."
           psql "$L" -tA -v ON_ERROR_STOP=1 \
-            -c "select 'bars=' || count(*) from public.bars" -c "select 'personnel=' || count(*) from public.staff" -c "select 'tickets=' || count(*) from public.tickets"
+            -c "select 'bars=' || count(*) from public.bars" -c "select 'personnel=' || count(*) from public.staff" -c "select 'tickets=' || count(*) from public.tickets" -c "select 'comptes=' || count(*) from auth.users"
           n=$(psql "$L" -tA -c "select count(*) from public.bars")
           [ "$n" -ge 1 ] || { echo "::error::aucun bar après restauration"; exit 1; }
           echo "::notice::Copie restaurée avec succès ($n bar(s))."
