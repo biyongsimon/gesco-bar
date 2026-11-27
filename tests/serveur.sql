@@ -145,6 +145,21 @@ begin
   perform public.gb_po_receive((r->>'id')::uuid, null);
   perform pg_temp.ok(gb_private.pack_theo(pk) = 18, 'les vides rendus avec le bon sont retirés à la livraison (30 - 12 = 18)');
 
+  -- Lounge : prix de nuit, entrées à la porte (espèces dans le tiroir), bouteille gardée
+  perform pg_temp.as_user(u_pdg);
+  perform public.gb_bar_opts(jsonb_build_object('f_nuit', true, 'f_porte', true, 'f_garde', true, 'f_vip', true,
+    'nuit_debut', to_char((now() at time zone 'Africa/Douala') - interval '1 minute', 'HH24:MI')));
+  perform public.gb_product_night(biere, 900);
+  perform pg_temp.ok(gb_private.price_now(bar, biere) = 900 or to_char(now() at time zone 'Africa/Douala', 'HH24:MI') between '06:00' and '06:01', 'le prix de nuit s''applique à partir de l''heure choisie');
+  perform pg_temp.as_user(u_cai);
+  r := public.gb_door_sell('Entrée', 2000, 2, 'cash');
+  perform pg_temp.ok((r->>'total')::int = 4000 and exists (select 1 from public.remittances where waitress_id = s_cai and received = 4000), 'les entrées en espèces entrent dans le tiroir');
+  perform public.gb_door_cancel((r->>'id')::uuid);
+  perform pg_temp.ok(not exists (select 1 from public.door_entries where id = (r->>'id')::uuid), 'une entrée se corrige dans les 15 minutes');
+  perform pg_temp.as_user(u_srv);
+  e := pg_temp.err(format('select public.gb_door_sell(''Entrée'', 0, 50, ''cash'')'));
+  perform pg_temp.ok(e <> 'OK', 'une serveuse ne vend pas d''entrées');
+
   -- Abonnement : prix de test caché (1 mois, petit montant) puis effacé après paiement
   update public.bars set sub_test_price = 200 where id = bar;
   r := public.gb_admin_sub_push_start(u_pdg, 'gold', 12, 'mtn', '670000000');

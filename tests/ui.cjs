@@ -281,6 +281,35 @@ async function tousLesOnglets(page) {
     const th = await page.evaluate(id => B.rpc("gb_pack_state", {}).then(L => L.find(x => x.id === id).theo), k.id); ok(th === k2.theo - 24, `vides non retirés à la livraison (${k2.theo} → ${th})`);
   }, { ctx: { viewport: { width: 360, height: 780 }, acceptDownloads: true } });
 
+  await test("Lounge : prix de nuit, entrées à la porte, réservation VIP, bouteille gardée, rapport", async page => {
+    await login(page, "Marcel"); await page.evaluate(() => A.go({ v: "settings" })); await page.waitForTimeout(100);
+    const h = await page.evaluate(() => { const d = new Date(Date.now() + (new Date().getTimezoneOffset() + 60) * 60000 - 60000); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); });
+    ok((await rpc(page, "gb_bar_opts", { p_patch: { nuit_debut: h } })).ok, "heure de nuit");
+    await page.evaluate(() => render()); ok(await page.$('[data-a="dtSave"]') && await page.$("#nuit_h"), "réglages de nuit ou de porte absents");
+    await login(page, "Brigitte"); const castel = await page.evaluate(() => S.products.find(p => p.name.startsWith("Castel")));
+    ok(await page.evaluate(() => nightNow()), "le tarif de nuit n'est pas actif à l'heure choisie");
+    const id = await page.evaluate(() => crypto.randomUUID()); await rpc(page, "gb_ticket_create", { p_id: id, p_client: "Table nuit" }); await rpc(page, "gb_ticket_set_qty", { p_ticket: id, p_product: castel.id, p_qty: 2 });
+    ok(await page.evaluate(([id, np]) => S.tickets.find(t => t.id === id).items[0].unit_price === np, [id, castel.night_price]), "le prix de nuit n'est pas appliqué au ticket");
+    ok(await page.evaluate(() => navFor().includes("resa")), "la serveuse ne voit pas les réservations");
+    await page.evaluate(() => A.go({ v: "resa" })); await page.waitForTimeout(100);
+    await page.click('[data-a="rsOpen"]'); await page.waitForTimeout(300);
+    const rs = await page.evaluate(() => S.resas.find(r => r.name === "M. Ngono")); ok(rs.status === "arrivee" && rs.ticket_id, "le ticket de la table réservée n'est pas ouvert");
+    await page.evaluate(() => A.go({ v: "resa" })); await page.waitForTimeout(100); ok(/Il manque/.test(await page.textContent("#app")), "minimum de consommation non signalé");
+    await login(page, "Mireille"); ok(await page.evaluate(() => navFor().includes("porte")), "onglet Porte absent");
+    await page.evaluate(() => A.go({ v: "porte" })); await page.waitForTimeout(100);
+    const avant = await page.evaluate(() => sum(S.remits, r => r.received));
+    await page.click('[data-a="dqStep"][data-v="1"]'); await page.click('[data-a="doorSell"][data-i="0"]'); await page.waitForTimeout(300);
+    ok(await page.evaluate(a => sum(S.remits, r => r.received) === a + 4000, avant), "les entrées en espèces n'entrent pas dans le tiroir");
+    await page.click('[data-a="doorX"]'); await page.waitForTimeout(300); ok(await page.evaluate(a => sum(S.remits, r => r.received) === a, avant), "annulation d'entrée sans effet");
+    await page.click('[data-a="doorSell"][data-i="2"]'); await page.waitForTimeout(250);
+    await page.evaluate(() => A.go({ v: "vouch" })); await page.waitForTimeout(100); await page.click('[data-a="kpNew"]');
+    await page.fill("#kpc", "M. Kamga"); await page.selectOption("#kpp", castel.id); await page.click('[data-a="kpAdd"]'); await page.waitForTimeout(250);
+    ok(await page.evaluate(() => S.kept.some(k => k.client === "M. Kamga")), "bouteille non gardée");
+    const kid = await page.evaluate(() => S.kept.find(k => k.client === "M. Kamga").id); await page.click(`[data-a="kpClose"][data-id="${kid}"]`); await page.waitForTimeout(250);
+    ok(await page.evaluate(() => !S.kept.some(k => k.client === "M. Kamga")), "bouteille non rendue");
+    const r = await rpc(page, "gb_day_close", { p_counted: 0, p_force: true }); ok(r.ok && r.v.entrees.n >= 5 && r.v.entrees.montant >= 16000, "entrées absentes du rapport : " + JSON.stringify(r.v && r.v.entrees));
+  });
+
   await test("Abonnement : mode test caché (petit montant, 1 mois)", async page => {
     await login(page, "Marcel");
     await page.evaluate(() => { S.bar.sub_test_price = 200; V.f.ab_p = "gold"; A.go({ v: "abo" }); }); await page.waitForTimeout(150);

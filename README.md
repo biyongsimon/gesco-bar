@@ -249,3 +249,8 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Option du bar « Emballages consignés » (migration 033) : types d'emballage (nom, consigne par bouteille, bouteilles par casier, boissons liées).
 - Vides théoriques = dernier comptage + bouteilles vendues ou ouvertes au verre depuis − vides rendus − casse (`gb_private.pack_theo`). Comptage avec écart chiffré (consigne perdue), retours au dépôt, casse.
 - Bon de commande : « Vides rendus avec ce bon » (sur le message WhatsApp et le PDF), retirés automatiquement du stock de vides à la livraison (déclencheur `po_empties_out`).
+
+## v4.26 — Lounge et boîte de nuit
+- Options (migration 034) : **prix de nuit** (heure de début choisie, jusqu'à 6 h, prix par boisson dans Stock ; `gb_private.price_now` dans `gb_ticket_set_qty`), **réservations / tables VIP** (heure, personnes, table, minimum de consommation suivi sur le ticket ouvert par la serveuse), **entrées à la porte** (tarifs réglables, espèces dans le tiroir, annulation sous 15 min, total au rapport de clôture), **bouteilles gardées** au nom du client (étiquette, niveau, rendue).
+- Catégories « Chicha » et « Cocktails », unités « chicha » et « tête ».
+- Démo : soirée lounge préremplie (2 réservations, entrées, bouteille gardée, prix de nuit sur les bières).
