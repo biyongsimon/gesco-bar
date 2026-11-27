@@ -609,7 +609,7 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
     var C = window.GESCO_CONFIG; if (!C || C.mode !== "live" || !window.fetch) return;
     var tok = C.key; try { var a = JSON.parse(localStorage.getItem("gesco-auth") || "null"); if (a && a.access_token && a.expires_at * 1000 > Date.now()) tok = a.access_token; } catch (x) {}
     var body = JSON.stringify({ p_message: "DÉMARRAGE : GesCo ne s'est pas affiché" + (errs[0] ? " — " + errs[0].split("\n")[0] : " (délai dépassé)"), p_stack: errs.join("\n---\n") || null,
-      p_source: "app", p_url: location.pathname, p_tab: "démarrage", p_version: "1f787a37", p_ua: navigator.userAgent.slice(0, 200) });
+      p_source: "app", p_url: location.pathname, p_tab: "démarrage", p_version: "74e970bd", p_ua: navigator.userAgent.slice(0, 200) });
     var go = function (t) { return fetch(C.url + "/rest/v1/rpc/gb_log_error", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", apikey: C.key, Authorization: "Bearer " + t }, body: body }); };
     go(tok).then(function (r) { if (!r.ok && tok !== C.key) go(C.key); }).catch(function () {
       try { var q = JSON.parse(localStorage.getItem("gesco-errq") || "[]"); q.push(JSON.parse(body)); localStorage.setItem("gesco-errq", JSON.stringify(q.slice(-20))); } catch (x) {} });
@@ -645,7 +645,7 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
 "use strict";
 /* ═══════════════ Outils ═══════════════ */
 const CFG = window.GESCO_CONFIG;
-const APP_BUILD = "1f787a37";
+const APP_BUILD = "74e970bd";
 /* Remontée des erreurs inattendues vers la console éditeur (jamais les messages métier, réseau ou de session) */
 const ERR_SEEN = {};
 function reportErr(e, kind) {
@@ -750,7 +750,7 @@ const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentC
 
 /* ═══════════════ Moteur DÉMO (données locales, mêmes règles que le serveur) ═══════════════ */
 function DemoBackend() {
-  const KEY = "gesco-demo-v18";
+  const KEY = "gesco-demo-v19";
   let db = LS.get(KEY), sess = LS.get(KEY + "-sess");
   const listeners = [];
   const save = () => LS.set(KEY, db);
@@ -1401,7 +1401,7 @@ function DemoBackend() {
     mk("Carine", "Famille Ndongo", [["Castel", 2], ["Orijin", 1]], id => { R.gb_ticket_send({ p_ticket: id }); R.gb_ticket_cash({ p_ticket: id, p_method: "momo" }); });
     as("Mireille"); R.gb_remit({ p_waitress: W("Brigitte"), p_received: 4000 });
     // Ardoise de démonstration : deux clients habitués
-    db.bar.opts = { f_ardoise: true, f_vides: true, f_vip: true, f_porte: true, f_garde: true, f_nuit: true, nuit_debut: "22:00", porte_tarifs: [{ l: "Entrée", p: 2000 }, { l: "Entrée + 1 boisson", p: 3000 }, { l: "Entrée VIP", p: 5000 }] }; const ago = h => new Date(Date.now() - h * 3600e3).toISOString(), C1 = uuid(), C2 = uuid();
+    db.bar.opts = { f_ardoise: true, f_vides: true, f_vip: true, f_porte: true, f_garde: true, f_print: true, f_mural: true, f_recettes: true, f_nuit: true, nuit_debut: "22:00", porte_tarifs: [{ l: "Entrée", p: 2000 }, { l: "Entrée + 1 boisson", p: 3000 }, { l: "Entrée VIP", p: 5000 }] }; const ago = h => new Date(Date.now() - h * 3600e3).toISOString(), C1 = uuid(), C2 = uuid();
     db.credit_clients = [{ id: C1, name: "Tonton Paul", phone: "690000001", limit: 30000, active: true, note: "paie le 30 du mois" }, { id: C2, name: "M. Essomba", phone: "677000002", limit: 15000, active: true, note: null }];
     db.credit_moves = [{ id: uuid(), client_id: C1, kind: "dette", amount: 6500, at: ago(72), label: "Table du fond", by: "Mireille" }, { id: uuid(), client_id: C1, kind: "remboursement", amount: 3000, method: "momo", at: ago(48), by: "Mireille" },
       { id: uuid(), client_id: C1, kind: "dette", amount: 4200, at: ago(26), label: "Terrasse", by: "Mireille" }, { id: uuid(), client_id: C2, kind: "dette", amount: 14000, at: ago(30), label: "Anniversaire", by: "Hervé" }];
@@ -1725,7 +1725,7 @@ async function enterApp() {
   try { const qp = new URLSearchParams(location.search); if (qp.get("kds")) LS.set("gesco-kds", 1); const qt = qp.get("tab"); if (qt && navFor().includes(qt)) V.tab = qt;
     const rp = qp.get("rapport"); if (rp && navFor().includes("day")) { V.tab = "day"; setTimeout(() => A.showDay({ id: rp }), 50); }
     if (qt || rp) history.replaceState(null, "", location.pathname); } catch (e) {}
-  V.kds = !!LS.get("gesco-kds", 0) && KDS_OK() && !!S.bar.kitchen_on; if (V.kds) { V.tab = "kitchen"; setTimeout(kdsWake, 500); }
+  V.kds = !!LS.get("gesco-kds", 0) && KDS_OK() && !!S.bar.kitchen_on && opt("f_mural"); if (V.kds) { V.tab = "kitchen"; setTimeout(kdsWake, 500); }
   V.secT = Date.now(); V.menu = false; notifyNew(); lazyLoad(); V.rea = null; A.reaLoad(true);
   render(); flush(); setTimeout(avisCheck, 6000);
   try { const sp = (S.subs || []).find(x => x.status === "en_attente" && x.channel === "notchpay"); if (sp && B.subStatus) subWatch(sp.id); } catch (e) {}
@@ -2487,7 +2487,7 @@ function vKitchen() {
   const ks = (S.kitchen || []).filter(o => o.status !== "annule"), by = st => ks.filter(o => o.status === st).sort((a, b) => a.created_at < b.created_at ? -1 : 1);
   const L = { attente: by("attente"), prep: by("prep"), pret: by("pret") }, T = [["attente", "À préparer"], ["prep", "En cours"], ["pret", "Prêts"]];
   const served = ks.filter(o => o.status === "servi").sort((a, b) => (a.served_at || "") < (b.served_at || "") ? 1 : -1).slice(0, 6);
-  const wall = KDS_OK() ? `<div class="card kwall"><div class="grow" style="min-width:0"><b>Écran mural de la cuisine</b><div class="mu">Pour la TV ou la tablette fixée en cuisine : tous les bons en très grand, lisibles de loin, sans verrouillage ni mise en veille. Le cuisinier valide depuis son téléphone.</div></div><button class="btn" data-a="kdsOn">${ico("kitchen")} Ouvrir l’écran mural</button></div>` : "";
+  const wall = KDS_OK() && opt("f_mural") ? `<div class="card kwall"><div class="grow" style="min-width:0"><b>Écran mural de la cuisine</b><div class="mu">Pour la TV ou la tablette fixée en cuisine : tous les bons en très grand, lisibles de loin, sans verrouillage ni mise en veille. Le cuisinier valide depuis son téléphone.</div></div><button class="btn" data-a="kdsOn">${ico("kitchen")} Ouvrir l’écran mural</button></div>` : "";
   let board;
   if (innerWidth < 900) { const tab = V.kt && L[V.kt] ? V.kt : (T.find(([k]) => L[k].length) || T[0])[0];
     board = `<div class="seg ktabs">${T.map(([k, l]) => `<button class="${tab === k ? "on" : ""}" data-a="kTab" data-v="${k}" aria-pressed="${tab === k}">${l} <b class="num">${L[k].length}</b></button>`).join("")}</div>
@@ -2698,6 +2698,68 @@ A.dishPick = d => { Object.assign(V.f, { np_n: d.v, np_c: "Cuisine", np_u: "plat
 const DESK_MQ = window.matchMedia ? matchMedia("(min-width:900px)") : { matches: false };
 const desk = () => !!DESK_MQ.matches;
 try { DESK_MQ.addEventListener("change", () => { if (V.screen === "app") render(); }); } catch (e) {}
+/* ═══════════════ Impression de l'addition (imprimante thermique 58 mm) ═══════════════
+   3 façons : Bluetooth direct (Chrome Android / ordinateur, imprimante « BLE »), appli RawBT (Android, toutes imprimantes Bluetooth),
+   impression du système (imprimante installée sur le téléphone ou l'ordinateur). Le choix est gardé sur l'appareil. */
+const PR_W = 32, prMode = () => LS.get("gesco-printer", "") || ("bluetooth" in navigator ? "ble" : /Android/.test(navigator.userAgent) ? "rawbt" : "systeme");
+const asc = v => String(v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’‘]/g, "'").replace(/[«»“”]/g, '"').replace(/[  ]/g, " ").replace(/[^\x20-\x7e]/g, "");
+const prLine = (l, r) => { l = asc(l); r = asc(r); const w = PR_W - r.length - 1; return (l.length > w ? l.slice(0, w) : l.padEnd(w)) + " " + r; };
+function receiptLines(t, kind) {
+  const b = S.bar, o = b.opts || {}, items = (t.items || []).filter(i => i.qty > 0), L = [];
+  L.push(["c2", asc(b.name).slice(0, 16)]); if (b.city) L.push(["c", asc(b.city)]); if (o.phone) L.push(["c", "Tel. " + asc(o.phone)]); if (b.niu) L.push(["c", "NIU " + asc(b.niu)]);
+  L.push(["", "-".repeat(PR_W)]);
+  L.push(["b", kind === "recu" ? "RECU" + (t.number ? " N" + t.number : "") : "ADDITION" + (t.number ? " N" + t.number : "")]);
+  L.push(["", asc(new Date().toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }))]);
+  L.push(["", prLine("Table : " + (t.client_label || ""), "")]); L.push(["", "Serveuse : " + asc(staffName(t.waitress_id))]);
+  L.push(["", "-".repeat(PR_W)]);
+  items.forEach(i => { L.push(["", asc(prodName(i.product_id)).slice(0, PR_W)]); L.push(["", prLine(`  ${i.qty} x ${Fs(i.unit_price)}`, Fs(i.qty * i.unit_price))]); });
+  L.push(["", "-".repeat(PR_W)]); L.push(["b2", prLine("TOTAL", Fs(t.total) + " F").slice(-PR_W)]);
+  if (kind === "recu" && t.pay_method) { L.push(["", prLine("Paye par", t.pay_method === "momo" ? "Mobile Money" : t.pay_method === "credit" ? "Ardoise" : "Especes")]);
+    if (t.pay_method === "cash" && t.received) { L.push(["", prLine("Recu", Fs(t.received) + " F")]); if (t.change_due) L.push(["", prLine("Monnaie rendue", Fs(t.change_due) + " F")]); } }
+  L.push(["", ""]); L.push(["c", kind === "recu" ? "Merci de votre visite !" : "Merci ! A regler a la serveuse."]); L.push(["c", "GesCo Bar"]);
+  return L;
+}
+function escpos(lines) {
+  const out = [0x1b, 0x40], push = s => { for (const ch of s) out.push(ch.charCodeAt(0)); out.push(0x0a); };
+  lines.forEach(([f, s]) => { out.push(0x1b, 0x61, /c/.test(f) ? 1 : 0); out.push(0x1b, 0x45, /b/.test(f) ? 1 : 0); out.push(0x1d, 0x21, /2/.test(f) ? 0x11 : 0x00); push(s); });
+  out.push(0x1b, 0x45, 0, 0x1d, 0x21, 0, 0x1b, 0x61, 0, 0x0a, 0x0a, 0x0a, 0x1d, 0x56, 0x42, 0x00); return new Uint8Array(out);
+}
+const BLE_SV = ["000018f0-0000-1000-8000-00805f9b34fb", "e7810a71-73ae-499d-8c15-faa9aef0c3f2", "49535343-fe7d-4ae5-8fa9-9fafd205e455", "0000ff00-0000-1000-8000-00805f9b34fb", "0000ae30-0000-1000-8000-00805f9b34fb", "0000ffe0-0000-1000-8000-00805f9b34fb"];
+async function bleWrite(bytes) {
+  if (!("bluetooth" in navigator)) throw bizErr("Bluetooth direct indisponible sur cet appareil : choisissez « Appli RawBT » ou « Impression du système » dans le menu de l’imprimante.");
+  let ch = window.__bleChr;
+  if (!ch || !ch.service.device.gatt.connected) {
+    const dev = window.__bleDev && !window.__bleDev.gatt.connected ? window.__bleDev : await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: BLE_SV });
+    window.__bleDev = dev; const srv = await dev.gatt.connect(); ch = null;
+    for (const u of BLE_SV) { try { const s = await srv.getPrimaryService(u); for (const c of await s.getCharacteristics()) if (c.properties.writeWithoutResponse || c.properties.write) { ch = c; break; } } catch (e) {} if (ch) break; }
+    if (!ch) throw bizErr("Imprimante non reconnue en Bluetooth direct. Essayez le mode « Appli RawBT » (Android)."); window.__bleChr = ch;
+  }
+  for (let i = 0; i < bytes.length; i += 100) { const part = bytes.slice(i, i + 100); if (ch.properties.writeWithoutResponse) await ch.writeValueWithoutResponse(part); else await ch.writeValue(part); }
+}
+function systemPrint(lines) {
+  const el = document.createElement("div"); el.className = "receipt printable"; el.style.cssText = "position:fixed;left:-9999px;top:0;font:12px/1.35 ui-monospace,Menlo,Consolas,monospace;white-space:pre;background:#fff;color:#000";
+  el.textContent = lines.map(([f, s]) => /c/.test(f) ? " ".repeat(Math.max(0, Math.floor((PR_W - s.length) / 2))) + s : s).join("\n"); document.body.appendChild(el);
+  const done = () => { el.remove(); removeEventListener("afterprint", done); }; addEventListener("afterprint", done); window.print(); setTimeout(done, 60000);
+}
+async function printTicket(t, kind) {
+  const lines = receiptLines(t, kind), bytes = escpos(lines), m = prMode(); window.__lastPrint = { mode: m, lines, bytes };
+  if (m === "ble") { await bleWrite(bytes); return toast(kind === "recu" ? "Reçu imprimé." : "Addition imprimée."); }
+  if (m === "rawbt") { let s = ""; bytes.forEach(b => s += String.fromCharCode(b)); location.href = "intent:base64," + btoa(s) + "#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;"; return; }
+  systemPrint(lines);
+}
+A.prTk = d => run(async () => { const t = S.tickets.find(x => x.id === d.t); if (t) await printTicket(t, d.k || "addition"); });
+A.prMode = d => { LS.set("gesco-printer", d.v); if (d.v !== "ble") { window.__bleChr = null; } toast("Imprimante : " + PR_MODES[d.v] + "."); render(); };
+const PR_MODES = { ble: "Bluetooth direct", rawbt: "Appli RawBT (Android)", systeme: "Impression du système" };
+const prBtn = (t, kind) => opt("f_print") && t.total > 0 ? `<button class="btn ghost sm" data-a="prTk" data-t="${t.id}" data-k="${kind}">🖨 ${kind === "recu" ? "Imprimer le reçu" : "Imprimer l’addition"}</button>` : "";
+function printCard() {
+  if (!opt("f_print")) return ""; const m = prMode();
+  return `<div class="card stack"><h3>Imprimante de cet appareil</h3><p class="mu" style="margin:0">Petite imprimante thermique 58 mm (ticket de caisse). Le choix vaut pour ce téléphone ou cet ordinateur.</p>
+    <div class="segs">${Object.entries(PR_MODES).map(([k, l]) => `<button class="${m === k ? "on" : ""}" data-a="prMode" data-v="${k}" aria-pressed="${m === k}">${l}</button>`).join("")}</div>
+    <p class="mu" style="margin:0">${{ ble: "Chrome sur Android ou ordinateur : à la première impression, choisissez l’imprimante dans la liste. Fonctionne avec les imprimantes Bluetooth « BLE ». Pas sur iPhone.",
+      rawbt: "Installez l’application gratuite RawBT (Play Store) et associez-y votre imprimante Bluetooth une fois : GesCo lui envoie le ticket. Fonctionne avec presque toutes les imprimantes Bluetooth.",
+      systeme: "Utilise l’imprimante installée sur l’appareil (Wi-Fi, USB ou service d’impression Android)." }[m]}</p></div>`;
+}
+
 /* ═══════════════ Lounge et boîte de nuit : prix de nuit, réservations, entrées, bouteilles gardées ═══════════════ */
 const nightOn = o => { o = o || {}; if (!o.f_nuit || !/^\d{2}:\d{2}$/.test(o.nuit_debut || "")) return false;
   const d = new Date(Date.now() + (new Date().getTimezoneOffset() + 60) * 60000), t = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"), h = o.nuit_debut;
@@ -2961,9 +3023,9 @@ function ticket(t, opts = {}) {
       if (t.cancel_requested) body += `<div class="note bad">Annulation demandée : en attente de la caisse.</div>`;
       if (t.status === "draft" && isCounter(t)) body += (t.total ? payBox(t) : "") + `<div class="row"><span class="mu grow">Vente au comptoir : le paiement est validé directement.</span><button class="btn bad sm" data-a="del" data-t="${t.id}">Supprimer</button></div>`;
       else if (t.status === "draft") body += `<div class="row"><button class="btn grow" data-a="send" data-t="${t.id}" ${t.total ? "" : "disabled"}>Envoyer à la caisse</button><button class="btn bad" data-a="del" data-t="${t.id}">Supprimer</button></div>`;
-      else { body += servedBtn; if (!t.cancel_requested) body += payBox(t); body += `<div class="row"><span class="mu grow">Le client change d’avis ? Corrigez les quantités : chaque correction est tracée.</span>${t.cancel_requested && !isCaisse() ? "" : `<button class="btn bad sm" data-a="del" data-t="${t.id}">${isCaisse() ? "Supprimer" : "Annuler la commande"}</button>`}</div>`; }
+      else { body += servedBtn + prBtn(t, "addition"); if (!t.cancel_requested) body += payBox(t); body += `<div class="row"><span class="mu grow">Le client change d’avis ? Corrigez les quantités : chaque correction est tracée.</span>${t.cancel_requested && !isCaisse() ? "" : `<button class="btn bad sm" data-a="del" data-t="${t.id}">${isCaisse() ? "Supprimer" : "Annuler la commande"}</button>`}</div>`; }
     } else {
-      body = lines(t) + `<div class="total"><span class="mu">Total${t.pay_method ? " · " + (t.pay_method === "momo" ? "Mobile Money" : t.pay_method === "credit" ? "ardoise de " + esc(credName(t.credit_client)) : "espèces") : ""}</span><b>${F(t.total)}</b></div>` + changeBlock(t) + servedBtn;
+      body = lines(t) + (t.status !== "cancelled" ? `<div class="row">${prBtn(t, sold(t) ? "recu" : "addition")}</div>` : "") + `<div class="total"><span class="mu">Total${t.pay_method ? " · " + (t.pay_method === "momo" ? "Mobile Money" : t.pay_method === "credit" ? "ardoise de " + esc(credName(t.credit_client)) : "espèces") : ""}</span><b>${F(t.total)}</b></div>` + changeBlock(t) + servedBtn;
       if (ROLE() === "directeur" && !isCounter(t)) body += `<div class="note info">${t.served_at ? `Servie au client à ${hm(t.served_at)}.` : `Envoyée ${ago(t.sent_at || t.created_at)}, pas encore marquée servie.`} La validation reste à la caisse.</div>`;
       if (isCaisse() && t.status === "sent" && !isCounter(t)) body += `<div class="note info">Commande de ${esc(staffName(t.waitress_id))}. Seule la serveuse peut la modifier ; la caisse suit son évolution ici.</div>`;
       if (["caisse", "directeur", "pdg"].includes(ROLE()) && ["draft", "sent"].includes(t.status) && !isCounter(t)) body += `<div class="row"><button class="btn ghost sm" data-a="tkGive" data-t="${t.id}">Confier la table à une autre serveuse</button></div>`;
@@ -3573,7 +3635,7 @@ function vMoi() {
   const me = S.me.id, td = today(), m = curMonth(), att = (S.attendance || []).filter(a => a.staff_id === me).sort((a, b) => a.day < b.day ? 1 : -1), mA = att.filter(a => a.day.slice(0, 7) === m);
   const lv = (S.leaves || []).filter(l => l.staff_id === me), sal = (S.salaries || []).find(x => x.staff_id === me), pays = (S.payroll || []).filter(p => p.staff_id === me);
   const LST = { en_attente: ["warn", "En attente"], acceptee: ["ok", "Acceptée"], refusee: ["bad", "Refusée"] };
-  return `<div class="stack">${shiftBanner()}
+  return `<div class="stack">${shiftBanner()}${printCard()}
     <div class="kpis" style="margin:0">${kpi("Présences ce mois", mA.filter(a => ["present", "retard"].includes(a.status)).length)}
       ${kpi("Retards", mA.filter(a => a.status === "retard").length, mA.some(a => a.status === "retard") ? "hl" : "", `${sum(mA, a => a.late_minutes)} min au total`)}
       ${kpi("Absences", mA.filter(a => a.status === "absent").length, mA.some(a => a.status === "absent") ? "alert" : "")}${kpi("Permissions", mA.filter(a => a.status === "permission").length)}</div>
@@ -3744,7 +3806,7 @@ function cStock() {
         ${isDishP(p) ? "" : `<label class="f grow" for="${k("st", p.id)}">Stock général<input id="${k("st", p.id)}" type="number" inputmode="numeric" data-k="${k("st", p.id)}" value="${fv("st", p, p.stock)}"></label>`}
 </div>
         ${glassFields(k("par", p.id), k("dz", p.id), p.id, unit, V.f[k("par", p.id)] ?? p.parent_id ?? "", V.f[k("dz", p.id)] ?? p.doses)}${nightField(p)}
-        ${S.bar.kitchen_on && (p.category === "Cuisine" || ["plat", "portion"].includes(p.unit)) ? recipeBox(p) : ""}
+        ${S.bar.kitchen_on && (p.category === "Cuisine" || ["plat", "portion"].includes(p.unit)) && (opt("f_recettes") || (S.recipes || []).some(r => r.dish_id === p.id)) ? recipeBox(p) : ""}
         <div class="row"><button class="btn soft sm" data-a="pimg" data-p="${p.id}">${ico("camera")} Photo</button><button class="btn ghost sm" data-a="togP" data-p="${p.id}">${p.active ? "Masquer de la carte" : "Remettre sur la carte"}</button><span class="grow"></span><button class="btn sm" data-a="saveP" data-p="${p.id}">Enregistrer</button></div></div>` : ""}</div>`; };
   const npUnit = V.f.np_u || "bouteille";
   return `<div class="stack"><datalist id="gb-cats">${[...new Set([...CATS, ...cats])].map(c => `<option value="${esc(c)}"></option>`).join("")}</datalist>
@@ -4016,7 +4078,7 @@ function cSettings() {
     ${payCfgCard()}
     <div class="card stack"><h3>Réglages du bar</h3><div class="row"><label class="f grow" for="b_n">Nom<input id="b_n" data-k="b_n" value="${esc(V.f.b_n ?? b.name)}"></label><label class="f grow" for="b_c">Ville et quartier<input id="b_c" data-k="b_c" value="${esc(V.f.b_c ?? (b.city || ""))}"></label></div>
       <button class="btn" data-a="saveBar">Enregistrer les réglages</button></div>
-    ${optCard()}${docCard()}${remitCard()}
+    ${optCard()}${printCard()}${docCard()}${remitCard()}
     <div class="card stack"><h3>Code du bar</h3><div class="code-big num">${esc(b.code)}</div><button class="btn soft" data-a="go" data-v="team">Installer l’application sur les téléphones</button></div></div>`;
 }
 
@@ -4026,7 +4088,10 @@ const F_OPTS = [["f_ardoise", "Ardoise (crédit client)", "Des clients de confia
   ["f_nuit", "Prix de nuit", "À partir d’une heure choisie (jusqu’à 6 h), les boissons qui ont un prix de nuit passent à ce tarif. Le prix se règle dans Stock, boisson par boisson."],
   ["f_vip", "Réservations et tables VIP", "Tables réservées avec heure, nombre de personnes et minimum de consommation suivi en direct."],
   ["f_porte", "Entrées à la porte", "Entrées payantes vendues par la caisse : espèces dans le tiroir, Mobile Money, total au rapport de clôture."],
-  ["f_garde", "Bouteilles gardées", "Une bouteille entamée est gardée au nom du client (étiquette, niveau) jusqu’à sa prochaine visite."]];
+  ["f_garde", "Bouteilles gardées", "Une bouteille entamée est gardée au nom du client (étiquette, niveau) jusqu’à sa prochaine visite."],
+  ["f_print", "Imprimante de tickets", "Addition et reçu sur une petite imprimante thermique 58 mm (Bluetooth, appli RawBT ou imprimante de l’appareil)."],
+  ["f_mural", "Écran mural de la cuisine", "Module Cuisine : tous les bons en très grand sur une TV ou une tablette fixée en cuisine."],
+  ["f_recettes", "Recettes au gramme", "Module Cuisine : ingrédients pesés par plat, sortis du stock à chaque commande. Inutile pour la plupart des snacks (les courses du marché suffisent)."]];
 function optCard() {
   return `<div class="card stack"><h3>Options du bar</h3><p class="mu" style="margin:0">Activez seulement ce qui sert dans votre établissement : les écrans restent simples pour l’équipe.</p>
     <div class="list">${F_OPTS.map(([k, l, d]) => `<div class="li" style="flex-wrap:wrap"><div class="grow"><b>${l}</b><div class="mu">${d}</div></div><button class="btn sm ${opt(k) ? "soft" : ""}" data-a="optTog" data-k="${k}" aria-pressed="${opt(k)}">${opt(k) ? "Désactiver" : "Activer"}</button>${optExtra(k)}</div>`).join("")}</div></div>`;

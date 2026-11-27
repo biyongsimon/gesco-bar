@@ -254,3 +254,7 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Options (migration 034) : **prix de nuit** (heure de début choisie, jusqu'à 6 h, prix par boisson dans Stock ; `gb_private.price_now` dans `gb_ticket_set_qty`), **réservations / tables VIP** (heure, personnes, table, minimum de consommation suivi sur le ticket ouvert par la serveuse), **entrées à la porte** (tarifs réglables, espèces dans le tiroir, annulation sous 15 min, total au rapport de clôture), **bouteilles gardées** au nom du client (étiquette, niveau, rendue).
 - Catégories « Chicha » et « Cocktails », unités « chicha » et « tête ».
 - Démo : soirée lounge préremplie (2 réservations, entrées, bouteille gardée, prix de nuit sur les bières).
+
+## v4.27 — Impression des tickets et options de cuisine
+- Option « Imprimante de tickets » : addition (avant paiement) et reçu (après) sur imprimante thermique 58 mm. Trois modes par appareil (Mon espace / Réglages) : Bluetooth direct (Web Bluetooth, imprimantes BLE, Chrome Android ou ordinateur), appli RawBT (Android, toutes imprimantes Bluetooth, via `intent:` ESC/POS), impression du système. Texte sans accents (compatibilité des imprimantes bon marché), 32 colonnes.
+- Écran mural de la cuisine et recettes au gramme deviennent des options (cachées par défaut, activables par le PDG). Une recette déjà saisie reste visible et appliquée.

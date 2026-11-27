@@ -310,6 +310,22 @@ async function tousLesOnglets(page) {
     const r = await rpc(page, "gb_day_close", { p_counted: 0, p_force: true }); ok(r.ok && r.v.entrees.n >= 5 && r.v.entrees.montant >= 16000, "entrées absentes du rapport : " + JSON.stringify(r.v && r.v.entrees));
   });
 
+  await test("Impression : addition et reçu (ESC/POS 58 mm, impression du système)", async page => {
+    await login(page, "Brigitte"); const id = await page.evaluate(() => crypto.randomUUID()), p = await page.evaluate(() => S.products.find(p => p.name.startsWith("Castel")).id);
+    await rpc(page, "gb_ticket_create", { p_id: id, p_client: "Table imprimée" }); await rpc(page, "gb_ticket_set_qty", { p_ticket: id, p_product: p, p_qty: 3 }); await rpc(page, "gb_ticket_send", { p_ticket: id });
+    await page.evaluate(() => { localStorage.setItem("gesco-printer", JSON.stringify("systeme")); window.print = () => { window.__printed = (window.__printed || 0) + 1; }; });
+    await page.evaluate(id => { V.open[id] = true; A.go({ v: "service" }); }, id); await page.waitForTimeout(100);
+    await page.click(`[data-a="prTk"][data-t="${id}"]`); await page.waitForTimeout(200);
+    const r = await page.evaluate(() => ({ n: window.__printed, mode: window.__lastPrint.mode, txt: window.__lastPrint.lines.map(l => l[1]).join("\n"), len: Math.max(...window.__lastPrint.lines.map(l => l[1].length)), b0: [...window.__lastPrint.bytes.slice(0, 2)] }));
+    ok(r.n === 1 && r.mode === "systeme", "impression du système non lancée");
+    ok(/ADDITION/.test(r.txt) && /TOTAL/.test(r.txt) && /Table imprim/.test(r.txt) && r.len <= 32, "contenu de l'addition incorrect : " + r.txt);
+    ok(r.b0[0] === 27 && r.b0[1] === 64, "commandes ESC/POS absentes");
+    const tot = await page.evaluate(id => S.tickets.find(t => t.id === id).total, id); await rpc(page, "gb_ticket_cash", { p_ticket: id, p_method: "cash", p_received: tot + 500 });
+    await page.evaluate(id => { V.open[id] = true; V.wf = "cash"; render(); }, id); await page.click(`[data-a="prTk"][data-t="${id}"][data-k="recu"]`); await page.waitForTimeout(150);
+    const r2 = await page.evaluate(() => window.__lastPrint.lines.map(l => l[1]).join("\n")); ok(/RECU/.test(r2) && /Monnaie rendue/.test(r2), "reçu incorrect : " + r2);
+    await page.evaluate(() => A.go({ v: "moi" })); await page.waitForTimeout(100); ok(/Imprimante de cet appareil/.test(await page.textContent("#app")), "réglage de l'imprimante absent");
+  });
+
   await test("Abonnement : mode test caché (petit montant, 1 mois)", async page => {
     await login(page, "Marcel");
     await page.evaluate(() => { S.bar.sub_test_price = 200; V.f.ab_p = "gold"; A.go({ v: "abo" }); }); await page.waitForTimeout(150);
