@@ -14,7 +14,7 @@ begin perform set_config('request.jwt.claims', json_build_object('sub', u, 'role
 do $$
 declare
   u_pdg uuid := gen_random_uuid(); u_srv uuid := gen_random_uuid(); u_cai uuid := gen_random_uuid(); u_cui uuid := gen_random_uuid();
-  bar uuid; s_srv uuid; s_cai uuid; s_cui uuid; biere uuid; plat uuid; t1 uuid := gen_random_uuid(); t2 uuid := gen_random_uuid(); t3 uuid := gen_random_uuid(); t4 uuid := gen_random_uuid(); cl uuid;
+  bar uuid; s_srv uuid; s_cai uuid; s_cui uuid; biere uuid; plat uuid; t1 uuid := gen_random_uuid(); t2 uuid := gen_random_uuid(); t3 uuid := gen_random_uuid(); t4 uuid := gen_random_uuid(); cl uuid; pk uuid;
   st text; total int; ko uuid; r jsonb; e text;
 begin
   -- Bar d'essai : PDG, serveuse, caissière, cuisinier
@@ -133,6 +133,17 @@ begin
   perform pg_temp.ok((r->>'balance')::int = 1800, 'le PDG valide au-delà du plafond (1 800 FCFA dus)');
   perform pg_temp.as_user(u_cai); r := public.gb_credit_repay(cl, 800, 'cash');
   perform pg_temp.ok((r->>'balance')::int = 1000 and exists (select 1 from public.remittances where waitress_id = s_cai and received = 800), 'remboursement en espèces enregistré dans le tiroir');
+
+  -- Emballages : comptage puis vides rendus avec le bon de commande
+  perform pg_temp.as_user(u_pdg); perform public.gb_bar_opts('{"f_vides": true}');
+  pk := public.gb_pack_save(null, 'Casier test', 100, 12, array[biere]);
+  perform public.gb_pack_move(pk, 'comptage', 30);
+  e := pg_temp.err(format('select public.gb_pack_move(%L, ''retour'', 500)', pk));
+  perform pg_temp.ok(e like 'Il n''y a que%', 'on ne rend pas plus de vides qu''on en a');
+  r := public.gb_po_create('Dépôt test', '690000000', jsonb_build_array(jsonb_build_object('p', biere, 'q', 12)));
+  perform public.gb_po_empties((r->>'id')::uuid, jsonb_build_array(jsonb_build_object('k', pk, 'q', 12)));
+  perform public.gb_po_receive((r->>'id')::uuid, null);
+  perform pg_temp.ok(gb_private.pack_theo(pk) = 18, 'les vides rendus avec le bon sont retirés à la livraison (30 - 12 = 18)');
 
   -- Abonnement : prix de test caché (1 mois, petit montant) puis effacé après paiement
   update public.bars set sub_test_price = 200 where id = bar;

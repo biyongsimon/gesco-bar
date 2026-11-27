@@ -737,7 +737,7 @@ const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentC
 
 /* ═══════════════ Moteur DÉMO (données locales, mêmes règles que le serveur) ═══════════════ */
 function DemoBackend() {
-  const KEY = "gesco-demo-v16";
+  const KEY = "gesco-demo-v17";
   let db = LS.get(KEY), sess = LS.get(KEY + "-sess");
   const listeners = [];
   const save = () => LS.set(KEY, db);
@@ -768,6 +768,12 @@ function DemoBackend() {
   // Espèces sorties du tiroir (courses payées par la caisse) depuis l'ouverture de la journée
   const tiroirOut = since => { const od = since || (db.days.find(x => x.status === "open") || {}).opened_at; if (!od) return 0;
     return (db.expenses || []).filter(e => e.method === "tiroir" && e.created_at >= od).reduce((x, e) => x + e.amount, 0); };
+  // Vides théoriques d'un emballage (démo) : dernier comptage + vendus/ouverts depuis − rendus − casse
+  const packTheo = id => { const M = (db.pack_moves || []).filter(m => m.packaging_id === id), lc = M.filter(m => m.kind === "comptage").sort((a, b) => a.at < b.at ? 1 : -1)[0], k = (db.packagings || []).find(x => x.id === id) || {};
+    const t0 = lc ? lc.at : (k.created_at || "1970"), pids = new Set(db.products.filter(p => p.packaging_id === id).map(p => p.id));
+    const sold = db.tickets.filter(t => ["cashed", "paid"].includes(t.status) && (t.cashed_at || t.paid_at || t.updated_at || "") > t0).flatMap(t => t.items).filter(i => pids.has(i.product_id)).reduce((a, i) => a + i.qty, 0);
+    const opened = db.moves.filter(m => m.kind === "ouverture" && m.qty < 0 && pids.has(m.product_id) && m.created_at > t0).reduce((a, m) => a - m.qty, 0);
+    return (lc ? lc.qty : 0) + sold + opened - M.filter(m => ["retour", "casse"].includes(m.kind) && m.at > t0).reduce((a, m) => a + m.qty, 0); };
   const isDish = p => !!(db.bar.kitchen_on && p && (p.category === "Cuisine" || ["plat", "portion"].includes(p.unit)));
   const kTake = (t, pid, q, c) => { if (q <= 0) return; db.kitchen = db.kitchen || []; db.bar.next_bon = db.bar.next_bon || 1;
     db.kitchen.push({ id: uuid(), ticket_id: t.id, product_id: pid, waitress_id: t.waitress_id, label: t.client_label, ticket_no: t.number, bon: db.bar.next_bon++, qty: q, status: "attente", created_at: now(), started_at: null, ready_at: null, served_at: null });
@@ -902,6 +908,7 @@ function DemoBackend() {
       (p_items || po.items).forEach(i => { const q = Math.round(+i.q || 0); if (q <= 0) return; const p = prod(i.p), uc = +i.c > 0 ? +i.c : (p.cost || 0);
         p.stock += q; if (+i.c > 0) p.cost = +i.c; move(c, p.id, null, q, "appro"); db.moves[0].unit_cost = uc; got.push({ p: p.id, n: p.name, q, c: uc }); });
       Object.assign(po, { status: "recu", items: got, total: got.reduce((a, i) => a + i.q * i.c, 0), received_at: now() });
+      (po.empties || []).forEach(x => { if ((db.packagings || []).some(k => k.id === x.k)) db.pack_moves.push({ id: uuid(), packaging_id: x.k, kind: "retour", qty: x.q, theo: packTheo(x.k), po: po.number, note: "Rendus avec le bon N°" + po.number, by: c.name, at: now() }); });
       log(c, "livraison_recue", { numero: po.number, fournisseur: po.supplier, montant: po.total }); },
     gb_product_rule({ p_id, p_min, p_pack }) { const c = ctx(); caisse(c); const p = prod(p_id);
       if (p_min != null && (p_min < 0 || p_min > 100000)) E("Stock minimum invalide."); if (p_pack != null && (p_pack < 1 || p_pack > 500)) E("Taille du casier invalide.");
@@ -998,6 +1005,23 @@ function DemoBackend() {
       db.credit_moves.push({ id: uuid(), client_id: k.id, kind: "remboursement", amount: m, method: p_method === "momo" ? "momo" : "cash", at: now(), by: c.name, day_id: d });
       if (p_method !== "momo") db.remits.push({ id: uuid(), day_id: d, waitress_id: c.id, expected: m, received: m, diff: 0, ticket_count: 0, created_at: now() });
       log(c, "ardoise_remboursee", { client: k.name, montant: m }); return { balance: bal - m }; },
+    gb_pack_save({ p_id, p_name, p_deposit, p_per_crate, p_products, p_active = true }) { const c = ctx(); crRole(c); if (!(db.bar.opts || {}).f_vides) E("Le suivi des emballages n’est pas activé (Réglages → Options du bar).");
+      if (String(p_name || "").trim().length < 2) E("Indiquez le nom de l’emballage (ex. Casier 65 cl)."); db.packagings = db.packagings || []; db.pack_moves = db.pack_moves || [];
+      let k = p_id ? db.packagings.find(x => x.id === p_id) || E("Emballage introuvable.") : null; if (!k) { k = { id: uuid(), created_at: now() }; db.packagings.push(k); }
+      Object.assign(k, { name: String(p_name).trim(), deposit: +p_deposit || 0, per_crate: +p_per_crate || 12, active: p_active !== false });
+      db.products.forEach(p => { if (p.packaging_id === k.id && !(p_products || []).includes(p.id)) p.packaging_id = null; if ((p_products || []).includes(p.id)) p.packaging_id = k.id; });
+      log(c, "emballage", { emballage: k.name, consigne: k.deposit }); return k.id; },
+    gb_pack_state() { const c = ctx(); crRole(c); if (!(db.bar.opts || {}).f_vides) E("Le suivi des emballages n’est pas activé (Réglages → Options du bar).");
+      return (db.packagings || []).map(k => { const M = (db.pack_moves || []).filter(m => m.packaging_id === k.id).sort((a, b) => a.at < b.at ? 1 : -1), lc = M.find(m => m.kind === "comptage");
+        return { id: k.id, name: k.name, deposit: k.deposit, per_crate: k.per_crate, active: k.active, theo: packTheo(k.id), products: db.products.filter(p => p.packaging_id === k.id).map(p => p.id),
+          last_count: lc ? { at: lc.at, qty: lc.qty, theo: lc.theo, by: lc.by } : null, moves: M.slice(0, 8) }; }).sort((a, b) => a.name.localeCompare(b.name)); },
+    gb_pack_move({ p_pack, p_kind, p_qty }) { const c = ctx(); crRole(c); const k = (db.packagings || []).find(x => x.id === p_pack) || E("Emballage introuvable.");
+      if (!["comptage", "retour", "casse"].includes(p_kind)) E("Mouvement inconnu."); const q = Math.round(+p_qty); if (!(q >= 0)) E("Indiquez la quantité.");
+      const th = packTheo(k.id); if (p_kind !== "comptage" && q > th) E(`Il n’y a que ${th} vides de « ${k.name} » en théorie : comptez d’abord vos vides.`);
+      db.pack_moves.push({ id: uuid(), packaging_id: k.id, kind: p_kind, qty: q, theo: th, by: c.name, at: now() }); log(c, "emballage_" + p_kind, { emballage: k.name, quantite: q, theorique: th });
+      return { theo: th, ecart: p_kind === "comptage" ? q - th : null, valeur: p_kind === "comptage" ? (q - th) * k.deposit : null }; },
+    gb_po_empties({ p_po, p_list }) { const c = ctx(); crRole(c); const po = (db.pos || []).find(x => x.id === p_po && x.status === "envoye") || E("Bon de commande introuvable ou déjà traité.");
+      po.empties = (p_list || []).filter(x => +x.q > 0).map(x => { const k = db.packagings.find(y => y.id === x.k) || E("Emballage introuvable."); return { k: k.id, n: k.name, q: Math.round(+x.q), d: k.deposit, pc: k.per_crate }; }); return po.empties; },
     gb_bar_logo({ p_path }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG change le logo."); if (p_path && !/^data:image\/png;base64,/.test(p_path)) E("Fichier non valide."); db.bar.logo_path = p_path || null; log(c, "reglages_modifies", { logo: !!p_path }); },
     gb_kitchen_toggle({ p_on }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG active le module Cuisine."); db.bar.kitchen_on = !!p_on; log(c, "module_cuisine", { actif: !!p_on }); },
     gb_recipe_set({ p_dish, p_items }) { const c = ctx(); caisse(c); const d = prod(p_dish); db.recipes = (db.recipes || []).filter(r => r.dish_id !== p_dish);
@@ -1344,10 +1368,14 @@ function DemoBackend() {
     mk("Carine", "Famille Ndongo", [["Castel", 2], ["Orijin", 1]], id => { R.gb_ticket_send({ p_ticket: id }); R.gb_ticket_cash({ p_ticket: id, p_method: "momo" }); });
     as("Mireille"); R.gb_remit({ p_waitress: W("Brigitte"), p_received: 4000 });
     // Ardoise de démonstration : deux clients habitués
-    db.bar.opts = { f_ardoise: true }; const ago = h => new Date(Date.now() - h * 3600e3).toISOString(), C1 = uuid(), C2 = uuid();
+    db.bar.opts = { f_ardoise: true, f_vides: true }; const ago = h => new Date(Date.now() - h * 3600e3).toISOString(), C1 = uuid(), C2 = uuid();
     db.credit_clients = [{ id: C1, name: "Tonton Paul", phone: "690000001", limit: 30000, active: true, note: "paie le 30 du mois" }, { id: C2, name: "M. Essomba", phone: "677000002", limit: 15000, active: true, note: null }];
     db.credit_moves = [{ id: uuid(), client_id: C1, kind: "dette", amount: 6500, at: ago(72), label: "Table du fond", by: "Mireille" }, { id: uuid(), client_id: C1, kind: "remboursement", amount: 3000, method: "momo", at: ago(48), by: "Mireille" },
       { id: uuid(), client_id: C1, kind: "dette", amount: 4200, at: ago(26), label: "Terrasse", by: "Mireille" }, { id: uuid(), client_id: C2, kind: "dette", amount: 14000, at: ago(30), label: "Anniversaire", by: "Hervé" }];
+    // Emballages de démonstration : casiers 65 cl (SABC) et Guinness, comptés il y a deux jours
+    const K1 = uuid(), K2 = uuid(); db.packagings = [{ id: K1, name: "Casier 65 cl", deposit: 100, per_crate: 12, active: true, created_at: ago(60) }, { id: K2, name: "Casier Guinness 65 cl", deposit: 100, per_crate: 12, active: true, created_at: ago(60) }];
+    db.products.forEach(p => { if (/^(Castel|33 Export|Mützig)/.test(p.name)) p.packaging_id = K1; if (/^Guinness/.test(p.name)) p.packaging_id = K2; });
+    db.pack_moves = [{ id: uuid(), packaging_id: K1, kind: "comptage", qty: 48, theo: 48, by: "Mireille", at: ago(50) }, { id: uuid(), packaging_id: K2, kind: "comptage", qty: 12, theo: 12, by: "Mireille", at: ago(50) }];
     sess = null; save();
   }
   if (!db || !db.bar) seed();
@@ -1775,7 +1803,7 @@ A.logout = () => ask("Se déconnecter ?", V.outbox.length ? `${V.outbox.length} 
 A.logoutGo = () => logout();
 A.close = () => { V.modal = null; render(); };
 A.okModal = () => { const m = V.modal; V.modal = null; render(); if (m && A[m.a]) A[m.a](m.d || {}); };
-A.go = d => { if (["day", "plats", "kitchen"].includes(d.v)) V.mk = undefined; if (d.v === "kitchen") V.ks = undefined; V.menu = false; V.modal = null; V.f.gq = ""; if (V.tab !== d.v) { V.tab = d.v; V.secT = Date.now(); V.top = 1; } lazyLoad(); render(); if (V.top) { V.top = 0; try { scrollTo({ top: 0 }); } catch (e) {} } };
+A.go = d => { if (["day", "plats", "kitchen"].includes(d.v)) V.mk = undefined; if (d.v === "stock") V.pk = undefined; if (d.v === "kitchen") V.ks = undefined; V.menu = false; V.modal = null; V.f.gq = ""; if (V.tab !== d.v) { V.tab = d.v; V.secT = Date.now(); V.top = 1; } lazyLoad(); render(); if (V.top) { V.top = 0; try { scrollTo({ top: 0 }); } catch (e) {} } };
 A.tab = A.go;
 function lazyLoad() { const k = V.tab; if (k === "stock" && (!V.rea || !V.rea.at || Date.now() - V.rea.at > 60000)) A.reaLoad(); if ((k === "rev" || k === "home") && isPdg()) A.loadRev(); if (k === "acc") A.loadAcc(); if ((k === "pres" || k === "paie") && isMgr()) A.loadStats(); }
 A.wf = d => { V.wf = d.v; render(); };
@@ -2181,9 +2209,63 @@ function vReappro() {
 const PO_ST = { envoye: ["warn", "Envoyé"], recu: ["ok", "Reçu"], annule: ["", "Annulé"] };
 function poText(po) {
   const lines = (po.items || []).map(i => { const p = S.products.find(x => x.id === i.p) || { name: i.n, category: "" }, pt = packTxt(p, i.q); return `• ${i.n} : ${i.q}${pt ? ` (${pt})` : ""}`; });
-  return `Bonjour${po.supplier ? " " + po.supplier : ""}, voici le bon de commande N°${po.number} de ${S.bar.name}${S.bar.city ? " (" + S.bar.city + ")" : ""} :\n${lines.join("\n")}\nMerci de nous confirmer la livraison.`;
+  return `Bonjour${po.supplier ? " " + po.supplier : ""}, voici le bon de commande N°${po.number} de ${S.bar.name}${S.bar.city ? " (" + S.bar.city + ")" : ""} :\n${lines.join("\n")}\n${opt("f_vides") && (po.empties || []).length ? `\nVides rendus : ${po.empties.map(x => `${x.q} ${x.n}`).join(", ")}` : ""}\nMerci de nous confirmer la livraison.`;
 }
 const waLink = (tel, txt) => { let t = String(tel || "").replace(/\D/g, ""); if (/^6\d{8}$/.test(t)) t = "237" + t; return `https://wa.me/${t}?text=${encodeURIComponent(txt)}`; };
+/* ═══════════════ Emballages consignés : casiers et bouteilles vides ═══════════════ */
+const PACK_PRESETS = [["Casier 65 cl", 12], ["Casier 33 cl", 24], ["Casier Guinness 65 cl", 12], ["Pack 1 L", 12]];
+const pkLoad = () => { if (V.pk === undefined) { V.pk = null; B.rpc("gb_pack_state", {}).then(r => { V.pk = r || []; render(); }).catch(e => { V.pk = []; toast(e.message, "err"); }); } };
+const crates = (q, pc) => { const n = Math.floor(q / pc), r = q % pc; return pc > 1 && q >= pc ? `${n} casier${n > 1 ? "s" : ""}${r ? " + " + r : ""}` : ""; };
+function packCard() {
+  pkLoad(); const L = V.pk, f = V.pkEdit;
+  if (!L) return `<div class="card"><span class="spin"></span> Emballages…</div>`;
+  const bottles = S.products.filter(p => !p.parent_id && p.active && !isDishP(p) && p.category !== "Ingrédients" && p.category !== "Cuisine");
+  const form = f ? `<div class="sub stack"><b>${f.id ? "Modifier l’emballage" : "Nouvel emballage consigné"}</b>
+      ${f.id ? "" : `<div class="chips">${PACK_PRESETS.map(([n, pc]) => `<button class="chip" data-a="pkPreset" data-n="${n}" data-pc="${pc}">${n}</button>`).join("")}</div>`}
+      <div class="row"><label class="f grow" for="pkn">Nom<input id="pkn" data-k="pkn" value="${esc(V.f.pkn ?? f.name ?? "")}" placeholder="Ex. Casier 65 cl"></label>
+      <label class="f" style="flex:1 1 120px" for="pkd">Consigne par bouteille (FCFA)<input id="pkd" type="text" inputmode="numeric" pattern="[0-9]*" data-k="pkd" value="${esc(V.f.pkd ?? f.deposit ?? "")}" placeholder="Prix du dépôt"></label>
+      <label class="f" style="flex:1 1 110px" for="pkc">Bouteilles par casier<input id="pkc" type="text" inputmode="numeric" pattern="[0-9]*" data-k="pkc" value="${esc(V.f.pkc ?? f.per_crate ?? 12)}"></label></div>
+      <b style="font-size:13px">Boissons vendues dans cet emballage</b>
+      <div class="chips">${bottles.map(p => { const on = (V.pkSel || []).includes(p.id); return `<button class="chip ${on ? "on" : ""}" data-a="pkTog" data-id="${p.id}" aria-pressed="${on}">${esc(p.name)}</button>`; }).join("")}</div>
+      <div class="row"><button class="btn ghost grow" data-a="pkEditX">Annuler</button><button class="btn grow" data-a="pkSave">Enregistrer</button></div></div>` : "";
+  return `<div class="card stack"><div class="between" style="flex-wrap:wrap;gap:6px"><h3>Emballages consignés (vides)</h3>${f ? "" : `<button class="btn ghost sm" data-a="pkEdit">+ Emballage</button>`}</div>
+    <p class="mu" style="margin:0">Chaque bouteille vendue laisse un vide. GesCo calcule les vides que vous devez avoir ; comptez-les de temps en temps : un vide manquant, c’est la consigne perdue au dépôt.</p>
+    ${form}
+    ${L.map(k => { const lc = k.last_count, cnt = V.pkAct && V.pkAct.id === k.id ? V.pkAct.kind : null, ec = lc && lc.theo != null ? lc.qty - lc.theo : null;
+      return `<div class="stack" style="gap:6px;padding-top:10px;border-top:1px solid var(--line)"><div class="between" style="flex-wrap:wrap;gap:6px"><div><b>${esc(k.name)}</b>
+          <div class="mu">${(k.products || []).map(prodName).join(", ") || "Aucune boisson liée"} · consigne ${F(k.deposit)} / bouteille</div></div>
+          <div style="text-align:right"><b class="num" style="font-size:18px">${k.theo} vides</b><div class="mu">${crates(k.theo, k.per_crate)}${k.deposit ? ` · ${F(k.theo * k.deposit)} de consigne` : ""}</div></div></div>
+        ${lc ? `<div class="mu" style="font-size:13px">Dernier comptage : ${lc.qty} le ${new Date(lc.at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}${lc.by ? " par " + esc(lc.by) : ""}${ec ? ` · <span class="${ec < 0 ? "bad-t" : "ok-t"}">écart ${ec > 0 ? "+" : ""}${ec}${k.deposit ? " (" + F(ec * k.deposit) + ")" : ""}</span>` : ec === 0 ? " · aucun écart ✓" : ""}</div>` : `<div class="note info">Commencez par compter les vides présents : c’est le point de départ.</div>`}
+        ${cnt ? `<div class="sub stack"><label class="f" for="pkq">${{ comptage: "Vides comptés (bouteilles)", retour: "Vides rendus au dépôt (bouteilles)", casse: "Bouteilles cassées ou perdues" }[cnt]}<input id="pkq" type="text" inputmode="numeric" pattern="[0-9]*" data-k="pkq" value="${val("pkq")}" placeholder="${cnt === "comptage" ? k.theo : ""}"></label>
+          ${cnt !== "casse" && num("pkq") && k.per_crate > 1 ? `<span class="mu">${crates(num("pkq"), k.per_crate) || num("pkq") + " bouteille(s)"}</span>` : ""}
+          <div class="row"><button class="btn ghost grow" data-a="pkAct" data-id="">Annuler</button><button class="btn grow" data-a="pkGo" data-id="${k.id}">Enregistrer</button></div></div>`
+        : `<div class="row"><button class="btn sm" data-a="pkAct" data-id="${k.id}" data-k="comptage">Compter les vides</button><button class="btn soft sm" data-a="pkAct" data-id="${k.id}" data-k="retour">Rendus au dépôt</button><button class="btn ghost sm" data-a="pkAct" data-id="${k.id}" data-k="casse">Casse</button><button class="btn ghost sm" data-a="pkEdit" data-id="${k.id}">Modifier</button></div>`}</div>`; }).join("") || (f ? "" : `<div class="empty">Ajoutez vos emballages : casier 65 cl, casier 33 cl…</div>`)}
+    <p class="mu" style="margin:0">Les vides rendus avec un bon de commande sont retirés automatiquement à la livraison.</p></div>`;
+}
+A.pkEdit = d => { const k = d.id ? (V.pk || []).find(x => x.id === d.id) : {}; ["pkn", "pkd", "pkc"].forEach(x => delete V.f[x]); V.pkEdit = { ...k }; V.pkSel = [...(k.products || [])]; render(); };
+A.pkEditX = () => { V.pkEdit = null; render(); };
+A.pkPreset = d => { V.f.pkn = d.n; V.f.pkc = d.pc; render(); };
+A.pkTog = d => { const s = V.pkSel || (V.pkSel = []), i = s.indexOf(d.id); if (i < 0) s.push(d.id); else s.splice(i, 1); render(); };
+A.pkSave = () => run(async () => { const f = V.pkEdit || {};
+  await B.rpc("gb_pack_save", { p_id: f.id || null, p_name: V.f.pkn ?? f.name ?? "", p_deposit: num("pkd") ?? f.deposit ?? 0, p_per_crate: num("pkc") ?? f.per_crate ?? 12, p_products: V.pkSel || [], p_active: true });
+  V.pkEdit = null; V.pk = undefined; ["pkn", "pkd", "pkc"].forEach(x => delete V.f[x]); toast("Emballage enregistré."); render(); });
+A.pkAct = d => { V.pkAct = d.id ? { id: d.id, kind: d.k } : null; delete V.f.pkq; render(); };
+A.pkGo = d => run(async () => { const q = num("pkq"); if (q == null) throw bizErr("Indiquez la quantité."); const kind = V.pkAct.kind, k = (V.pk || []).find(x => x.id === d.id) || {};
+  const r = await B.rpc("gb_pack_move", { p_pack: d.id, p_kind: kind, p_qty: q }); V.pkAct = null; delete V.f.pkq; V.pk = undefined;
+  toast(kind === "comptage" ? (r.ecart ? `Comptage enregistré : ${r.ecart > 0 ? "+" : ""}${r.ecart} vide(s) par rapport au calcul${k.deposit ? " (" + F(r.ecart * k.deposit) + ")" : ""}.` : "Comptage juste ✓ : aucun vide manquant.") : "Enregistré."); render(); });
+// Vides rendus avec un bon de commande
+function poEmpties(po) {
+  if (!opt("f_vides")) return ""; const E = po.empties || [];
+  if (po.status !== "envoye") return E.length ? `<div class="mu" style="font-size:13px">Vides rendus : ${E.map(x => `${x.q} ${esc(x.n)}`).join(", ")}</div>` : "";
+  if (V.poE !== po.id) return `<div class="mu" style="font-size:13px">${E.length ? `Vides rendus avec ce bon : ${E.map(x => `${x.q} ${esc(x.n)}`).join(", ")} · ` : ""}<button class="lnk" data-a="poE" data-id="${po.id}">${E.length ? "modifier" : "+ Vides rendus avec ce bon"}</button></div>`;
+  pkLoad(); const L = (V.pk || []).filter(k => k.active);
+  return `<div class="sub stack"><b>Vides rendus au dépôt avec ce bon</b>${L.map(k => { const cur = (E.find(x => x.k === k.id) || {}).q; return `<label class="f" for="pe_${k.id}">${esc(k.name)} (bouteilles · ${k.theo} en théorie)<input id="pe_${k.id}" type="text" inputmode="numeric" pattern="[0-9]*" data-k="pe_${k.id}" value="${esc(V.f["pe_" + k.id] ?? cur ?? "")}" placeholder="0"></label>`; }).join("") || `<span class="mu">Ajoutez d’abord vos emballages (Stock).</span>`}
+    <div class="row"><button class="btn ghost grow" data-a="poE" data-id="">Annuler</button><button class="btn grow" data-a="poEGo" data-id="${po.id}">Enregistrer</button></div></div>`;
+}
+A.poE = d => { V.poE = d.id || null; render(); };
+A.poEGo = d => run(async () => { const list = (V.pk || []).map(k => ({ k: k.id, q: num("pe_" + k.id) || 0 })).filter(x => x.q > 0);
+  const r = await B.rpc("gb_po_empties", { p_po: d.id, p_list: list }); const po = (V.pos || []).find(x => x.id === d.id); if (po) po.empties = r; V.poE = null; toast("Vides enregistrés sur le bon de commande."); render(); });
+
 /* ═══════════════ Documents PDF : rapport de clôture, bon de commande (en-tête du bar et logo) ═══════════════ */
 const PDF_LIBS = [["jspdf-2.5.2.min.js", "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js", () => window.jspdf && window.jspdf.jsPDF],
   ["jspdf-autotable-3.8.4.min.js", "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js", () => window.jspdf && window.jspdf.jsPDF.API.autoTable]];
@@ -2283,6 +2365,8 @@ async function poPdf(po, px) {
   pdfTable(P, ["N°", "Produit", "Quantité", "Soit", ...(px ? ["Prix habituel", "Montant"] : []), "Livré"],
     [...rows, ...(px && tot ? [[{ content: "Total estimatif", colSpan: 5, styles: { fontStyle: "bold", halign: "right" } }, { content: pF(tot), styles: { fontStyle: "bold" } }, ""]] : [])],
     { columnStyles: { 0: { cellWidth: 10 }, 2: { halign: "right" }, ...(px ? { 4: { halign: "right" }, 5: { halign: "right" } } : {}), [px ? 6 : 4]: { cellWidth: 16 } } });
+  if ((po.empties || []).length) { pdfH(P, "Emballages vides rendus au dépôt");
+    pdfTable(P, ["Emballage", "Bouteilles", "Soit", "Consigne"], po.empties.map(x => [x.n, String(x.q), crates(x.q, x.pc || 12) || "-", x.d ? pF(x.q * x.d) : "-"]), { columnStyles: { 1: { halign: "right" }, 3: { halign: "right" } } }); }
   const { doc, M, W } = P;
   doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(19, 32, 26);
   const note = doc.splitTextToSize(pt(`Merci de livrer les quantités ci-dessus et de nous confirmer la livraison${(S.bar.opts || {}).phone ? " au " + S.bar.opts.phone : ""}. Cochez la colonne « Livré » à la livraison.${px ? " Les prix sont indicatifs (derniers prix connus) : le prix facturé fait foi." : ""}`), W - 2 * M);
@@ -2302,7 +2386,7 @@ function vPOs() {
   return `<div class="card stack"><div class="between" style="flex-wrap:wrap;gap:6px"><h3>Bons de commande</h3><label class="mu" style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" data-a="poPx" ${V.f.po_px ? "checked" : ""}> Prix habituels sur le PDF</label></div><div class="list">${pos.slice(0, 15).map(po => { const st = PO_ST[po.status] || ["", po.status], rcv = V.poR === po.id;
     return `<div class="stack" style="padding:10px 0;gap:6px"><div class="between"><div><b>N°${po.number}${po.supplier ? " · " + esc(po.supplier) : ""}</b>
       <div class="mu" style="font-size:13px">${new Date(po.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} · ${(po.items || []).length} produit(s) · ${(po.items || []).slice(0, 3).map(i => `${i.q} ${esc(i.n)}`).join(", ")}${(po.items || []).length > 3 ? "…" : ""}${po.total ? " · " + F(po.total) : ""}</div></div>
-      <span class="pill ${st[0]}">${st[1]}</span></div>
+      <span class="pill ${st[0]}">${st[1]}</span></div>${poEmpties(po)}
       ${po.status === "envoye" && !rcv ? `<div class="row"><button class="btn soft sm" data-a="poPdf" data-id="${po.id}" data-wa="1">${ico("send")} Envoyer le PDF sur WhatsApp</button><button class="btn ghost sm" data-a="poPdf" data-id="${po.id}">PDF</button><a class="btn ghost sm" href="${waLink(po.supplier_phone, poText(po))}" target="_blank" rel="noopener">Texte seul</a><button class="btn sm" data-a="poRecv" data-id="${po.id}">Livraison reçue</button><button class="btn ghost sm" data-a="poCancel" data-id="${po.id}">Annuler</button></div>` : po.status === "recu" && !rcv ? `<div class="row"><button class="btn ghost sm" data-a="poPdf" data-id="${po.id}">PDF du bon</button></div>` : ""}
       ${rcv ? `<div class="sub stack"><b>Ce qui a été livré</b><p class="mu" style="margin:0">Corrigez si le fournisseur a livré une autre quantité ou un autre prix. Le stock et la compta sont mis à jour automatiquement.</p>
         ${(po.items || []).map((i, k) => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;padding:8px 0;border-top:1px dashed var(--line)"><b style="grid-column:1/-1">${esc(i.n)}</b>
@@ -3528,7 +3612,7 @@ function cStock() {
         <div class="row"><button class="btn soft sm" data-a="pimg" data-p="${p.id}">${ico("camera")} Photo</button><button class="btn ghost sm" data-a="togP" data-p="${p.id}">${p.active ? "Masquer de la carte" : "Remettre sur la carte"}</button><span class="grow"></span><button class="btn sm" data-a="saveP" data-p="${p.id}">Enregistrer</button></div></div>` : ""}</div>`; };
   const npUnit = V.f.np_u || "bouteille";
   return `<div class="stack"><datalist id="gb-cats">${[...new Set([...CATS, ...cats])].map(c => `<option value="${esc(c)}"></option>`).join("")}</datalist>
-    ${["caisse", "pdg"].includes(ROLE()) ? vReappro() : ""}
+    ${["caisse", "pdg"].includes(ROLE()) ? vReappro() : ""}${opt("f_vides") && ["caisse", "pdg"].includes(ROLE()) ? packCard() : ""}
     <div class="card stack"><div class="between"><h3>Inventaire (frigo et réserve)</h3><button class="btn ${V.inv ? "ghost" : "soft"} sm" data-a="invToggle">${V.inv ? "Fermer" : "Faire l’inventaire"}</button></div>
       <p class="mu" style="margin:0">Comptez ce qu’il reste réellement (hors bouteilles chez les serveuses) et saisissez-le. Les écarts sont corrigés et tracés dans le journal.</p>
       ${V.inv ? `<div class="list">${S.products.filter(p => p.active).map(p => `<div class="between" style="padding:6px 0"><span>${esc(p.name)} <span class="mu">· prévu ${p.stock}</span></span>
@@ -3801,7 +3885,8 @@ function cSettings() {
 }
 
 // Options du bar : chaque fonction s'active selon le type d'établissement (snack, lounge, boîte de nuit)
-const F_OPTS = [["f_ardoise", "Ardoise (crédit client)", "Des clients de confiance paient plus tard, avec un plafond. La serveuse demande, la caisse valide, vous suivez les soldes."]];
+const F_OPTS = [["f_ardoise", "Ardoise (crédit client)", "Des clients de confiance paient plus tard, avec un plafond. La serveuse demande, la caisse valide, vous suivez les soldes."],
+  ["f_vides", "Emballages consignés (vides)", "Casiers et bouteilles vides : GesCo calcule les vides à avoir, vous les comptez, et les vides rendus partent avec le bon de commande."]];
 function optCard() {
   return `<div class="card stack"><h3>Options du bar</h3><p class="mu" style="margin:0">Activez seulement ce qui sert dans votre établissement : les écrans restent simples pour l’équipe.</p>
     <div class="list">${F_OPTS.map(([k, l, d]) => `<div class="li"><div class="grow"><b>${l}</b><div class="mu">${d}</div></div><button class="btn sm ${opt(k) ? "soft" : ""}" data-a="optTog" data-k="${k}" aria-pressed="${opt(k)}">${opt(k) ? "Désactiver" : "Activer"}</button></div>`).join("")}</div></div>`;

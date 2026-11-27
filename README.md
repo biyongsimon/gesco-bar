@@ -244,3 +244,8 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Réglages → « Options du bar » (PDG) : les fonctions s'activent selon l'établissement (`bars.opts.f_*`). Première option : l'ardoise.
 - Ardoise (migration 032) : clients ouverts par le directeur ou le PDG (nom, WhatsApp, plafond, note) ; la serveuse demande « Mettre à l'ardoise » sur un ticket envoyé, la caisse valide ou refuse (notifications) ; au-delà du plafond, seuls le directeur et le PDG valident. Rubrique « Ardoise » : total dû, soldes avec jauge de plafond, remboursement (espèces → tiroir via un versement au nom de la caisse, ou Mobile Money), rappel WhatsApp prérempli, historique.
 - Clôture : ventes à l'ardoise et remboursements du jour dans le rapport et le PDF.
+
+## v4.25 — Emballages consignés (casiers et vides)
+- Option du bar « Emballages consignés » (migration 033) : types d'emballage (nom, consigne par bouteille, bouteilles par casier, boissons liées).
+- Vides théoriques = dernier comptage + bouteilles vendues ou ouvertes au verre depuis − vides rendus − casse (`gb_private.pack_theo`). Comptage avec écart chiffré (consigne perdue), retours au dépôt, casse.
+- Bon de commande : « Vides rendus avec ce bon » (sur le message WhatsApp et le PDF), retirés automatiquement du stock de vides à la livraison (déclencheur `po_empties_out`).

@@ -262,6 +262,25 @@ async function tousLesOnglets(page) {
     ok(await page.evaluate(() => !navFor().includes("ardoise")), "l'ardoise reste visible après désactivation");
   });
 
+  await test("Emballages : vides calculés, comptage avec écart, vides rendus avec le bon de commande", async page => {
+    await login(page, "Brigitte"); const id = await page.evaluate(() => crypto.randomUUID()), p = await page.evaluate(() => S.products.find(p => p.name.startsWith("Castel")).id);
+    await rpc(page, "gb_ticket_create", { p_id: id, p_client: "Table vides" }); await rpc(page, "gb_ticket_set_qty", { p_ticket: id, p_product: p, p_qty: 4 }); await rpc(page, "gb_ticket_send", { p_ticket: id });
+    const tot = await page.evaluate(id => S.tickets.find(t => t.id === id).total, id); await rpc(page, "gb_ticket_cash", { p_ticket: id, p_method: "cash", p_received: tot });
+    await login(page, "Mireille"); await page.evaluate(() => A.go({ v: "stock" })); await page.waitForFunction(() => Array.isArray(V.pk), null, { timeout: 4000 });
+    const k = await page.evaluate(() => V.pk.find(x => x.name === "Casier 65 cl")); ok(k && k.theo >= 52, "vides théoriques faux : " + JSON.stringify(k && k.theo));
+    ok(/Emballages consignés/.test(await page.textContent("#app")), "carte des emballages absente");
+    await page.click(`[data-a="pkAct"][data-id="${k.id}"][data-k="comptage"]`); await page.fill("#pkq", String(k.theo - 3)); await page.click(`[data-a="pkGo"][data-id="${k.id}"]`);
+    await page.waitForFunction(() => Array.isArray(V.pk), null, { timeout: 4000 }); await page.waitForTimeout(100);
+    const k2 = await page.evaluate(id => V.pk.find(x => x.id === id), k.id); ok(k2.theo === k.theo - 3 && k2.last_count.qty - k2.last_count.theo === -3, "écart de comptage non enregistré");
+    await page.evaluate(() => A.reaLoad(true)); await page.waitForTimeout(300); await page.click('[data-a="poCreate"]'); await page.waitForSelector('[data-a="poE"]', { timeout: 5000 });
+    await page.click('[data-a="poE"]'); await page.fill(`#pe_${k.id}`, "24"); await page.click('[data-a="poEGo"]'); await page.waitForTimeout(200);
+    const po = await page.evaluate(() => V.pos[0]); ok((po.empties || []).length === 1 && po.empties[0].q === 24, "vides non enregistrés sur le bon");
+    ok(/Vides rendus : 24 Casier 65 cl/.test(await page.evaluate(id => poText(V.pos.find(x => x.id === id)), po.id)), "vides absents du message au fournisseur");
+    await page.evaluate(() => { window.__lastPdf = null; }); await page.click('[data-a="poPdf"]:not([data-wa])'); await page.waitForFunction(() => !!window.__lastPdf, null, { timeout: 15000 });
+    ok((await rpc(page, "gb_po_receive", { p_id: po.id, p_items: null })).ok, "réception du bon");
+    const th = await page.evaluate(id => B.rpc("gb_pack_state", {}).then(L => L.find(x => x.id === id).theo), k.id); ok(th === k2.theo - 24, `vides non retirés à la livraison (${k2.theo} → ${th})`);
+  }, { ctx: { viewport: { width: 360, height: 780 }, acceptDownloads: true } });
+
   await test("Abonnement : mode test caché (petit montant, 1 mois)", async page => {
     await login(page, "Marcel");
     await page.evaluate(() => { S.bar.sub_test_price = 200; V.f.ab_p = "gold"; A.go({ v: "abo" }); }); await page.waitForTimeout(150);
