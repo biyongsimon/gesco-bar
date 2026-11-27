@@ -138,6 +138,8 @@ begin
   perform pg_temp.as_user(u_pdg); perform public.gb_bar_opts('{"f_vides": true}');
   pk := public.gb_pack_save(null, 'Casier test', 100, 12, array[biere]);
   perform public.gb_pack_move(pk, 'comptage', 30);
+  -- (dans la transaction de test, tout a la même heure : le comptage est daté d'une minute plus tôt)
+  update public.packaging_moves set created_at = now() - interval '1 minute' where packaging_id = pk;
   e := pg_temp.err(format('select public.gb_pack_move(%L, ''retour'', 500)', pk));
   perform pg_temp.ok(e like 'Il n''y a que%', 'on ne rend pas plus de vides qu''on en a');
   r := public.gb_po_create('Dépôt test', '690000000', jsonb_build_array(jsonb_build_object('p', biere, 'q', 12)));
