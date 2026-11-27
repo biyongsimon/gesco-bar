@@ -957,9 +957,11 @@ function DemoBackend() {
       if (e.method === "tiroir") { const od = db.days.find(x => x.status === "open"); if (!od || e.created_at < od.opened_at) E("Cet achat payé avec le tiroir appartient à une journée clôturée : il ne peut plus être retiré."); }
       db.expenses = db.expenses.filter(x => x !== e); log(c, "courses_retirees", { article: e.label, montant: e.amount }); },
     gb_bar_opts({ p_patch }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG modifie ces réglages."); const o = { ...(db.bar.opts || {}) };
-      Object.entries(p_patch || {}).forEach(([k, v]) => { if (!["remit_r1", "remit_r2", "remit_r3"].includes(k)) E("Réglage inconnu : " + k); if (!(Number.isInteger(v) && v >= 0 && v <= 600)) E("Délai invalide (0 à 600 minutes)."); o[k] = v; });
+      Object.entries(p_patch || {}).forEach(([k, v]) => { if (k === "phone") { if (typeof v !== "string" || v.length > 40) E("Téléphone invalide."); o[k] = v; return; }
+        if (!["remit_r1", "remit_r2", "remit_r3"].includes(k)) E("Réglage inconnu : " + k); if (!(Number.isInteger(v) && v >= 0 && v <= 600)) E("Délai invalide (0 à 600 minutes)."); o[k] = v; });
       const a = o.remit_r1 ?? 20, b = o.remit_r2 ?? 45, d = o.remit_r3 ?? 90; if (a > 0 && ((b >= 1 && b <= a) || (d >= 1 && d <= b))) E("Les délais doivent aller croissant (1er rappel, puis caisse, puis directeur).");
       db.bar.opts = o; log(c, "reglages_modifies", p_patch); return o; },
+    gb_bar_logo({ p_path }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG change le logo."); if (p_path && !/^data:image\/png;base64,/.test(p_path)) E("Fichier non valide."); db.bar.logo_path = p_path || null; log(c, "reglages_modifies", { logo: !!p_path }); },
     gb_kitchen_toggle({ p_on }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG active le module Cuisine."); db.bar.kitchen_on = !!p_on; log(c, "module_cuisine", { actif: !!p_on }); },
     gb_recipe_set({ p_dish, p_items }) { const c = ctx(); caisse(c); const d = prod(p_dish); db.recipes = (db.recipes || []).filter(r => r.dish_id !== p_dish);
       (p_items || []).forEach(i => { const q = +i.q; if (!(q > 0)) return; if (i.i === p_dish) E("Un plat ne peut pas être son propre ingrédient."); prod(i.i); db.recipes.push({ dish_id: p_dish, ingredient_id: i.i, qty: q }); });
@@ -1380,6 +1382,7 @@ function DemoBackend() {
       return { thread: th, status, reply, messages: H }; },
     async assistHistory() { return { thread: "demo-thread", status: null, messages: LS.get(KEY + "-help-" + (S && S.me ? S.me.id : "anon"), []) }; },
     async uploadProof(file) { const c = ctx(); mgr(c); return db.bar.id + "/abonnement-demo-" + (file.name || "capture"); },
+    async uploadLogo(blob) { return await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(blob); }); },
     async uploadReact(file, i) { const c = ctx(); mgr(c); return db.bar.id + "/reactivation-" + Date.now() + "-" + i + "." + (/pdf/.test(file.type) ? "pdf" : "jpg"); },
     async proofUrl() { return null; },
     async uploadProductPhoto(blob) { const c = ctx(); caisse(c); return await new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ko(new Error("Photo illisible.")); r.readAsDataURL(blob); }); },
@@ -1433,7 +1436,7 @@ function LiveBackend() {
       const uid = sd.session.user.id;
       const [staff, bars, products, days] = await Promise.all([
         q(sb.from("staff").select("id,name,role,active,user_id,head").order("name")),
-        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status,om_code,mtn_code,om_ussd,mtn_ussd,push_enabled,plan,plan_until,plan_trial_until,trial_plan,suspended,suspend_reason,suspended_at,kitchen_on,plan_cfg,sub_test_price,opts").limit(1)),
+        q(sb.from("bars").select("id,name,code,city,cash_cap,low_stock,legal_name,niu,id_doc_path,kyc_status,om_code,mtn_code,om_ussd,mtn_ussd,push_enabled,plan,plan_until,plan_trial_until,trial_plan,suspended,suspend_reason,suspended_at,kitchen_on,plan_cfg,sub_test_price,opts,logo_path").limit(1)),
         q(sb.from("products").select("*").order("sort")),
         q(sb.from("service_days").select("*").eq("status", "open").limit(1))]);
       const meRow = staff.find(s => s.user_id === uid && s.active); if (!meRow || !bars.length) { const e = bizErr("Compte non rattaché à un bar ou désactivé."); e.auth = true; throw e; }
@@ -1481,6 +1484,11 @@ function LiveBackend() {
       if (error) throw bizErr("Envoi de la photo impossible : " + error.message); return path; },
     async productImage(id, image) { return this.rpc("gb_product_image", { p_id: id, p_image: image }); },
     async listPO() { const { data, error } = await sb.from("purchase_orders").select("*").order("created_at", { ascending: false }).limit(20); if (error) throw toErr(error); return data || []; },
+    async uploadLogo(blob) {
+      const { data: bars } = await sb.from("bars").select("id").limit(1); if (!bars || !bars.length) throw bizErr("Bar introuvable.");
+      const path = `${bars[0].id}/logo-${Date.now()}.png`;
+      const { error } = await sb.storage.from("produits").upload(path, blob, { contentType: "image/png", upsert: false });
+      if (error) throw bizErr("Envoi du logo impossible : " + error.message); return path; },
     async uploadReact(file, i) {
       const { data: bars } = await sb.from("bars").select("id").limit(1); if (!bars || !bars.length) throw bizErr("Bar introuvable.");
       const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" }[file.type]; if (!ext) throw bizErr("Format non accepté : photo (JPG, PNG, WebP) ou PDF.");
@@ -1600,7 +1608,9 @@ async function enterApp() {
     else { await logout(true); toast(e.message, "err"); return; }
   }
   V.tab = navFor()[0]; setTimeout(pushSub, 1500);
-  try { const qp = new URLSearchParams(location.search); if (qp.get("kds")) LS.set("gesco-kds", 1); const qt = qp.get("tab"); if (qt && navFor().includes(qt)) V.tab = qt; } catch (e) {}
+  try { const qp = new URLSearchParams(location.search); if (qp.get("kds")) LS.set("gesco-kds", 1); const qt = qp.get("tab"); if (qt && navFor().includes(qt)) V.tab = qt;
+    const rp = qp.get("rapport"); if (rp && navFor().includes("day")) { V.tab = "day"; setTimeout(() => A.showDay({ id: rp }), 50); }
+    if (qt || rp) history.replaceState(null, "", location.pathname); } catch (e) {}
   V.kds = !!LS.get("gesco-kds", 0) && KDS_OK() && !!S.bar.kitchen_on; if (V.kds) { V.tab = "kitchen"; setTimeout(kdsWake, 500); }
   V.secT = Date.now(); V.menu = false; notifyNew(); lazyLoad(); V.rea = null; A.reaLoad(true);
   render(); flush(); setTimeout(avisCheck, 6000);
@@ -1833,9 +1843,9 @@ A.check = () => run(async () => { const c = (V.f.vcode || "").trim().replace(/^G
 A.useV = d => run(async () => { await call("gb_voucher_use", { p_voucher: d.v }); toast("Bon honoré et marqué utilisé."); V.vres = null; V.f.vcode = ""; await refresh(); });
 A.loadRev = () => run(async () => { V.rev = await call("gb_revenue", {}); });
 A.close1 = d => run(async () => { const n = num("cnt"); if (n == null) throw bizErr("Saisissez les espèces comptées dans la caisse.");
-  try { const s = await call("gb_day_close", { p_counted: n, p_force: !!d.force }); V.f.cnt = ""; V.mk = undefined; V.modal = { type: "summary", s }; await refresh(); }
+  try { const s = await call("gb_day_close", { p_counted: n, p_force: !!d.force }); V.f.cnt = ""; V.mk = undefined; V.modal = { type: "summary", s: { ...s, par: S.me.name, heure: new Date().toISOString() } }; await refresh(); }
   catch (e) { if (e.pending) { ask("Clôturer quand même ?", e.message + " Les tickets non soldés resteront ouverts sur la journée suivante.", "Forcer la clôture", "close1", { force: 1 }, true); return; } throw e; } });
-A.showDay = d => { const x = S.days.find(y => y.id === d.id); if (x) { V.modal = { type: "summary", s: { ...x.summary, attendu: x.expected_cash, compte: x.counted_cash, ecart: (x.counted_cash || 0) - (x.expected_cash || 0), date: x.business_date } }; render(); } };
+A.showDay = d => { const x = S.days.find(y => y.id === d.id); if (x) { V.modal = { type: "summary", s: { ...x.summary, attendu: x.expected_cash, compte: x.counted_cash, ecart: (x.counted_cash || 0) - (x.expected_cash || 0), date: x.business_date, par: staffName(x.closed_by), heure: x.closed_at } }; render(); } };
 A.resetDemo = () => ask("Réinitialiser la démo ?", "Toutes les données de démonstration de ce navigateur seront remplacées par l’exemple de départ.", "Réinitialiser", "resetDemoGo", {}, true);
 A.resetDemoGo = () => { B.reset(); logout(true); toast("Démo réinitialisée."); };
 
@@ -2129,13 +2139,126 @@ function poText(po) {
   return `Bonjour${po.supplier ? " " + po.supplier : ""}, voici le bon de commande N°${po.number} de ${S.bar.name}${S.bar.city ? " (" + S.bar.city + ")" : ""} :\n${lines.join("\n")}\nMerci de nous confirmer la livraison.`;
 }
 const waLink = (tel, txt) => { let t = String(tel || "").replace(/\D/g, ""); if (/^6\d{8}$/.test(t)) t = "237" + t; return `https://wa.me/${t}?text=${encodeURIComponent(txt)}`; };
+/* ═══════════════ Documents PDF : rapport de clôture, bon de commande (en-tête du bar et logo) ═══════════════ */
+const PDF_LIBS = [["jspdf-2.5.2.min.js", "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js", () => window.jspdf && window.jspdf.jsPDF],
+  ["jspdf-autotable-3.8.4.min.js", "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js", () => window.jspdf && window.jspdf.jsPDF.API.autoTable]];
+const loadJs = src => new Promise((ok, ko) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => { s.remove(); ko(new Error(src)); }; document.head.appendChild(s); });
+async function pdfLib() {
+  for (const [f, cdn, ready] of PDF_LIBS) { if (ready()) continue; let ok = false;
+    for (const src of [(CFG.mode === "demo" ? "web/lib/" : "lib/") + f, cdn]) { try { await loadJs(src); if (ready()) { ok = true; break; } } catch (e) {} }
+    if (!ok) throw bizErr("Impossible de préparer le PDF : vérifiez la connexion puis réessayez."); }
+  return window.jspdf.jsPDF;
+}
+// Les polices du PDF ne connaissent que l'alphabet latin : on remplace le reste (espaces fines, apostrophes, émojis)
+const pt = v => String(v ?? "").replace(/[   ]/g, " ").replace(/[’‘]/g, "'").replace(/«\s?/g, '"').replace(/\s?»/g, '"').replace(/[“”]/g, '"').replace(/…/g, "...").replace(/[—–−]/g, "-").replace(/[^\x20-\x7e\xa0-\xff\n]/g, "").trim();
+const pF = n => Fs(n) + " F";
+async function logoData() {
+  const p = S.bar.logo_path; if (!p) return null; if (/^data:image\/png/.test(p)) return p;
+  try { const b = await (await fetch(userUrl(p))).blob(); return await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.onerror = () => r(null); f.readAsDataURL(b); }); } catch (e) { return null; }
+}
+const PDF_BRAND = [15, 92, 60];
+async function pdfStart(title, lines) {
+  const J = await pdfLib(), doc = new J({ unit: "mm", format: "a4", compress: true }), W = 210, M = 14, b = S.bar, o = b.opts || {}, logo = await logoData();
+  doc.setFillColor(...PDF_BRAND); doc.rect(0, 0, W, 3.5, "F");
+  let x = M; if (logo) { try { const ip = doc.getImageProperties(logo), k = Math.min(24 / ip.width, 24 / ip.height); doc.addImage(logo, "PNG", M, 10, ip.width * k, ip.height * k); x = M + ip.width * k + 4; } catch (e) {} }
+  doc.setTextColor(19, 32, 26).setFont("helvetica", "bold").setFontSize(15).text(pt(b.name), x, 16);
+  doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(91, 106, 98);
+  [b.legal_name, b.niu ? "NIU " + b.niu : null, [b.city, o.phone].filter(Boolean).join(" · ")].filter(Boolean).forEach((l, i) => doc.text(pt(l), x, 21.5 + i * 4.2));
+  doc.setTextColor(...PDF_BRAND).setFont("helvetica", "bold").setFontSize(13).text(pt(title), W - M, 16, { align: "right" });
+  doc.setTextColor(91, 106, 98).setFont("helvetica", "normal").setFontSize(8.5); (lines || []).forEach((l, i) => doc.text(pt(l), W - M, 21.5 + i * 4.2, { align: "right" }));
+  doc.setDrawColor(219, 227, 221).setLineWidth(0.4).line(M, 37, W - M, 37);
+  return { doc, W, M, y: 44 };
+}
+const pdfH = (P, t) => { if (P.y > 262) { P.doc.addPage(); P.y = 18; } P.doc.setTextColor(...PDF_BRAND).setFont("helvetica", "bold").setFontSize(10).text(pt(t).toUpperCase(), P.M, P.y); P.y += 2.5; };
+function pdfTable(P, head, body, opts = {}) {
+  P.doc.autoTable({ startY: P.y, head: head ? [head.map(pt)] : undefined, body: body.map(r => r.map(c => typeof c === "object" && c ? { ...c, content: pt(c.content) } : pt(c))), margin: { left: P.M, right: P.M },
+    styles: { font: "helvetica", fontSize: 9, cellPadding: 1.8, textColor: [19, 32, 26], lineColor: [219, 227, 221], lineWidth: 0.2 },
+    headStyles: { fillColor: [233, 239, 234], textColor: [19, 32, 26], fontStyle: "bold" }, alternateRowStyles: { fillColor: [248, 250, 248] }, theme: "grid", ...opts });
+  P.y = P.doc.lastAutoTable.finalY + 7;
+}
+function pdfEnd(P) {
+  const n = P.doc.getNumberOfPages();
+  for (let i = 1; i <= n; i++) { P.doc.setPage(i); P.doc.setFont("helvetica", "normal").setFontSize(7.5).setTextColor(140, 150, 145);
+    P.doc.text(pt("Document généré par GesCo Bar · gescobar-cm.pages.dev · " + new Date().toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })), P.M, 290);
+    P.doc.text(`Page ${i} / ${n}`, P.W - P.M, 290, { align: "right" }); }
+  return P.doc;
+}
+// Partage : sur téléphone, le PDF part déjà joint (WhatsApp, e-mail…) ; sinon il est enregistré et WhatsApp s'ouvre avec un court message
+async function pdfSend(doc, name, text, tel) {
+  const blob = doc.output("blob"); window.__lastPdf = blob;
+  const file = new File([blob], name, { type: "application/pdf" });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name.replace(/\.pdf$/, ""), text }); return; } }
+  catch (e) { if (e && e.name === "AbortError") return; }
+  const url = URL.createObjectURL(blob), a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+  if (tel !== false) { try { window.open(waLink(tel || "", text + "\n(PDF joint)"), "_blank", "noopener"); } catch (e) {} }
+  toast(tel !== false ? "PDF enregistré : joignez-le dans la conversation WhatsApp qui s’ouvre." : "PDF enregistré dans vos téléchargements.");
+}
+const pdfName = (k, d) => `${k}-${String(S.bar.name).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()}-${d}.pdf`;
+
+async function repPdf(s) {
+  const d = s.date || today(), P = await pdfStart("RAPPORT DE CLÔTURE", [dfr(d, { weekday: "long", day: "numeric", month: "long", year: "numeric" }), s.par ? `Clôturée par ${s.par}${s.heure ? " à " + hm(s.heure) : ""}` : ""]);
+  const { doc, M } = P, bw = (P.W - 2 * M - 9) / 4, ec = s.ecart || 0;
+  [["Ventes", pF(s.ventes)], ["Espèces attendues", pF(s.attendu)], ["Espèces comptées", pF(s.compte)], ["Écart de caisse", (ec > 0 ? "+" : "") + pF(ec)]].forEach(([l, v], i) => {
+    const x = M + i * (bw + 3), last = i === 3, col = last ? (ec < 0 ? [180, 48, 42] : ec > 0 ? [23, 128, 74] : [19, 32, 26]) : [19, 32, 26];
+    doc.setFillColor(...(last ? (ec < 0 ? [248, 225, 223] : [225, 243, 232]) : [243, 246, 243])).roundedRect(x, P.y, bw, 17, 2, 2, "F");
+    doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(91, 106, 98).text(pt(l), x + 3, P.y + 6);
+    doc.setFont("helvetica", "bold").setFontSize(12).setTextColor(...col).text(pt(v), x + 3, P.y + 13); });
+  P.y += 25;
+  const pl = s.plats && s.plats.qte ? s.plats : null;
+  pdfH(P, "Résumé de la journée");
+  pdfTable(P, null, [["Ventes totales", pF(s.ventes)], ...(pl ? [[{ content: "dont boissons", styles: { cellPadding: { left: 7, top: 1.8, bottom: 1.8, right: 1.8 }, textColor: [91, 106, 98] } }, pF(s.boissons)], [{ content: "dont plats", styles: { cellPadding: { left: 7, top: 1.8, bottom: 1.8, right: 1.8 }, textColor: [91, 106, 98] } }, `${pF(pl.montant)} (${pl.qte} plat${pl.qte > 1 ? "s" : ""})`]] : []),
+    ["Tickets vendus", String(s.tickets ?? 0)], ["Tickets annulés", String(s.annules ?? 0)], ["Mobile Money", pF(s.mobile_money)], ["Espèces versées par les serveuses", pF(s.especes_versees)],
+    ["Monnaie rendue aux clients", "- " + pF(s.monnaie_rendue)], ...(s.depenses_caisse ? [["Courses payées avec le tiroir", "- " + pF(s.depenses_caisse)]] : []),
+    ["Espèces attendues", pF(s.attendu)], ["Espèces comptées", pF(s.compte)], [{ content: "Écart de caisse", styles: { fontStyle: "bold" } }, { content: pF(ec), styles: { fontStyle: "bold", textColor: ec < 0 ? [180, 48, 42] : [19, 32, 26] } }],
+    ["Bons de reliquat émis", pF(s.bons_emis)], ...(s.non_soldes ? [["Tickets non soldés à la clôture", String(s.non_soldes)]] : [])],
+    { columnStyles: { 1: { halign: "right", cellWidth: 55 } } });
+  if ((s.serveuses || []).length) { pdfH(P, "Par serveuse");
+    pdfTable(P, ["Serveuse", "Ventes", "Tickets", "Corrections", "Annulés", "Écart versements", "Bouteilles en main"], s.serveuses.map(w => [w.nom, pF(w.ventes), w.tickets, w.corrections, w.annules ?? 0, pF(w.ecart_versements), w.bouteilles_en_main]),
+      { columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" } } }); }
+  if (pl && (pl.detail || []).length) { pdfH(P, "Plats vendus");
+    pdfTable(P, ["Plat", "Qté", "Prix", "Montant"], [...pl.detail.map(x => [x.plat, x.qte, pF(x.prix), pF(x.montant)]), [{ content: "Total", styles: { fontStyle: "bold" } }, { content: String(pl.qte), styles: { fontStyle: "bold" } }, "", { content: pF(pl.montant), styles: { fontStyle: "bold" } }]],
+      { columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" } } }); }
+  if ((s.services || []).length) { pdfH(P, "Services (relèves de caisse)");
+    pdfTable(P, ["Caissière", "Relayée par", "Heure", "Ventes", "Compté", "Écart"], s.services.map(x => [x.caisse || "", x.relaye_par || "-", x.heure ? hm(x.heure) : "", pF(x.ventes || 0), pF(x.compte || 0), pF(x.ecart_service || 0)]),
+      { columnStyles: { 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" } } }); }
+  if ((s.cuisine_pertes || []).length) { pdfH(P, "Cuisine : pertes et repas du personnel");
+    pdfTable(P, ["Plat", "Qté", "Issue", "Valeur (coût)", "Note"], s.cuisine_pertes.map(x => [x.plat, x.qte, x.issue === "perte" ? "Perte" : "Personnel", pF(x.valeur || 0), x.note || ""]), { columnStyles: { 1: { halign: "right" }, 3: { halign: "right" } } }); }
+  return pdfEnd(P);
+}
+const repText = s => `Rapport de clôture · ${S.bar.name} · ${dfr(s.date || today(), { weekday: "long", day: "numeric", month: "long" })}\nVentes : ${F(s.ventes)}${s.plats && s.plats.qte ? ` (boissons ${F(s.boissons)}, plats ${F(s.plats.montant)})` : ""}\nEspèces attendues : ${F(s.attendu)} · comptées : ${F(s.compte)} · écart : ${F(s.ecart || 0)}`;
+A.repPdf = d => run(async () => { const s = V.modal && V.modal.s; if (!s) return; toast("Préparation du PDF…"); const doc = await repPdf(s);
+  await pdfSend(doc, pdfName("rapport", s.date || today()), repText(s), d.wa ? "" : false); });
+
+async function poPdf(po, px) {
+  const P = await pdfStart(`BON DE COMMANDE N°${po.number}`, [new Date(po.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }), po.supplier ? "Fournisseur : " + po.supplier : "", po.supplier_phone ? "Tél. " + po.supplier_phone : ""]);
+  const items = po.items || [], rows = items.map((i, k) => { const p = S.products.find(x => x.id === i.p) || { name: i.n, category: "" }, pk = packTxt(p, i.q);
+    return [k + 1, i.n, String(i.q), pk || "-", ...(px ? [i.c ? pF(i.c) : "-", i.c ? pF(i.c * i.q) : "-"] : []), ""]; });
+  const tot = sum(items, i => (i.c || 0) * i.q);
+  pdfH(P, "Produits commandés");
+  pdfTable(P, ["N°", "Produit", "Quantité", "Soit", ...(px ? ["Prix habituel", "Montant"] : []), "Livré"],
+    [...rows, ...(px && tot ? [[{ content: "Total estimatif", colSpan: 5, styles: { fontStyle: "bold", halign: "right" } }, { content: pF(tot), styles: { fontStyle: "bold" } }, ""]] : [])],
+    { columnStyles: { 0: { cellWidth: 10 }, 2: { halign: "right" }, ...(px ? { 4: { halign: "right" }, 5: { halign: "right" } } : {}), [px ? 6 : 4]: { cellWidth: 16 } } });
+  const { doc, M, W } = P;
+  doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(19, 32, 26);
+  const note = doc.splitTextToSize(pt(`Merci de livrer les quantités ci-dessus et de nous confirmer la livraison${(S.bar.opts || {}).phone ? " au " + S.bar.opts.phone : ""}. Cochez la colonne « Livré » à la livraison.${px ? " Les prix sont indicatifs (derniers prix connus) : le prix facturé fait foi." : ""}`), W - 2 * M);
+  doc.text(note, M, P.y); P.y += note.length * 4.5 + 12; if (P.y > 250) { doc.addPage(); P.y = 30; }
+  const bx = (W - 2 * M - 10) / 2;
+  [["Pour " + S.bar.name, "Signature"], ["Le fournisseur", "Signature et cachet"]].forEach(([t, s], i) => { const x = M + i * (bx + 10);
+    doc.setDrawColor(219, 227, 221).roundedRect(x, P.y, bx, 28, 2, 2); doc.setFont("helvetica", "bold").setFontSize(9).text(pt(t), x + 3, P.y + 6);
+    doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(140, 150, 145).text(pt(s), x + 3, P.y + 11); doc.setTextColor(19, 32, 26); });
+  return pdfEnd(P);
+}
+A.poPx = () => { V.f.po_px = !V.f.po_px; render(); };
+A.poPdf = d => run(async () => { const po = (V.pos || []).find(x => x.id === d.id); if (!po) return; toast("Préparation du bon de commande…");
+  const doc = await poPdf(po, !!V.f.po_px); await pdfSend(doc, pdfName("bon-de-commande-" + po.number, String(po.created_at).slice(0, 10)), poText(po), d.wa ? (po.supplier_phone || "") : false); });
+
 function vPOs() {
   const pos = V.pos || []; if (!pos.length) return "";
-  return `<div class="card stack"><h3>Bons de commande</h3><div class="list">${pos.slice(0, 15).map(po => { const st = PO_ST[po.status] || ["", po.status], rcv = V.poR === po.id;
+  return `<div class="card stack"><div class="between" style="flex-wrap:wrap;gap:6px"><h3>Bons de commande</h3><label class="mu" style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" data-a="poPx" ${V.f.po_px ? "checked" : ""}> Prix habituels sur le PDF</label></div><div class="list">${pos.slice(0, 15).map(po => { const st = PO_ST[po.status] || ["", po.status], rcv = V.poR === po.id;
     return `<div class="stack" style="padding:10px 0;gap:6px"><div class="between"><div><b>N°${po.number}${po.supplier ? " · " + esc(po.supplier) : ""}</b>
       <div class="mu" style="font-size:13px">${new Date(po.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} · ${(po.items || []).length} produit(s) · ${(po.items || []).slice(0, 3).map(i => `${i.q} ${esc(i.n)}`).join(", ")}${(po.items || []).length > 3 ? "…" : ""}${po.total ? " · " + F(po.total) : ""}</div></div>
       <span class="pill ${st[0]}">${st[1]}</span></div>
-      ${po.status === "envoye" && !rcv ? `<div class="row"><a class="btn soft sm" href="${waLink(po.supplier_phone, poText(po))}" target="_blank" rel="noopener">${ico("send")} Envoyer sur WhatsApp</a><button class="btn sm" data-a="poRecv" data-id="${po.id}">Livraison reçue</button><button class="btn ghost sm" data-a="poCancel" data-id="${po.id}">Annuler</button></div>` : ""}
+      ${po.status === "envoye" && !rcv ? `<div class="row"><button class="btn soft sm" data-a="poPdf" data-id="${po.id}" data-wa="1">${ico("send")} Envoyer le PDF sur WhatsApp</button><button class="btn ghost sm" data-a="poPdf" data-id="${po.id}">PDF</button><a class="btn ghost sm" href="${waLink(po.supplier_phone, poText(po))}" target="_blank" rel="noopener">Texte seul</a><button class="btn sm" data-a="poRecv" data-id="${po.id}">Livraison reçue</button><button class="btn ghost sm" data-a="poCancel" data-id="${po.id}">Annuler</button></div>` : po.status === "recu" && !rcv ? `<div class="row"><button class="btn ghost sm" data-a="poPdf" data-id="${po.id}">PDF du bon</button></div>` : ""}
       ${rcv ? `<div class="sub stack"><b>Ce qui a été livré</b><p class="mu" style="margin:0">Corrigez si le fournisseur a livré une autre quantité ou un autre prix. Le stock et la compta sont mis à jour automatiquement.</p>
         ${(po.items || []).map((i, k) => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;padding:8px 0;border-top:1px dashed var(--line)"><b style="grid-column:1/-1">${esc(i.n)}</b>
           <label class="f" for="pr_q_${k}">Quantité<input id="pr_q_${k}" type="number" inputmode="numeric" min="0" data-k="pr_q_${k}" value="${esc(V.f["pr_q_" + k] ?? i.q)}"></label>
@@ -2588,7 +2711,7 @@ const NAV = {
   serveuse: ["service", "qr", "planning", "moi"],
   cuisine: ["kitchen", "planning", "moi"],
   caisse: ["direct", "stock", "vouch", "sales", "day", "planning", "moi"],
-  directeur: ["sup", "pres", "planning", "team", "sales", "log", "abo", "moi"],
+  directeur: ["sup", "pres", "planning", "team", "sales", "day", "log", "abo", "moi"],
   pdg: ["home", "paie", "acc", "team", "sales", "rev", "pres", "planning", "day", "log", "abo", "settings"]
 };
 function barBlock() { if (!S || !S.bar) return null; const b = S.bar; if (b.suspended) return "suspendu";
@@ -3536,10 +3659,34 @@ function cSettings() {
     ${payCfgCard()}
     <div class="card stack"><h3>Réglages du bar</h3><div class="row"><label class="f grow" for="b_n">Nom<input id="b_n" data-k="b_n" value="${esc(V.f.b_n ?? b.name)}"></label><label class="f grow" for="b_c">Ville et quartier<input id="b_c" data-k="b_c" value="${esc(V.f.b_c ?? (b.city || ""))}"></label></div>
       <button class="btn" data-a="saveBar">Enregistrer les réglages</button></div>
-    ${remitCard()}
+    ${docCard()}${remitCard()}
     <div class="card stack"><h3>Code du bar</h3><div class="code-big num">${esc(b.code)}</div><button class="btn soft" data-a="go" data-v="team">Installer l’application sur les téléphones</button></div></div>`;
 }
 
+// En-tête des documents PDF : logo et téléphone
+function docCard() {
+  const b = S.bar, o = b.opts || {}, f = window.__logoFile;
+  return `<div class="card stack"><h3>Logo et en-tête des documents</h3>
+    <p class="mu" style="margin:0">Le logo, le nom, la raison sociale, le NIU, la ville et ce téléphone apparaissent en haut des PDF : rapport de clôture, bon de commande.</p>
+    <div class="row" style="align-items:center">${b.logo_path ? `<img src="${esc(userUrl(b.logo_path))}" alt="Logo actuel" style="width:64px;height:64px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff">` : `<div class="mu" style="width:64px;height:64px;display:grid;place-items:center;border:1px dashed var(--line);border-radius:10px;font-size:12px;text-align:center">Aucun logo</div>`}
+      <label class="f grow" for="logo_file">Logo (PNG, JPG ou WebP)<input id="logo_file" type="file" accept="image/png,image/jpeg,image/webp"></label></div>
+    ${f ? `<span class="mu">Prêt : ${esc(f.name)}</span>` : ""}
+    <div class="row"><button class="btn" data-a="logoSave" ${f ? "" : "disabled"}>Enregistrer le logo</button>${b.logo_path ? `<button class="btn ghost" data-a="logoDel">Retirer le logo</button>` : ""}</div>
+    <label class="f" for="doc_tel">Téléphone affiché sur les documents<input id="doc_tel" type="tel" inputmode="tel" data-k="doc_tel" value="${esc(V.f.doc_tel ?? (o.phone || ""))}" placeholder="Ex. 6 90 00 00 00"></label>
+    <button class="btn soft" data-a="docTelSave">Enregistrer le téléphone</button></div>`;
+}
+// Logo : réduit à 320 px de côté maximum, en PNG (transparence gardée)
+async function logoPng(file) {
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) throw bizErr("Format non accepté : PNG, JPG ou WebP.");
+  if (file.size > 8 * 1024 * 1024) throw bizErr("Image trop lourde (8 Mo maximum).");
+  const bmp = await createImageBitmap(file), k = Math.min(1, 320 / Math.max(bmp.width, bmp.height)), c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k); c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  return await new Promise(r => c.toBlob(r, "image/png"));
+}
+A.logoSave = () => run(async () => { const f = window.__logoFile; if (!f) throw bizErr("Choisissez d’abord une image.");
+  const png = await logoPng(f), path = await B.uploadLogo(png); await B.rpc("gb_bar_logo", { p_path: path }); S.bar.logo_path = path; window.__logoFile = null; toast("Logo enregistré : il apparaîtra sur vos documents."); render(); });
+A.logoDel = () => run(async () => { await B.rpc("gb_bar_logo", { p_path: null }); S.bar.logo_path = null; toast("Logo retiré."); render(); });
+A.docTelSave = () => run(async () => { S.bar.opts = await B.rpc("gb_bar_opts", { p_patch: { phone: String(V.f.doc_tel ?? "").trim() } }); delete V.f.doc_tel; toast("Téléphone enregistré."); render(); });
 function remitCard() {
   const [r1, r2, r3] = remitR(), inp = (k, v, l) => `<label class="f grow" for="${k}">${l}<input id="${k}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-k="${k}" value="${esc(V.f[k] ?? v)}"></label>`;
   return `<div class="card stack"><div class="between"><h3>Rappel de versement des espèces</h3><span class="pill ${r1 ? "ok" : ""}">${r1 ? "Actif" : "Coupé"}</span></div>
@@ -3762,7 +3909,8 @@ function vModal() {
       ${s.plats && (s.plats.detail || []).length ? `<h3>Plats vendus</h3><div class="scroll"><table><tr><th>Plat</th><th>Qté</th><th>Prix</th><th>Montant</th></tr>${s.plats.detail.map(x => `<tr><td>${esc(x.plat)}</td><td>${x.qte}</td><td>${F(x.prix)}</td><td>${F(x.montant)}</td></tr>`).join("")}<tr><td><b>Total</b></td><td><b>${s.plats.qte}</b></td><td></td><td><b>${F(s.plats.montant)}</b></td></tr></table></div>` : ""}
       ${(s.services || []).length ? `<h3>Services (relèves de caisse)</h3><div class="list">${s.services.map(x => `<div class="between" style="padding:5px 0"><span>${esc(x.caisse || "")}${x.relaye_par ? " → " + esc(x.relaye_par) : ""} <span class="mu">· ${x.heure ? hm(x.heure) : ""}</span></span><span class="num">${F(x.ventes || 0)} · écart ${F(x.ecart_service || 0)}</span></div>`).join("")}</div>` : ""}
       ${(s.cuisine_pertes || []).length ? `<h3>Cuisine : pertes et repas du personnel</h3><div class="list">${s.cuisine_pertes.map(x => `<div class="between" style="padding:5px 0"><span>${x.qte}× ${esc(x.plat)} <span class="mu">· ${x.issue === "perte" ? "perte" : "personnel"}${x.note ? " · " + esc(x.note) : ""}</span></span><span class="num">${F(x.valeur || 0)}</span></div>`).join("")}</div>` : ""}
-      <button class="btn" data-a="close">Fermer</button>`; }
+      <div class="row"><button class="btn grow" data-a="repPdf" data-wa="1">${ico("send")} Envoyer le PDF sur WhatsApp</button><button class="btn soft grow" data-a="repPdf">Télécharger le PDF</button></div>
+      <button class="btn ghost" data-a="close">Fermer</button>`; }
   if (m.type === "report") c = `${reportHtml(m.r)}<div class="row noprint">${CFG.mode === "live" ? `<button class="btn grow" data-a="printReport">Enregistrer en PDF ou imprimer</button>` : `<p class="mu" style="margin:0">Le PDF s’enregistre depuis l’application en ligne : bouton « Enregistrer en PDF », puis choisissez « Enregistrer au format PDF » comme imprimante.</p>`}<button class="btn ghost grow" data-a="close">Fermer</button></div>`;
   if (m.type === "inventory") { const r = m.r || {};
     c = `<h2>Inventaire enregistré</h2><p style="margin:0">${r.ecarts ? `${r.ecarts} produit(s) corrigé(s).` : "Aucun écart : le stock compté correspond."}</p>
@@ -3857,6 +4005,7 @@ document.addEventListener("input", e => { const k = e.target.dataset && e.target
 document.addEventListener("change", e => { const t = e.target;
   if (t.id === "id_file") { window.__idFile = t.files && t.files[0] || null; render(); return; }
   if (t.id === "ab_file") { window.__abFile = t.files && t.files[0] || null; render(); return; }
+  if (t.id === "logo_file") { window.__logoFile = t.files && t.files[0] || null; render(); return; }
   if (t.id === "accm") { V.accMonth = t.value; V.acc = null; render(); A.loadAcc(); return; }
   if (t.id === "mo") { V.f.mo = t.value; V.stats = null; render(); A.loadStats(); return; }
   if (t.id === "pd") { V.f.pd = t.value > today() ? today() : t.value; render(); return; }

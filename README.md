@@ -228,3 +228,10 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - Délais réglables par le PDG (Réglages → « Rappel de versement des espèces », `bars.opts`, `gb_bar_opts`), 0 coupe le rappel.
 - Dans l'application : bandeau « Pensez à verser » chez la serveuse, durée affichée dans « Versements des serveuses » à la caisse.
 - « Ma paie » n'apparaît dans Mon espace que si un salaire ou un paiement est enregistré pour la personne.
+
+## v4.22 — Documents PDF : rapport de clôture et bon de commande
+- PDF générés dans le téléphone (jsPDF 2.5.2 + AutoTable 3.8.4 hébergés dans `app/public/lib/`, gardés pour le hors-ligne ; repli cdnjs pour la démo) : en-tête avec logo, nom, raison sociale, NIU, ville et téléphone du bar, pied de page GesCo.
+- Rapport de clôture : chiffres clés (ventes, espèces attendues et comptées, écart en couleur), résumé (boissons / plats, courses du tiroir…), par serveuse, plats vendus, relèves, pertes cuisine. Boutons « Envoyer le PDF sur WhatsApp » (partage du fichier sur téléphone ; sinon PDF enregistré + WhatsApp ouvert) et « Télécharger le PDF ».
+- Bon de commande : tableau produits / quantités / casiers / case « Livré », prix habituels en option (indicatifs), cadres de signature et cachet.
+- Le directeur a maintenant la rubrique Journée (rapports de clôture) ; la notification de clôture ouvre directement le rapport (`?tab=day&rapport=<id>`).
+- Réglages → « Logo et en-tête des documents » (PDG) : logo réduit en PNG 320 px dans le stockage `produits`, téléphone des documents (migration 030 : `bars.logo_path`, `gb_bar_logo`, `opts.phone`).

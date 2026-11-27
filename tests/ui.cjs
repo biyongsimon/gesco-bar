@@ -193,6 +193,27 @@ async function tousLesOnglets(page) {
     ok(/Ma paie/.test(await page.textContent("#app")), "« Ma paie » absente alors qu'un salaire existe");
   });
 
+  await test("PDF : logo du snack, rapport de clôture et bon de commande ; le directeur voit les rapports", async page => {
+    const lirePdf = () => page.evaluate(async () => { const b = window.__lastPdf; window.__lastPdf = null; const t = await b.text(); return { n: b.size, pdf: t.startsWith("%PDF"), img: /\/Subtype\s*\/Image/.test(t) }; });
+    await login(page, "Marcel"); await page.evaluate(() => A.go({ v: "settings" })); await page.waitForTimeout(100);
+    await page.setInputFiles("#logo_file", path.resolve(__dirname, "logo-test.png")); await page.waitForTimeout(100); await page.click('[data-a="logoSave"]');
+    await page.waitForFunction(() => /^data:image\/png/.test(S.bar.logo_path || ""), null, { timeout: 5000 });
+    await page.fill("#doc_tel", "6 90 12 34 56"); await page.click('[data-a="docTelSave"]'); await page.waitForTimeout(150);
+    ok(await page.evaluate(() => S.bar.opts.phone === "6 90 12 34 56"), "téléphone des documents non enregistré");
+    await login(page, "Mireille");
+    const r = await rpc(page, "gb_day_close", { p_counted: 0, p_force: true }); ok(r.ok, "clôture : " + r.e);
+    await page.evaluate(s => { V.modal = { type: "summary", s: { ...s, par: S.me.name } }; render(); }, r.v);
+    await page.click('[data-a="repPdf"]:not([data-wa])'); await page.waitForFunction(() => !!window.__lastPdf, null, { timeout: 15000 });
+    const p1 = await lirePdf(); ok(p1.pdf && p1.img && p1.n > 3000 && p1.n < 200000, "PDF du rapport invalide : " + JSON.stringify(p1));
+    await page.evaluate(() => { V.modal = null; A.go({ v: "stock" }); }); await page.evaluate(() => A.reaLoad(true)); await page.waitForTimeout(300);
+    await page.click('[data-a="poCreate"]'); await page.waitForSelector('[data-a="poPdf"]', { timeout: 5000 });
+    await page.click('[data-a="poPdf"]:not([data-wa])'); await page.waitForFunction(() => !!window.__lastPdf, null, { timeout: 15000 });
+    const p2 = await lirePdf(); ok(p2.pdf && p2.img, "PDF du bon de commande invalide : " + JSON.stringify(p2));
+    await login(page, "Hervé"); ok(await page.evaluate(() => navFor().includes("day") && S.days.length > 0), "le directeur n'a pas les rapports de clôture");
+    await page.evaluate(() => A.go({ v: "day" })); await page.click('[data-a="showDay"]'); await page.waitForTimeout(100);
+    ok(await page.$('[data-a="repPdf"][data-wa]'), "bouton WhatsApp du rapport absent chez le directeur");
+  }, { ctx: { viewport: { width: 360, height: 780 }, acceptDownloads: true } });
+
   await test("Abonnement : mode test caché (petit montant, 1 mois)", async page => {
     await login(page, "Marcel");
     await page.evaluate(() => { S.bar.sub_test_price = 200; V.f.ab_p = "gold"; A.go({ v: "abo" }); }); await page.waitForTimeout(150);

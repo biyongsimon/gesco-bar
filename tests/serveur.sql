@@ -110,6 +110,11 @@ begin
   perform pg_temp.as_user(u_pdg);
   e := pg_temp.err('select public.gb_bar_opts(''{"remit_r2":10}'')');
   perform pg_temp.ok(e like 'Les délais%', 'les délais doivent aller croissant');
+  -- Logo des documents : chemin du bar uniquement, PDG uniquement
+  e := pg_temp.err('select public.gb_bar_logo(''autre-bar/logo-1.png'')');
+  perform pg_temp.ok(e = 'Fichier non valide.', 'un logo hors du dossier du bar est refusé');
+  perform public.gb_bar_logo(bar || '/logo-1.png');
+  perform pg_temp.ok((select logo_path from public.bars where id = bar) = bar || '/logo-1.png', 'le PDG enregistre le logo du bar');
 
   -- Abonnement : prix de test caché (1 mois, petit montant) puis effacé après paiement
   update public.bars set sub_test_price = 200 where id = bar;
