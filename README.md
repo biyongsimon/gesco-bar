@@ -209,3 +209,8 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - **Alertes de l'éditeur** : console → Réglages → « Alertes sur cet appareil ». Notification à chaque nouvelle erreur (ou erreur revenue après correction), application qui ne démarre pas, site en panne. 12 alertes par heure au plus. Abonnements séparés de ceux du personnel (`gb_private.admin_push`). Migration `027_alertes_editeur.sql`, fonction `gesco-push` (option `admins`).
 - **Écran blanc** : une garde indépendante du code principal détecte un démarrage raté (bibliothèque non chargée, erreur au lancement, 25 s sans affichage), prévient l'éditeur et propose « Réessayer » / « Réparer l'application » (vide le cache et le service worker, garde les données locales).
 - **Surveillance** (`.github/workflows/surveillance.yml`, `tests/surveillance.cjs`) : après chaque envoi, attend que la nouvelle version soit en ligne et vérifie qu'elle démarre ; toutes les 2 h, vérifie application, console, fonctions serveur et base. Panne → erreur « Surveillance du site » dans la console + alerte.
+
+## v4.19 — Photos des plats
+- 36 photos d'assiettes (plats camerounais, plats de restaurant, accompagnements) générées pour GesCo, dans `app/public/produits/plat-*.webp` (384 px, WebP).
+- Reconnues d'après le nom du plat (comme les bouteilles), affichées dans la prise de commande, l'écran Cuisine et le catalogue de plats (vignettes) ; un ingrédient ne prend jamais la photo d'un plat.
+- Démo : 6 plats de plus (Ndolé, Eru, Plantain mûr frit, Spaghetti bolognaise, Steak frites, Burger maison) pour tester plats chauds et bières.

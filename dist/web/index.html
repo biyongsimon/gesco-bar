@@ -148,6 +148,10 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
 .pt .pi{height:84px;display:flex;align-items:flex-end;justify-content:center}.pt .pi img,.pt .pi svg{height:100%;width:auto;max-width:100%;object-fit:contain}
 .pt small{font-size:11px;font-weight:600;line-height:1.2;text-align:center}
 .pt.on{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 10%,var(--surface));box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 25%,transparent)}
+.pcard .pi:has(img.dish)::before{display:none}
+.pcard .pi img.dish,.pt .pi img.dish{height:auto;width:100%;max-width:116px;aspect-ratio:1;object-fit:cover;border-radius:14px;filter:drop-shadow(0 3px 6px rgba(0,0,0,.14));align-self:center}
+.pthumb img.dish{width:100%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:8px;align-self:center}
+.dishchip{display:inline-flex;align-items:center;gap:6px;padding-left:5px}.chipdish{width:26px;height:26px;border-radius:7px;object-fit:cover;flex:none}
 .pthumb{width:44px;height:58px;flex:none;display:flex;align-items:flex-end;justify-content:center;border-radius:10px;background:var(--sunk);padding:3px;border:0;cursor:pointer}.pthumb img,.pthumb svg{height:100%;width:auto;max-width:100%;object-fit:contain}
 @media (prefers-reduced-motion:reduce){.pcard.bump,.pcard.bump .pi img,.pcard.bump .pi svg,.pcard.bump .pn,.pcard.bump::after,.pcard .fly{animation:none!important}}
 .aplist{display:flex;flex-direction:column;gap:8px}
@@ -603,7 +607,7 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
     var C = window.GESCO_CONFIG; if (!C || C.mode !== "live" || !window.fetch) return;
     var tok = C.key; try { var a = JSON.parse(localStorage.getItem("gesco-auth") || "null"); if (a && a.access_token && a.expires_at * 1000 > Date.now()) tok = a.access_token; } catch (x) {}
     var body = JSON.stringify({ p_message: "DÉMARRAGE : GesCo ne s'est pas affiché" + (errs[0] ? " — " + errs[0].split("\n")[0] : " (délai dépassé)"), p_stack: errs.join("\n---\n") || null,
-      p_source: "app", p_url: location.pathname, p_tab: "démarrage", p_version: "5492e932", p_ua: navigator.userAgent.slice(0, 200) });
+      p_source: "app", p_url: location.pathname, p_tab: "démarrage", p_version: "2a2baa73", p_ua: navigator.userAgent.slice(0, 200) });
     var go = function (t) { return fetch(C.url + "/rest/v1/rpc/gb_log_error", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", apikey: C.key, Authorization: "Bearer " + t }, body: body }); };
     go(tok).then(function (r) { if (!r.ok && tok !== C.key) go(C.key); }).catch(function () {
       try { var q = JSON.parse(localStorage.getItem("gesco-errq") || "[]"); q.push(JSON.parse(body)); localStorage.setItem("gesco-errq", JSON.stringify(q.slice(-20))); } catch (x) {} });
@@ -639,7 +643,7 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
 "use strict";
 /* ═══════════════ Outils ═══════════════ */
 const CFG = window.GESCO_CONFIG;
-const APP_BUILD = "5492e932";
+const APP_BUILD = "2a2baa73";
 /* Remontée des erreurs inattendues vers la console éditeur (jamais les messages métier, réseau ou de session) */
 const ERR_SEEN = {};
 function reportErr(e, kind) {
@@ -742,7 +746,7 @@ const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentC
 
 /* ═══════════════ Moteur DÉMO (données locales, mêmes règles que le serveur) ═══════════════ */
 function DemoBackend() {
-  const KEY = "gesco-demo-v14";
+  const KEY = "gesco-demo-v15";
   let db = LS.get(KEY), sess = LS.get(KEY + "-sess");
   const listeners = [];
   const save = () => LS.set(KEY, db);
@@ -1246,7 +1250,9 @@ function DemoBackend() {
     [["Poisson (bar)", 12, "pièce", 1500], ["Poulet (morceaux)", 30, "pièce", 600], ["Viande de bœuf", 4000, "g", 4], ["Plantain mûr", 40, "pièce", 100], ["Huile de palme", 5000, "ml", 2], ["Épices et piment", 1000, "g", 3]]
       .forEach(([name, stock, unit, cost]) => db.products.push({ id: uuid(), name, category: "Ingrédients", price: 0, stock, active: true, sort: db.products.length + 1, unit, parent_id: null, doses: null, cost }));
     [["Poisson braisé", 3500, [["Poisson (bar)", 1], ["Épices et piment", 20], ["Huile de palme", 30]]], ["Poulet DG", 3000, [["Poulet (morceaux)", 2], ["Plantain mûr", 2], ["Huile de palme", 50]]],
-     ["Soya (brochettes)", 1000, [["Viande de bœuf", 150], ["Épices et piment", 10]]], ["Frites de plantain", 500, [["Plantain mûr", 2], ["Huile de palme", 40]]]]
+     ["Soya (brochettes)", 1000, [["Viande de bœuf", 150], ["Épices et piment", 10]]], ["Frites de plantain", 500, [["Plantain mûr", 2], ["Huile de palme", 40]]],
+     ["Ndolé", 3500, [["Viande de bœuf", 150], ["Huile de palme", 30]]], ["Eru", 3000, [["Viande de bœuf", 150], ["Huile de palme", 60]]], ["Plantain mûr frit", 500, [["Plantain mûr", 2], ["Huile de palme", 40]]],
+     ["Spaghetti bolognaise", 3500, [["Viande de bœuf", 150]]], ["Steak frites", 5000, [["Viande de bœuf", 250], ["Huile de palme", 40]]], ["Burger maison", 3000, [["Viande de bœuf", 150]]]]
       .forEach(([name, price, rec]) => { const id = uuid(); db.products.push({ id, name, category: "Cuisine", price, stock: 0, active: true, sort: db.products.length + 1, unit: "plat", parent_id: null, doses: null, cost: 0 });
         rec.forEach(([ing, q]) => db.recipes.push({ dish_id: id, ingredient_id: db.products.find(p => p.name === ing).id, qty: q }));
         db.products.find(p => p.id === id).cost = Math.round(rec.reduce((x, [ing, q]) => x + q * db.products.find(p => p.name === ing).cost, 0)); });
@@ -1760,7 +1766,7 @@ A.saveP = d => run(async () => { const p = S.products.find(x => x.id === d.p), k
 A.togP = d => run(async () => { const p = S.products.find(x => x.id === d.p);
   await call("gb_product_save", { p_id: p.id, p_name: p.name, p_category: p.category, p_price: p.price, p_stock: null, p_active: !p.active, ...PFIELDS(p) }); toast(p.active ? "Produit masqué de la carte." : "Produit remis sur la carte."); await refresh(); });
 A.npCat = d => { V.f.np_fc = d.v; render(); };
-A.npPick = d => { const c = CAT_BY[d.v]; if (!c) return; V.f.np_k = c.k; V.f.np_n = c.n; V.f.np_c = c.c; V.f.np_u = "bouteille"; render();
+A.npPick = d => { const c = CAT_BY[d.v]; if (!c) return; V.f.np_k = c.k; V.f.np_n = c.n; V.f.np_c = c.c; V.f.np_u = c.c === "Cuisine" ? "plat" : "bouteille"; if (c.c === "Cuisine") V.f.np_st = "0"; render();
   setTimeout(() => { const e = document.getElementById("np_pr"); if (e) { e.scrollIntoView({ block: "center", behavior: "smooth" }); e.focus({ preventScroll: true }); } }, 60); };
 A.addP = () => run(async () => { const unit = V.f.np_u || "bouteille", parent = unit === "verre" ? (V.f.np_par || "") : "";
   if (unit === "verre" && !parent) throw bizErr("Choisissez la bouteille d’où sont servis les verres.");
@@ -1922,7 +1928,25 @@ const CATALOG = [
   ["castillo-rouge", "Castillo de Ferrer rouge", "Vins rouges", ["castillo", "castillo rouge", "castillo de ferrer", "castillo de ferrer rouge"], 1],
   ["castillo-blanc", "Castillo de Ferrer blanc", "Vins blancs", ["castillo blanc", "castillo de ferrer blanc"], 1],
   ["castillo-mousseux", "Castillo de Ferrer mousseux", "Champagnes", ["castillo mousseux", "castillo sparkling", "castillo petillant", "castillo de ferrer mousseux"], 1],
-  ["bordeaux", "Bordeaux rouge", "Vins rouges", ["bordeaux"], 1]
+  ["bordeaux", "Bordeaux rouge", "Vins rouges", ["bordeaux"], 1],
+  // Plats (photos d'assiettes, module Cuisine)
+  ["plat-poulet-dg", "Poulet DG", "Cuisine", ["poulet dg"], 1], ["plat-ndole", "Ndolé", "Cuisine", ["ndole"], 1], ["plat-eru", "Eru", "Cuisine", ["eru"], 1],
+  ["plat-mbongo-tchobi", "Mbongo tchobi", "Cuisine", ["mbongo", "mbongo tchobi"], 1], ["plat-koki", "Koki", "Cuisine", ["koki"], 1], ["plat-okok", "Okok", "Cuisine", ["okok"], 1],
+  ["plat-taro-sauce-jaune", "Taro sauce jaune", "Cuisine", ["taro", "sauce jaune", "achu"], 1], ["plat-poisson-braise", "Poisson braisé", "Cuisine", ["poisson braise", "tilapia braise", "carpe braisee"], 1],
+  ["plat-bar-braise", "Bar braisé", "Cuisine", ["bar braise"], 1], ["plat-porc-braise", "Porc braisé", "Cuisine", ["porc braise", "porc"], 1],
+  ["plat-poulet-braise", "Poulet braisé", "Cuisine", ["poulet braise", "poulet grille", "poulet roti"], 1], ["plat-soya", "Soya (brochettes)", "Cuisine", ["soya", "suya", "soya brochettes"], 1],
+  ["plat-kondre", "Kondre", "Cuisine", ["kondre"], 1], ["plat-sauce-arachide", "Sauce arachide", "Cuisine", ["sauce arachide", "arachide"], 1], ["plat-poisson-frit", "Poisson frit", "Cuisine", ["poisson frit"], 1],
+  ["plat-spaghetti-bolognaise", "Spaghetti bolognaise", "Cuisine", ["spaghetti", "spaghettis", "bolognaise"], 1], ["plat-tagliatelles-carbonara", "Tagliatelles à la carbonara", "Cuisine", ["carbonara", "tagliatelle", "tagliatelles"], 1],
+  ["plat-gigot-agneau", "Tranches de gigot d’agneau", "Cuisine", ["gigot"], 1], ["plat-cotelettes-agneau", "Côtelettes d’agneau", "Cuisine", ["cotelette", "cotelettes"], 1],
+  ["plat-steak-frites", "Steak frites", "Cuisine", ["steak", "steak frites"], 1], ["plat-brochettes-boeuf", "Brochettes de bœuf", "Cuisine", ["brochette", "brochettes", "brochettes de boeuf"], 1],
+  ["plat-emince-boeuf", "Émincé de bœuf", "Cuisine", ["emince", "emince de boeuf"], 1], ["plat-ailes-poulet", "Ailes de poulet", "Cuisine", ["ailes de poulet", "ailes", "chicken wings"], 1],
+  ["plat-escalope-poulet", "Escalope de poulet panée", "Cuisine", ["escalope", "poulet pane"], 1], ["plat-burger", "Burger maison", "Cuisine", ["burger", "hamburger"], 1],
+  ["plat-salade-composee", "Salade composée", "Cuisine", ["salade"], 1], ["plat-omelette", "Omelette garnie", "Cuisine", ["omelette"], 1],
+  ["plat-riz-blanc", "Riz blanc", "Cuisine", ["riz", "riz blanc"], 1], ["plat-riz-saute", "Riz sauté", "Cuisine", ["riz saute", "riz cantonais"], 1],
+  ["plat-frites-pommes", "Frites de pommes", "Cuisine", ["frites", "frites de pommes", "pommes frites"], 1], ["plat-frites-plantain", "Frites de plantain", "Cuisine", ["frites de plantain", "plantain frit"], 1],
+  ["plat-plantain-mur-frit", "Plantain mûr frit", "Cuisine", ["plantain mur frit", "plantain mur", "alloco", "dodo"], 1],
+  ["plat-baton-manioc", "Bâton de manioc", "Cuisine", ["baton de manioc", "baton", "bobolo"], 1], ["plat-miondo", "Miondo", "Cuisine", ["miondo"], 1],
+  ["plat-pile-pommes", "Pilé pommes", "Cuisine", ["pile pommes", "pile"], 1], ["plat-haricots", "Haricots", "Cuisine", ["haricots", "haricot"], 1]
 ].map(([k, n, c, kw, ph, sh, col]) => ({ k, n, c, kw, ph: !!ph, sh, col }));
 const CAT_BY = Object.fromEntries(CATALOG.map(x => [x.k, x])); CAT_BY.guinness = CAT_BY["guinness-grande"]; CAT_BY.planete = CAT_BY["planet-orange"];
 const KW = CATALOG.flatMap(x => x.kw.map(w => [w, x])).sort((a, b) => b[0].length - a[0].length);
@@ -1936,7 +1960,10 @@ function pVis(p) {
   const im = p.image || "";
   if (im.startsWith("c:") && CAT_BY[im.slice(2)]) return { c: CAT_BY[im.slice(2)] };
   if (im && !im.startsWith("c:")) return { url: im.startsWith("data:") ? im : userUrl(im) };
-  return { c: autoCat(p.name) };
+  const c = autoCat(p.name);
+  // une photo de plat ne va qu'à un plat (l'ingrédient « Plantain mûr » garde son dessin)
+  if (c && c.c === "Cuisine" && p.category !== "Cuisine" && !/plat|portion/.test(p.unit || "")) return { c: null };
+  return { c };
 }
 function pShape(p, c) {
   if (c && c.sh) return [c.sh, c.col];
@@ -1968,7 +1995,7 @@ function drawn(p, c) {
 }
 function pImg(p) { const v = pVis(p);
   if (v.url) return `<img src="${esc(v.url)}" alt="" loading="lazy" decoding="async">`;
-  if (v.c && v.c.ph) return `<img src="${photoUrl(v.c.k)}" alt="" loading="lazy" decoding="async">`;
+  if (v.c && v.c.ph) return `<img src="${photoUrl(v.c.k)}" alt="" loading="lazy" decoding="async"${v.c.c === "Cuisine" ? ` class="dish"` : ""}>`;
   return drawn(p, v.c); }
 
 /* ── Prise de commande en cartes : toucher = +1, animation, badge de quantité ── */
@@ -2344,14 +2371,15 @@ A.mkSave = () => run(async () => { const l = mkSync().filter(x => (x.a || "").tr
 A.mkRm = d => run(async () => { await B.rpc("gb_market_delete", { p_id: d.id }); V.mk = await B.rpc("gb_market_list", {}); toast("Achat retiré."); });
 
 /* Catalogue de plats */
-const DISHES = [["Plats camerounais", ["Poulet DG", "Ndolé", "Eru", "Mbongo tchobi", "Koki", "Okok", "Taro sauce jaune", "Poisson braisé", "Bar braisé", "Porc braisé", "Poulet braisé", "Soya (brochettes)", "Kondre", "Sauce arachide"]],
+const DISHES = [["Plats camerounais", ["Poulet DG", "Ndolé", "Eru", "Mbongo tchobi", "Koki", "Okok", "Taro sauce jaune", "Poisson braisé", "Bar braisé", "Poisson frit", "Porc braisé", "Poulet braisé", "Soya (brochettes)", "Kondre", "Sauce arachide"]],
   ["Restaurant", ["Spaghetti bolognaise", "Tagliatelles à la carbonara", "Tranches de gigot d’agneau", "Côtelettes d’agneau", "Steak frites", "Brochettes de bœuf", "Émincé de bœuf", "Ailes de poulet", "Escalope de poulet panée", "Burger maison", "Salade composée", "Omelette garnie"]],
   ["Accompagnements", ["Riz blanc", "Riz sauté", "Frites de pommes", "Frites de plantain", "Plantain mûr frit", "Bâton de manioc", "Miondo", "Pilé pommes", "Haricots"]]];
 function dishCatalog() {
   if (!S.bar.kitchen_on) return ""; const have = new Set(S.products.map(p => nrm(p.name)));
   return `<div class="card stack" id="dish_card"><h3>Ajouter un plat à la carte</h3><p class="mu" style="margin:0">Touchez un plat : le nom, la catégorie « Cuisine » et la vente au plat se remplissent. Il reste votre prix de vente, et le prix de revient estimé si vous le connaissez.</p>
     ${DISHES.map(([g, l]) => `<div class="stack" style="gap:6px"><b class="mu" style="font-size:12px;text-transform:uppercase;letter-spacing:.06em">${g}</b><div class="chips">${l.map(n => { const h = have.has(nrm(n));
-      return `<button class="chip ${h ? "on" : ""}" data-a="dishPick" data-v="${esc(n)}" ${h ? `disabled aria-label="${esc(n)} : déjà sur la carte"` : ""}>${h ? "✓ " : ""}${esc(n)}</button>`; }).join("")}</div></div>`).join("")}</div>`;
+      const ph = autoCat(n), im = ph && ph.ph && ph.c === "Cuisine" ? `<img class="chipdish" src="${photoUrl(ph.k)}" alt="" loading="lazy">` : "";
+      return `<button class="chip dishchip ${h ? "on" : ""}" data-a="dishPick" data-v="${esc(n)}" ${h ? `disabled aria-label="${esc(n)} : déjà sur la carte"` : ""}>${im}${h ? "✓ " : ""}${esc(n)}</button>`; }).join("")}</div></div>`).join("")}</div>`;
 }
 A.dishPick = d => { Object.assign(V.f, { np_n: d.v, np_c: "Cuisine", np_u: "plat", np_st: "0", np_k: "" }); render();
   setTimeout(() => { const e = document.getElementById("np_pr"); if (e) { e.scrollIntoView({ block: "center", behavior: "smooth" }); e.focus(); } }, 60); toast(`${d.v} : indiquez le prix puis « Ajouter à la carte ».`); };
@@ -3186,10 +3214,10 @@ function cStock() {
       <input class="grow" id="auc" type="number" inputmode="numeric" data-k="auc" value="${val("auc")}" placeholder="Prix d’achat unitaire (${Fs((S.products.find(p => p.id === (V.f.ap || (S.products.find(x => !x.parent_id) || {}).id)) || {}).cost || 0)} FCFA)" aria-label="Prix d’achat unitaire">
       <button class="btn" data-a="appro">Ajouter au stock</button></div><p class="mu" style="margin:0">Le prix d’achat sert à calculer automatiquement la comptabilité du PDG.</p></div>
     ${dishCatalog()}<div class="card stack" id="np_card"><h3>Ajouter un produit à la carte</h3><p class="mu" style="margin:0">Touchez une bouteille de la photothèque GesCo : le nom, la catégorie et la photo se remplissent. Il ne reste que le prix. Pour un produit absent, écrivez son nom vous-même.</p>
-      ${(() => { const have = new Set(S.products.map(p => (pVis(p).c || {}).k).filter(Boolean)), cats = [...new Set(CATALOG.map(c => c.c))], fc = V.f.np_fc || "";
-        const list = CATALOG.filter(c => !have.has(c.k) && (!fc || c.c === fc));
+      ${(() => { const have = new Set(S.products.map(p => (pVis(p).c || {}).k).filter(Boolean)), LIB = CATALOG.filter(c => c.c !== "Cuisine" || S.bar.kitchen_on), cats = [...new Set(LIB.map(c => c.c))], fc = V.f.np_fc || "";
+        const list = LIB.filter(c => !have.has(c.k) && (!fc || c.c === fc));
         return `<div class="catsc" role="group" aria-label="Catégories de la photothèque">${[["", "Tout"], ...cats.map(c => [c, c])].map(([v, l]) => `<button type="button" data-a="npCat" data-v="${esc(v)}" class="${fc === v ? "on" : ""}">${esc(l)}</button>`).join("")}</div>
-          ${list.length ? `<div class="ptiles" style="max-height:300px">${list.map(c => `<button type="button" class="pt ${V.f.np_k === c.k ? "on" : ""}" data-a="npPick" data-v="${c.k}"><span class="pi">${c.ph ? `<img src="${photoUrl(c.k)}" alt="" loading="lazy">` : drawn({ name: c.n, category: c.c }, c)}</span><small>${esc(c.n)}</small></button>`).join("")}</div>`
+          ${list.length ? `<div class="ptiles" style="max-height:300px">${list.map(c => `<button type="button" class="pt ${V.f.np_k === c.k ? "on" : ""}" data-a="npPick" data-v="${c.k}"><span class="pi">${c.ph ? `<img src="${photoUrl(c.k)}" alt="" loading="lazy"${c.c === "Cuisine" ? ` class="dish"` : ""}>` : drawn({ name: c.n, category: c.c }, c)}</span><small>${esc(c.n)}</small></button>`).join("")}</div>`
             : `<p class="mu" style="margin:0">Toutes les bouteilles de cette catégorie sont déjà sur votre carte.</p>`}`; })()}
       <div class="row"><label class="f grow" for="np_n">Nom<input id="np_n" data-k="np_n" value="${val("np_n")}" placeholder="Ex. Vin rouge Bordeaux, Whisky Chivas 12 ans"></label>
       <label class="f" style="flex:1 1 150px" for="np_c">Catégorie<input id="np_c" data-k="np_c" value="${val("np_c")}" list="gb-cats" placeholder="Bières"></label></div>

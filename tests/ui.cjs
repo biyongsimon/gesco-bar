@@ -107,6 +107,9 @@ async function tousLesOnglets(page) {
     await page.evaluate(() => A.go({ v: "kitchen" })); await page.waitForTimeout(150);
     ok(await page.evaluate(() => document.querySelectorAll('[data-a="kStep"]').length) === 0, "la caisse voit des boutons d'action cuisine");
     await login(page, "Paul");
+    await page.evaluate(() => A.go({ v: "kitchen" }));
+    await page.waitForFunction(() => [...document.querySelectorAll(".kcard img.dish")].some(i => i.complete && i.naturalWidth > 0), null, { timeout: 5000 }).catch(() => {});
+    ok(await page.evaluate(() => [...document.querySelectorAll(".kcard img.dish")].some(i => i.naturalWidth > 0)), "la photo du plat ne s'affiche pas sur le bon de cuisine");
     ok((await rpc(page, "gb_kitchen_step", { p_id: bon, p_status: "prep" })).ok && (await rpc(page, "gb_kitchen_step", { p_id: bon, p_status: "pret" })).ok, "le cuisinier ne peut pas avancer le bon");
     await login(page, "Brigitte");
     ok((await rpc(page, "gb_kitchen_step", { p_id: bon, p_status: "servi" })).ok, "la serveuse ne peut pas confirmer le retrait");
