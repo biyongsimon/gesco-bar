@@ -361,6 +361,22 @@ async function tousLesOnglets(page) {
     await setPlan("beta");
   });
 
+  await test("Reçu d'abonnement : créé après paiement, PDF au nom du bar, e-mail de facturation", async page => {
+    await login(page, "Marcel");
+    const r0 = await rpc(page, "gb_bar_opts", { p_patch: { billing_email: "pas-un-mail" } }); ok(!r0.ok, "un e-mail de facturation invalide est accepté");
+    const r1 = await rpc(page, "gb_bar_opts", { p_patch: { billing_email: "compta@exemple.cm" } }); ok(r1.ok, "e-mail de facturation refusé : " + r1.e);
+    const id = await page.evaluate(async () => (await B.subPush("resto", 12, "mtn", "670000001")).id);
+    await page.waitForTimeout(6300);
+    await page.evaluate(async id => { await B.subStatus(id); await refresh(); A.go({ v: "abo" }); }, id); await page.waitForTimeout(200);
+    const iv = await page.evaluate(() => S.invoices[0]);
+    ok(iv && /^R-\d{4}-0001$/.test(iv.number) && iv.amount === 200000 && iv.months === 12, "reçu non créé ou numéro incorrect : " + JSON.stringify(iv && iv.number));
+    ok(iv.email_to.includes("compta@exemple.cm") && iv.client.bar && iv.payer.role === "pdg", "destinataires ou payeur incorrects");
+    ok(/Reçu de paiement n° R-/.test(await page.textContent("#app")), "le numéro du reçu n'apparaît pas dans l'historique");
+    await page.click(`[data-a="invPdf"][data-id="${iv.id}"]`); await page.waitForFunction(() => window.__lastPdf, null, { timeout: 15000 });
+    const pdf = await page.evaluate(async () => { const b = window.__lastPdf, t = await b.slice(0, 5).text(); return { t, n: b.size }; });
+    ok(pdf.t === "%PDF-" && pdf.n > 3000, "PDF du reçu invalide : " + JSON.stringify(pdf));
+  });
+
   await test("Notifications bloquées : la fenêtre d'aide s'ouvre", async page => {
     await login(page, "Carine");
     await page.evaluate(() => { V.menu = true; render(); }); await page.waitForTimeout(100);

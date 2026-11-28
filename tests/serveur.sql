@@ -201,6 +201,16 @@ begin
   perform pg_temp.ok((select months from public.subscriptions where id = (r->>'id')::uuid) = 1, 'le prix de test donne 1 mois seulement');
   perform public.gb_admin_sub_push_done((r->>'id')::uuid, true, 'REF-TEST', null);
   perform pg_temp.ok((select sub_test_price is null and plan = 'resto' from public.bars where id = bar), 'après paiement réussi, le prix de test disparaît');
+  -- Reçu automatique : créé en fin de transaction (on force ici le déclenchement), au nom du bar, pour le mail du PDG
+  set constraints all immediate;
+  perform pg_temp.ok(exists (select 1 from public.invoices i where i.subscription_id = (r->>'id')::uuid and i.number like 'TEST-%' and i.is_test
+    and i.period_to = (select plan_until from public.bars where id = bar) and i.client->>'bar' = 'Bar des tests' and i.payer->>'role' = 'pdg'
+    and i.email_to = array[lower(u_pdg::text || '@test.gesco')]), 'le paiement validé crée le reçu (période, client, payeur, destinataire)');
+  perform pg_temp.as_user(u_srv);
+  execute 'set local role authenticated';
+  select count(*) into total from public.invoices;
+  execute 'reset role';
+  perform pg_temp.ok(total = 0, 'une serveuse ne voit pas les reçus d''abonnement');
 
   -- Suspension : tout est bloqué, sauf la demande de réactivation du PDG
   update public.bars set suspended = true, suspend_reason = 'Test de suspension' where id = bar;

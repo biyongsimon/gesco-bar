@@ -6,6 +6,11 @@ import json, pathlib, shutil
 ROOT = pathlib.Path(__file__).parent
 import hashlib
 SRC = (ROOT / "src/app.html").read_text(encoding="utf-8").replace("__LOGO_B64__", (ROOT / "src/logo.b64").read_text().strip())
+# Mise en page des reçus / factures : le même fichier sert au serveur (gesco-factures) et à la démo
+import re
+RENDER = (ROOT.parent / "supabase/functions/gesco-factures/render.js").read_text(encoding="utf-8")
+RENDER = re.sub(r"^export (async function|function|const) ", r"\1 ", RENDER, flags=re.M)
+SRC = SRC.replace("/*FACTURE_RENDER*/", RENDER)
 SRC = SRC.replace("__BUILD__", hashlib.sha1(SRC.encode()).hexdigest()[:8])
 SUPABASE_URL = "https://tkiuepleshsvptranoik.supabase.co"
 SUPABASE_KEY = "sb_publishable_GF4euX-Zbx3Bve-WSkgBWA_u4JoBY6w"  # clé publique (publishable), faite pour le navigateur

@@ -275,7 +275,7 @@ const run = async f => { if (V.busy) return; const snap = {}; document.querySele
 async function loadAll() {
   const [ov, bars, subs, log] = await Promise.all([rpc("gb_pf_overview"), rpc("gb_pf_bars"), rpc("gb_pf_subs"), sb.from("platform_log").select("*").order("created_at", { ascending: false }).limit(100).then(r => r.data || [])]);
   const { data: pc } = await sb.from("platform_config").select("*").limit(1);
-  V.data = { ov, bars, subs, log, pc: (pc || [])[0] || {}, sup: await rpc("gb_pf_support_list").catch(() => []), avis: await rpc("gb_pf_feedback").catch(() => []), errs: await rpc("gb_pf_errors").catch(() => []) };
+  V.data = { ov, bars, subs, log, pc: (pc || [])[0] || {}, inv: await rpc("gb_pf_invoices").catch(() => []), sup: await rpc("gb_pf_support_list").catch(() => []), avis: await rpc("gb_pf_feedback").catch(() => []), errs: await rpc("gb_pf_errors").catch(() => []) };
   const need = subs.filter(s => s.status === "en_attente" && s.proof_path && !V.urls?.[s.proof_path]); V.urls = V.urls || {};
   await Promise.all(need.map(async s => { const { data } = await sb.storage.from("preuves").createSignedUrl(s.proof_path, 3600); if (data) V.urls[s.proof_path] = data.signedUrl; }));
 }
@@ -515,8 +515,16 @@ function vPaiements() {
         <label class="f" style="margin-top:6px">Note (facultatif, ex. motif du refus)<input id="note_${s.id}" placeholder="Ex. montant reçu incomplet"></label>
         <div class="row" style="margin-top:6px"><button class="btn ok grow" data-a="decide" data-id="${s.id}" data-ok="1" ${V.busy ? "disabled" : ""}>Valider le paiement</button><button class="btn bad" data-a="decide" data-id="${s.id}" data-ok="0" ${V.busy ? "disabled" : ""}>Refuser</button></div></div>
         ${img ? `<a href="${esc(img)}" target="_blank" rel="noopener"><img src="${esc(img)}" alt="Capture du SMS de paiement"></a>` : `<div class="noimg">${s.proof_path ? "Capture en cours de chargement…" : "Pas de capture : vérifiez la référence dans vos SMS."}</div>`}</div>`; }).join("") || `<div class="card"><div class="allgood"><span class="tic" style="${tone("ok")}">${ic("check")}</span><div><b>Aucun paiement en attente</b><div class="mu" style="font-size:13px">Les paiements directs Notch Pay s’activent tout seuls.</div></div></div></div>`}
-    <div class="card"><div class="ch"><h3>Historique</h3></div><div class="scroll"><table class="rsp"><tr><th>Bar</th><th>Date</th><th>Formule</th><th>Montant</th><th>Opérateur</th><th>Référence</th><th>Statut</th></tr>
-      ${done.map(s => `<tr><td class="t"><div class="cell">${av(s.bar_name)}<div><b>${esc(s.bar_name)}</b><div class="mu" style="font-size:13px">${D(s.created_at)}</div></div></div></td><td data-l="Date">${D(s.created_at)}</td><td data-l="Formule">${PLANS[s.plan][0]} · ${s.months} m</td><td data-l="Montant" class="num"><b>${F(s.amount)}</b></td><td data-l="Opérateur"><span>${s.method === "orange" ? "Orange" : "MTN"}${s.channel === "notchpay" ? ` <span class="pill ok">direct</span>` : ""}</span></td><td data-l="Référence" style="word-break:break-all">${esc(s.reference)}</td><td data-l="Statut"><span><span class="pill ${SST[s.status][0]}">${SST[s.status][1]}</span>${s.admin_note ? `<br><span class="mu">${esc(s.admin_note)}</span>` : ""}</span></td></tr>`).join("") || `<tr><td colspan="7" class="empty t">Aucun paiement traité.</td></tr>`}</table></div></div></div>`;
+    <div class="card"><div class="ch"><h3>Historique</h3></div><div class="scroll"><table class="rsp"><tr><th>Bar</th><th>Date</th><th>Formule</th><th>Montant</th><th>Opérateur</th><th>Référence</th><th>Statut</th><th>Reçu / facture</th></tr>
+      ${done.map(s => `<tr><td class="t"><div class="cell">${av(s.bar_name)}<div><b>${esc(s.bar_name)}</b><div class="mu" style="font-size:13px">${D(s.created_at)}</div></div></div></td><td data-l="Date">${D(s.created_at)}</td><td data-l="Formule">${PLANS[s.plan][0]} · ${s.months} m</td><td data-l="Montant" class="num"><b>${F(s.amount)}</b></td><td data-l="Opérateur"><span>${s.method === "orange" ? "Orange" : "MTN"}${s.channel === "notchpay" ? ` <span class="pill ok">direct</span>` : ""}</span></td><td data-l="Référence" style="word-break:break-all">${esc(s.reference)}</td><td data-l="Statut"><span><span class="pill ${SST[s.status][0]}">${SST[s.status][1]}</span>${s.admin_note ? `<br><span class="mu">${esc(s.admin_note)}</span>` : ""}</span></td><td data-l="Reçu / facture">${invCell(s)}</td></tr>`).join("") || `<tr><td colspan="8" class="empty t">Aucun paiement traité.</td></tr>`}</table></div></div></div>`;
+}
+const INV_ST = { envoye: ["ok", "envoyé"], en_attente: ["warn", "envoi en cours"], envoi: ["warn", "envoi en cours"], sans_cle: ["warn", "e-mail non activé"], sans_adresse: ["", "sans adresse"], echec: ["bad", "échec d’envoi"] };
+function invCell(s) {
+  const iv = (V.data.inv || []).find(i => i.subscription_id === s.id);
+  if (!iv) return s.status === "validee" ? `<button class="btn sm ghost" data-a="invMake" data-id="${s.id}">Créer le document</button>` : `<span class="mu">—</span>`;
+  const st = INV_ST[iv.email_status] || ["", iv.email_status];
+  return `<span><b>${esc(iv.number)}</b> <span class="pill ${st[0]}">${st[1]}</span>${iv.email_error && iv.email_status !== "envoye" ? `<br><span class="mu" style="font-size:12px">${esc(iv.email_error)}</span>` : ""}
+    <br><span class="row" style="gap:6px;margin-top:4px">${iv.pdf_path ? `<button class="btn sm ghost" data-a="invPdf" data-id="${iv.id}">PDF</button>` : ""}<button class="btn sm ghost" data-a="invResend" data-id="${iv.id}">Renvoyer</button></span></span>`;
 }
 function vBars() {
   const q = (V.q || "").toLowerCase(), now = Date.now();
@@ -740,6 +748,10 @@ const A = {
   errDone: d => run(async () => { await rpc("gb_pf_error_resolve", { p_id: d.id ? +d.id : null }); V.data.errs = await rpc("gb_pf_errors"); toast(d.id ? "Erreur marquée comme corrigée." : "Toutes les erreurs sont marquées comme corrigées."); }),
   proofOpen: d => run(async () => { const { data, error } = await sb.storage.from("preuves").createSignedUrl(d.p, 600); if (error) throw new Error("Preuve introuvable."); window.open(data.signedUrl, "_blank", "noopener"); }),
   doc: d => run(async () => { const { data, error } = await sb.storage.from("kyc").createSignedUrl(d.p, 600); if (error) throw new Error("Document introuvable."); window.open(data.signedUrl, "_blank", "noopener"); }),
+  invPdf: d => run(async () => { const iv = (V.data.inv || []).find(i => i.id === d.id); const { data, error } = await sb.storage.from("factures").createSignedUrl(iv.pdf_path, 300);
+    if (error) throw new Error(error.message); window.open(data.signedUrl, "_blank", "noopener"); }),
+  invResend: d => run(async () => { await rpc("gb_pf_invoice_resend", { p_id: d.id }); toast("Envoi relancé."); setTimeout(() => loadAll().then(render), 4000); }),
+  invMake: d => run(async () => { await rpc("gb_pf_invoice_make", { p_sub: d.id }); toast("Document en préparation."); setTimeout(() => loadAll().then(render), 4000); }),
   decide: d => run(async () => { await rpc("gb_pf_sub_decide", { p_id: d.id, p_ok: d.ok === "1", p_note: val("note_" + d.id) }); await loadAll(); toast(d.ok === "1" ? "Paiement validé : la formule est active." : "Paiement refusé."); }),
   saveContact: () => run(async () => { await rpc("gb_pf_contact", { p_phone: val("s_phone"), p_whatsapp: val("s_wa") }); await loadAll(); toast("Contact enregistré : il s’affiche sur l’écran des bars suspendus."); }),
   saveSettings: () => run(async () => { await rpc("gb_pf_settings", { p_holder: val("s_holder"), p_om: val("s_om").replace(/\D/g, ""), p_mtn: val("s_mtn").replace(/\D/g, ""), p_om_tpl: val("s_omt"), p_mtn_tpl: val("s_mtnt") }); await loadAll(); toast("Réglages enregistrés."); }),

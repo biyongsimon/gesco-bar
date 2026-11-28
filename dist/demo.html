@@ -596,7 +596,7 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
     var C = window.GESCO_CONFIG; if (!C || C.mode !== "live" || !window.fetch) return;
     var tok = C.key; try { var a = JSON.parse(localStorage.getItem("gesco-auth") || "null"); if (a && a.access_token && a.expires_at * 1000 > Date.now()) tok = a.access_token; } catch (x) {}
     var body = JSON.stringify({ p_message: "DÉMARRAGE : GesCo ne s'est pas affiché" + (errs[0] ? " — " + errs[0].split("\n")[0] : " (délai dépassé)"), p_stack: errs.join("\n---\n") || null,
-      p_source: "app", p_url: location.pathname, p_tab: "démarrage", p_version: "9da806d1", p_ua: navigator.userAgent.slice(0, 200) });
+      p_source: "app", p_url: location.pathname, p_tab: "démarrage", p_version: "7544f16f", p_ua: navigator.userAgent.slice(0, 200) });
     var go = function (t) { return fetch(C.url + "/rest/v1/rpc/gb_log_error", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", apikey: C.key, Authorization: "Bearer " + t }, body: body }); };
     go(tok).then(function (r) { if (!r.ok && tok !== C.key) go(C.key); }).catch(function () {
       try { var q = JSON.parse(localStorage.getItem("gesco-errq") || "[]"); q.push(JSON.parse(body)); localStorage.setItem("gesco-errq", JSON.stringify(q.slice(-20))); } catch (x) {} });
@@ -632,7 +632,7 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
 "use strict";
 /* ═══════════════ Outils ═══════════════ */
 const CFG = window.GESCO_CONFIG;
-const APP_BUILD = "9da806d1";
+const APP_BUILD = "7544f16f";
 /* Remontée des erreurs inattendues vers la console éditeur (jamais les messages métier, réseau ou de session) */
 const ERR_SEEN = {};
 function reportErr(e, kind) {
@@ -967,7 +967,7 @@ function DemoBackend() {
       if (e.method === "tiroir") { const od = db.days.find(x => x.status === "open"); if (!od || e.created_at < od.opened_at) E("Cet achat payé avec le tiroir appartient à une journée clôturée : il ne peut plus être retiré."); }
       db.expenses = db.expenses.filter(x => x !== e); log(c, "courses_retirees", { article: e.label, montant: e.amount }); },
     gb_bar_opts({ p_patch }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG modifie ces réglages."); const o = { ...(db.bar.opts || {}) };
-      Object.entries(p_patch || {}).forEach(([k, v]) => { if (k === "phone") { if (typeof v !== "string" || v.length > 40) E("Téléphone invalide."); o[k] = v; return; }
+      Object.entries(p_patch || {}).forEach(([k, v]) => { if (k === "billing_email") { if (typeof v !== "string" || (v && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v))) E("Adresse e-mail de facturation invalide."); o[k] = v; return; } if (k === "phone") { if (typeof v !== "string" || v.length > 40) E("Téléphone invalide."); o[k] = v; return; }
         if (/^f_(ardoise|vides|vip|porte|nuit|garde|print|mural|recettes)$/.test(k)) { if (typeof v !== "boolean") E("Option invalide."); if (v) demoTier(db.bar, OPT_TIER[k] || 1, "Cette fonction"); o[k] = v; return; }
         if (k === "nuit_debut") { if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) E("Heure invalide (ex. 22:00)."); o[k] = v; return; }
         if (k === "porte_tarifs") { if (!Array.isArray(v) || v.length > 8 || v.some(x => !x.l || !(x.p >= 0))) E("Tarifs invalides."); o[k] = v; return; }
@@ -1435,7 +1435,7 @@ function DemoBackend() {
         audit: cs ? db.audit.slice(0, 200) : [], moves: cs ? db.moves.slice(0, 150) : [],
         days: cs ? db.days.filter(d => d.status === "closed").sort((a, b) => a.closed_at < b.closed_at ? 1 : -1).slice(0, 30) : [],
         shifts: db.shifts, attendance: db.attendance.filter(a => mg || own(a)).sort((a, b) => a.day < b.day ? 1 : -1), leaves: db.leaves.filter(l => mg || own(l)),
-        salaries: db.salaries.filter(x => pg || own(x)), payroll: db.payroll.filter(x => pg || own(x)), subs: mg ? db.subs : [],
+        salaries: db.salaries.filter(x => pg || own(x)), payroll: db.payroll.filter(x => pg || own(x)), subs: mg ? db.subs : [], invoices: mg ? (db.invoices || []) : [],
         handovers: cs ? (db.handovers || []) : [], credit: (db.credit_clients || []).map(c => ({ id: c.id, name: c.name, active: c.active })), resas: db.resas || [], door: cs ? (db.door || []) : [], kept: (db.kept || []).filter(k => k.status === "gardee"), kitchen: (db.kitchen || []).filter(o => (cs || me.head || o.waitress_id === me.id) && (["attente", "prep", "pret", "a_decider", "revente"].includes(o.status) || Date.now() - new Date(o.created_at) < 18 * 3600e3)), recipes: db.recipes || [], platform: { holder_name: "BIYONG BIYONG SIMON STEVE (BISMO AGENCY)", om_number: "691468175", mtn_number: "673383951", om_tpl: null, mtn_tpl: null, sub_push: true } });
     },
     logError() {},
@@ -1456,8 +1456,11 @@ function DemoBackend() {
     async subStatus(id) { db = LS.get(KEY) || db; const x = db.subs.find(y => y.id === id); if (!x) E("Paiement introuvable.");
       if (x.status === "en_attente" && Date.now() - (x.at || 0) > 6000) { x.status = "validee"; x.reference = "NP-DEMO-" + id.slice(0, 6).toUpperCase(); x.decided_at = now();
         const base = Math.max(Date.now(), db.bar.plan_until ? new Date(db.bar.plan_until + "T12:00:00").getTime() : 0), d = new Date(base); d.setMonth(d.getMonth() + x.months);
-        Object.assign(db.bar, { plan: x.plan, plan_until: d.toLocaleDateString("sv-SE"), plan_trial_until: null, trial_plan: null }); save(); }
+        const prev = db.bar.plan_until; Object.assign(db.bar, { plan: x.plan, plan_until: d.toLocaleDateString("sv-SE"), plan_trial_until: null, trial_plan: null });
+        demoInvoice(db, x, prev, { uuid, now }); save(); }
       return { status: x.status }; },
+    async invoicePdf(inv) { // démo : le document est fabriqué sur l'appareil avec la même mise en page que le serveur
+      const L = await pdfLibLoad(); return new Blob([await FACT.renderInvoice(L, inv, { logo: await bismoPng() })], { type: "application/pdf" }); },
     async momoLink(ticket) { // démo : le client « scanne et valide » au bout de 9 secondes
       const c = ctx(), t = tk(ticket); if (t.waitress_id !== c.id) E("Ce ticket appartient à une autre serveuse."); if (t.status !== "sent") E("Ce ticket n’est plus à encaisser.");
       demoTier(db.bar, 2, "Le paiement Mobile Money automatique"); if (!db.bar.push_enabled) E("Le paiement automatique n’est pas activé par le PDG.");
@@ -1552,7 +1555,8 @@ function LiveBackend() {
         q(sb.from("recipes").select("dish_id,ingredient_id,qty")), q(sb.from("cash_handovers").select("*").order("created_at", { ascending: false }).limit(20)),
         q(sb.from("credit_clients").select("id,name,active").order("name")),
         q(sb.from("reservations").select("*").gte("day", dd(-1)).order("day").limit(300)), q(sb.from("door_entries").select("*").order("created_at", { ascending: false }).limit(300)),
-        q(sb.from("kept_bottles").select("*").eq("status", "gardee").order("created_at", { ascending: false }).limit(300))]);
+        q(sb.from("kept_bottles").select("*").eq("status", "gardee").order("created_at", { ascending: false }).limit(300)),
+        q(sb.from("invoices").select("id,subscription_id,number,title,issued_at,amount,plan_label,months,period_from,period_to,email_status,email_to,email_at,pdf_path,is_test").order("issued_at", { ascending: false }).limit(60))]);
       extra.catch(() => {});
       let tq = sb.from("tickets").select("*, ticket_items(product_id,qty,unit_price)").order("created_at", { ascending: false }).limit(600);
       tq = tq.or("status.in.(draft,sent,cashed),change_status.eq.pending" + (day ? ",day_id.eq." + day.id : ""));
@@ -1562,12 +1566,15 @@ function LiveBackend() {
         q(sb.from("stock_moves").select("*").order("created_at", { ascending: false }).limit(150)),
         q(sb.from("service_days").select("*").eq("status", "closed").order("closed_at", { ascending: false }).limit(30)));
       const [tickets, holdings, vouchers, remits, audit = [], moves = [], closed = []] = await Promise.all(jobs);
-      const [shifts, attendance, leaves, salaries, payroll, subs, plat, kitchen, recipes, handovers, credit, resas, door, kept] = await extra;
+      const [shifts, attendance, leaves, salaries, payroll, subs, plat, kitchen, recipes, handovers, credit, resas, door, kept, invoices] = await extra;
       subscribe(bars[0].id);
       return { bar: bars[0], me, staff: staff.map(s => ({ id: s.id, name: s.name, role: s.role, active: s.active })), products, day,
         tickets: tickets.map(t => { const { ticket_items, ...r } = t; return { ...r, items: ticket_items || [] }; }), holdings, vouchers, remits, audit, moves, days: closed,
-        shifts, attendance, leaves, salaries, payroll, subs, platform: plat[0] || {}, kitchen: kitchen || [], recipes: recipes || [], handovers: (handovers || []).reverse(), credit: credit || [], resas: resas || [], door: door || [], kept: kept || [] };
+        shifts, attendance, leaves, salaries, payroll, subs, platform: plat[0] || {}, kitchen: kitchen || [], recipes: recipes || [], handovers: (handovers || []).reverse(), credit: credit || [], resas: resas || [], door: door || [], kept: kept || [], invoices: invoices || [] };
     },
+    async invoicePdf(inv) { // PDF conservé sur le serveur (lien temporaire de 5 minutes)
+      const { data, error } = await sb.storage.from("factures").createSignedUrl(inv.pdf_path, 300); if (error || !data) throw bizErr("Document indisponible pour le moment. Réessayez dans une minute.");
+      const r = await fetch(data.signedUrl); if (!r.ok) throw bizErr("Téléchargement impossible : vérifiez la connexion."); return await r.blob(); },
     logError(a) { try { if (!navigator.onLine) return errKeep(a);
       sb.rpc("gb_log_error", a).then(r => { if (r && r.error && /fetch|network|load failed|timeout/i.test(r.error.message || "")) errKeep(a); }, () => errKeep(a)); } catch (e) {} },
     async rpc(name, args) { const { data, error } = await sb.rpc(name, args || {}); if (error) { const e = toErr(error); if (/non soldé/.test(error.message)) e.pending = true; throw e; } return data; },
@@ -1616,6 +1623,177 @@ function LiveBackend() {
 
 /* ═══════════════ État de l'application ═══════════════ */
 const B = CFG.mode === "live" ? LiveBackend() : DemoBackend();
+/* Reçus / factures d'abonnement : même mise en page que le serveur (gesco-factures/render.js, inséré à la construction) */
+const FACT = (() => { // GesCo Bar · mise en page du reçu / de la facture d'abonnement (A4), avec pdf-lib.
+// Utilisé par la fonction serveur gesco-factures ; testable hors serveur (node) en passant le module pdf-lib.
+
+const GREEN = [15 / 255, 92 / 255, 60 / 255], INK = [19 / 255, 32 / 255, 26 / 255], MUTED = [91 / 255, 106 / 255, 98 / 255], LINE = [219 / 255, 227 / 255, 221 / 255], SOFT = [240 / 255, 245 / 255, 241 / 255];
+
+// Les polices standard du PDF ne connaissent que le jeu WinAnsi : on remplace le reste
+const WIN = "€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ";
+function clean(s) {
+  return String(s ?? "").normalize("NFC").replace(/[\u00a0\u202f\u2009\u2007]/g, " ").replace(/[\u2010\u2011\u2012]/g, "-")
+    .replace(/[^\x20-\x7e\u00a0-\u00ff]/g, c => WIN.includes(c) ? c : "");
+}
+const fcfa = n => String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " FCFA";
+const d2 = n => String(n).padStart(2, "0");
+function dfr(v) { if (!v) return ""; const s = String(v); if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; }
+  const t = new Date(new Date(s).getTime() + 3600e3); return `${d2(t.getUTCDate())}/${d2(t.getUTCMonth() + 1)}/${t.getUTCFullYear()}`; } // heure de Douala (UTC+1)
+
+// Montant en lettres (usage camerounais : « Arrêté le présent … à la somme de … »)
+const U = ["zéro", "un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze", "douze", "treize", "quatorze", "quinze", "seize", "dix-sept", "dix-huit", "dix-neuf"];
+const T = ["", "", "vingt", "trente", "quarante", "cinquante", "soixante"];
+function sub100(n) {
+  if (n < 20) return U[n];
+  if (n < 70) { const t = Math.floor(n / 10), u = n % 10; return T[t] + (u === 0 ? "" : u === 1 ? " et un" : "-" + U[u]); }
+  if (n < 80) return n === 71 ? "soixante et onze" : "soixante-" + U[n - 60];
+  if (n === 80) return "quatre-vingts";
+  return "quatre-vingt-" + U[n - 80];
+}
+function sub1000(n) {
+  const c = Math.floor(n / 100), r = n % 100;
+  const head = c === 0 ? "" : c === 1 ? "cent" : U[c] + " cent" + (r === 0 ? "s" : "");
+  return [head, r ? sub100(r) : ""].filter(Boolean).join(" ");
+}
+function enLettres(n) {
+  n = Math.round(Number(n) || 0); if (n === 0) return "zéro";
+  const parts = [], mil = Math.floor(n / 1e9), mio = Math.floor(n / 1e6) % 1000, k = Math.floor(n / 1000) % 1000, r = n % 1000;
+  if (mil) parts.push(sub1000(mil).replace(/cents$/, "cent") + (mil > 1 ? " milliards" : " milliard"));
+  if (mio) parts.push(sub1000(mio).replace(/cents$/, "cent") + (mio > 1 ? " millions" : " million"));
+  if (k) parts.push(k === 1 ? "mille" : sub1000(k).replace(/cents$/, "cent") + " mille");
+  if (r) parts.push(sub1000(r));
+  return parts.join(" ");
+}
+
+const OPS = { orange: "Orange Money", mtn: "MTN Mobile Money" };
+const ROLES = { pdg: "PDG", directeur: "directeur", caisse: "caisse", serveuse: "serveuse" };
+const tel = s => { const d = String(s || "").replace(/\D/g, "").replace(/^237/, ""); return d.length === 9 ? `${d.slice(0, 3)} ${d.slice(3, 5)} ${d.slice(5, 7)} ${d.slice(7)}` : String(s || ""); };
+
+// Lignes du document : prix mensuel × mois, remise de l'année (2 mois offerts) ; sinon une ligne au montant payé
+function lines(inv) {
+  const per = inv.period_from && inv.period_to ? `du ${dfr(inv.period_from)} au ${dfr(inv.period_to)}` : "";
+  const label = `Abonnement GesCo Bar · formule ${inv.plan_label}`;
+  const full = inv.unit_price * inv.months, free = inv.months === 12 ? inv.unit_price * 2 : 0;
+  if (!inv.is_test && inv.unit_price > 0 && full - free === inv.amount) {
+    const L = [{ d: label, s: per, q: String(inv.months), u: fcfa(inv.unit_price), m: fcfa(full) }];
+    if (free) L.push({ d: "Remise paiement annuel : 2 mois offerts", s: "", q: "", u: "", m: "- " + fcfa(free) });
+    return L;
+  }
+  return [{ d: label + (inv.is_test ? " (paiement de test)" : ""), s: per, q: String(inv.months), u: "", m: fcfa(inv.amount) }];
+}
+
+async function renderInvoice(PDFLib, inv, assets = {}) {
+  const { PDFDocument, StandardFonts, rgb, degrees } = PDFLib, c = a => rgb(a[0], a[1], a[2]);
+  const pdf = await PDFDocument.create();
+  pdf.setTitle(clean(`${inv.title} ${inv.number}`)); pdf.setAuthor("BISMO AGENCY"); pdf.setCreator("GesCo Bar"); pdf.setProducer("GesCo Bar");
+  const page = pdf.addPage([595.28, 841.89]), W = 595.28, M = 42;
+  const R = await pdf.embedFont(StandardFonts.Helvetica), B = await pdf.embedFont(StandardFonts.HelveticaBold), I = await pdf.embedFont(StandardFonts.HelveticaOblique);
+  const S = inv.seller || {}, C = inv.client || {}, P = inv.payer || {};
+  const tw = (s, f, z) => f.widthOfTextAtSize(clean(s), z);
+  const txt = (s, x, y, o = {}) => { const f = o.f || R, z = o.z || 9, t = clean(s); let xx = x; if (o.a === "r") xx = x - f.widthOfTextAtSize(t, z); else if (o.a === "c") xx = x - f.widthOfTextAtSize(t, z) / 2;
+    page.drawText(t, { x: xx, y, size: z, font: f, color: c(o.c || INK) }); };
+  const wrap = (s, f, z, w) => { const out = []; let cur = ""; for (const word of clean(s).split(/\s+/)) { const t = cur ? cur + " " + word : word; if (f.widthOfTextAtSize(t, z) > w && cur) { out.push(cur); cur = word; } else cur = t; } if (cur) out.push(cur); return out; };
+  const rect = (x, y, w, h, fill, stroke) => page.drawRectangle({ x, y, width: w, height: h, color: fill ? c(fill) : undefined, borderColor: stroke ? c(stroke) : undefined, borderWidth: stroke ? 0.8 : 0 });
+  const img = async bytes => { if (!bytes) return null; try { return await pdf.embedPng(bytes); } catch { try { return await pdf.embedJpg(bytes); } catch { return null; } } };
+
+  // Bandeau et en-tête
+  rect(0, 841.89 - 8, W, 8, GREEN);
+  let top = 841.89 - 30;
+  const logo = await img(assets.logo);
+  if (logo) { const k = Math.min(150 / logo.width, 46 / logo.height), w = logo.width * k, h = logo.height * k; page.drawImage(logo, { x: M, y: top - h, width: w, height: h }); }
+  else txt(S.enseigne || "BISMO AGENCY", M, top - 26, { f: B, z: 20, c: GREEN });
+  const title = String(inv.title || "Facture").toUpperCase();
+  txt(title, W - M, top - 16, { f: B, z: 20, c: GREEN, a: "r" });
+  txt(`N° ${inv.number}`, W - M, top - 32, { f: B, z: 11, a: "r" });
+  txt(`Date : ${dfr(inv.issued_at)}`, W - M, top - 46, { z: 9, c: MUTED, a: "r" });
+  // Tampon « PAYÉ »
+  const st = "PAYÉ", sw = tw(st, B, 13) + 22; rect(W - M - sw, top - 74, sw, 20, null, GREEN); txt(st, W - M - sw / 2, top - 68, { f: B, z: 13, c: GREEN, a: "c" });
+
+  // Vendeur (gauche) et client (droite)
+  let y = top - 100;
+  const colW = (W - 2 * M - 16) / 2, xR = M + colW + 16;
+  txt("ÉMIS PAR", M, y, { f: B, z: 8, c: MUTED }); txt(String(inv.title).toLowerCase().startsWith("reçu") ? "REÇU DE" : "FACTURÉ À", xR, y, { f: B, z: 8, c: MUTED });
+  const sellerL = [[S.enseigne || "BISMO AGENCY", B, 11], [`${S.nom || ""}${S.statut ? ", " + S.statut.toLowerCase() : ""}`, R, 9], [S.niu ? `NIU : ${S.niu}` : "", R, 9], [S.rccm ? `RCCM : ${S.rccm}` : "", R, 9],
+    [S.adresse || "", R, 9], [[S.telephone, S.telephone2].filter(Boolean).join(" · "), R, 9], [S.email || "", R, 9]].filter(l => l[0]);
+  const clientL = [[C.raison_sociale || C.bar || "", B, 11], [C.raison_sociale && C.bar && C.raison_sociale !== C.bar ? `Établissement : ${C.bar}` : "", R, 9], [C.niu ? `NIU : ${C.niu}` : "", R, 9],
+    [C.pdg ? `Responsable : ${C.pdg}` : "", R, 9], [[C.ville, C.code ? "code GesCo " + C.code : ""].filter(Boolean).join(" · "), R, 9], [C.telephone ? "Tél. " + tel(C.telephone) : "", R, 9], [C.email || "", R, 9]].filter(l => l[0]);
+  const boxH = Math.max(sellerL.length, clientL.length) * 13 + 14;
+  rect(xR - 8, y - 8 - boxH + 6, colW + 8, boxH, SOFT);
+  sellerL.forEach((l, i) => txt(l[0], M, y - 16 - i * 13, { f: l[1], z: l[2] }));
+  clientL.forEach((l, i) => wrap(l[0], l[1], l[2], colW - 8).slice(0, 1).forEach(t => txt(t, xR, y - 16 - i * 13, { f: l[1], z: l[2] })));
+  y = y - 16 - boxH - 8;
+
+  // Tableau
+  const cols = [{ k: "d", w: 0.42, t: "Désignation" }, { k: "q", w: 0.1, t: "Mois", a: "r" }, { k: "u", w: 0.2, t: "Prix mensuel", a: "r" }, { k: "m", w: 0.28, t: "Montant", a: "r" }];
+  const TW = W - 2 * M; let x = M;
+  rect(M, y - 6, TW, 22, GREEN);
+  cols.forEach(cl => { const cw = cl.w * TW; txt(cl.t, cl.a === "r" ? x + cw - 6 : x + 6, y + 2, { f: B, z: 9, c: [1, 1, 1], a: cl.a }); x += cw; });
+  y -= 6;
+  for (const L of lines(inv)) {
+    const dl = wrap(L.d, B, 9.5, cols[0].w * TW - 12), h = 16 + dl.length * 12 + (L.s ? 12 : 0);
+    page.drawLine({ start: { x: M, y: y - h }, end: { x: M + TW, y: y - h }, thickness: 0.6, color: c(LINE) });
+    dl.forEach((t, i) => txt(t, M + 6, y - 16 - i * 12, { f: B, z: 9.5 }));
+    if (L.s) txt(L.s, M + 6, y - 16 - dl.length * 12, { z: 8.5, c: MUTED });
+    x = M; cols.forEach(cl => { const cw = cl.w * TW; if (cl.k !== "d") txt(L[cl.k], x + cw - 6, y - 16, { z: 9.5, a: "r", f: cl.k === "m" ? B : R }); x += cw; });
+    y -= h;
+  }
+  // Total
+  y -= 10; const tbw = 230; rect(W - M - tbw, y - 30, tbw, 30, SOFT);
+  txt("TOTAL PAYÉ", W - M - tbw + 12, y - 19, { f: B, z: 10, c: MUTED }); txt(fcfa(inv.amount), W - M - 12, y - 20, { f: B, z: 15, c: GREEN, a: "r" });
+  y -= 44; txt("Montant net, sans TVA.", W - M, y, { z: 8, c: MUTED, a: "r" });
+  y -= 18;
+  const words = `Arrêté le présent ${String(inv.title).toLowerCase().startsWith("reçu") ? "reçu" : "document"} à la somme de ${enLettres(inv.amount)} francs CFA (${fcfa(inv.amount)}).`;
+  wrap(words, I, 9.5, TW).forEach(t => { txt(t, M, y, { f: I, z: 9.5 }); y -= 13; });
+
+  // Paiement
+  y -= 10; txt("PAIEMENT", M, y, { f: B, z: 8, c: MUTED }); y -= 15;
+  const how = `${OPS[P.methode] || "Mobile Money"}${P.canal === "notchpay" ? " (demande validée sur le téléphone)" : " (transfert)"}`;
+  const payL = [`Payé le ${dfr(P.paye_le || inv.issued_at)} par ${how}`, P.reference ? `Référence de la transaction : ${P.reference}` : "",
+    P.nom ? `Paiement effectué par ${P.nom}${P.role ? " (" + (ROLES[P.role] || P.role) + ")" : ""}${P.telephone ? " depuis le " + tel(P.telephone) : ""}` : ""].filter(Boolean);
+  payL.forEach(t => { wrap(t, R, 9.5, TW * 0.58).forEach(w => { txt(w, M, y, { z: 9.5 }); y -= 13; }); });
+
+  // Signature (droite)
+  const sy = y + payL.length * 13 + 15, sx = W - M - 180;
+  txt(`Pour ${S.enseigne || "BISMO AGENCY"}`, sx + 90, sy, { f: B, z: 9, a: "c" });
+  const sig = await img(assets.signature), stamp = await img(assets.cachet);
+  if (stamp) { const h = 70, w = stamp.width * h / stamp.height; page.drawImage(stamp, { x: sx + 90 - w / 2 - 25, y: sy - 82, width: w, height: h, opacity: 0.85 }); }
+  if (sig) { const h = 48, w = Math.min(160, sig.width * h / sig.height); page.drawImage(sig, { x: sx + 90 - w / 2, y: sy - 62, width: w, height: w * sig.height / sig.width }); }
+  txt(S.nom || "", sx + 90, sy - 78, { z: 9, a: "c" });
+
+  // Note de bas de document
+  y = Math.min(y, sy - 92) - 14;
+  wrap(`Ce document certifie le paiement de l'abonnement GesCo Bar pour la période indiquée. Il est conservé dans votre espace GesCo, rubrique Abonnement, Historique. Conditions : ${S.site || "gescobar-cm.pages.dev"}/conditions · Remboursement : ${S.site || "gescobar-cm.pages.dev"}/remboursement`, R, 8, TW)
+    .forEach(t => { txt(t, M, y, { z: 8, c: MUTED }); y -= 11; });
+
+  // Filigrane du paiement de test
+  if (inv.is_test) page.drawText("DOCUMENT DE TEST · SANS VALEUR", { x: 72, y: 215, size: 30, font: B, color: rgb(0.85, 0.2, 0.2), opacity: 0.18, rotate: degrees(32) });
+
+  // Pied de page
+  page.drawLine({ start: { x: M, y: 62 }, end: { x: W - M, y: 62 }, thickness: 0.8, color: c(GREEN) });
+  txt("Merci de votre confiance.", W / 2, 48, { f: B, z: 9, c: GREEN, a: "c" });
+  txt([S.enseigne, S.nom ? S.nom + ", " + (S.statut || "").toLowerCase() : "", S.niu ? "NIU " + S.niu : "", S.rccm ? "RCCM " + S.rccm.toLowerCase() : ""].filter(Boolean).join(" · "), W / 2, 36, { z: 7.5, c: MUTED, a: "c" });
+  txt([S.adresse, S.telephone, S.email, S.site].filter(Boolean).join(" · "), W / 2, 26, { z: 7.5, c: MUTED, a: "c" });
+  rect(0, 0, W, 6, GREEN);
+  return await pdf.save();
+}
+ ; return { renderInvoice }; })();
+async function pdfLibLoad() { if (window.PDFLib) return window.PDFLib;
+  for (const src of [(CFG.mode === "demo" ? "web/lib/" : "lib/") + "pdf-lib-1.17.1.min.js", "https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"]) { try { await loadJs(src); if (window.PDFLib) return window.PDFLib; } catch (e) {} }
+  throw bizErr("Impossible de préparer le PDF : vérifiez la connexion puis réessayez."); }
+const bismoPng = () => Uint8Array.from(atob(LOGO.split(",")[1]), c => c.charCodeAt(0));
+const DEMO_SELLER = { nom: "Biyong Biyong Simon Steve", statut: "Entrepreneur individuel", enseigne: "BISMO AGENCY", niu: "P019718058368X", rccm: "En cours d'immatriculation", adresse: "Ngousso, Yaoundé, Cameroun",
+  email: "biyongsimonsteve@gmail.com", telephone: "+237 691 46 81 75", telephone2: "+237 673 38 39 51", site: "gescobar-cm.pages.dev", titre: "Reçu de paiement", prefixe: "R" };
+function demoInvoice(db, x, prev, { uuid, now }) {
+  db.invoices = db.invoices || []; if (db.invoices.some(i => i.subscription_id === x.id)) return;
+  const pdg = db.staff.find(s => s.role === "pdg") || {}, payer = db.staff.find(s => s.id === x.requested_by) || {}, today = new Date().toLocaleDateString("sv-SE"), yr = today.slice(0, 4);
+  if (!x.is_test) db.invSeq = (db.invSeq || 0) + 1;
+  db.invoices.unshift({ id: uuid(), subscription_id: x.id, number: x.is_test ? "TEST-" + x.id.replace(/-/g, "").slice(0, 8).toUpperCase() : `${DEMO_SELLER.prefixe}-${yr}-${String(db.invSeq).padStart(4, "0")}`,
+    title: DEMO_SELLER.titre, issued_at: now(), plan: x.plan, plan_label: planName(x.plan), months: x.months, amount: x.amount, unit_price: (PLANS[x.plan] || [0, 0])[1],
+    period_from: prev && prev > today ? prev : today, period_to: db.bar.plan_until, seller: DEMO_SELLER, is_test: !!x.is_test,
+    client: { bar: db.bar.name, code: db.bar.code, ville: db.bar.city, raison_sociale: db.bar.legal_name, niu: db.bar.niu, pdg: pdg.name, email: "pdg@demo.gescobar", telephone: (db.bar.opts || {}).phone },
+    payer: { nom: payer.name, role: payer.role, telephone: x.payer_phone, methode: x.method, canal: x.channel || "transfert", reference: x.reference, paye_le: x.decided_at || now() },
+    email_to: ["pdg@demo.gescobar"].concat((db.bar.opts || {}).billing_email ? [db.bar.opts.billing_email] : []), email_status: "envoye", email_at: now(), pdf_path: "demo" });
+}
 /* Formules : ce que la formule ne comprend pas est coupé côté écran (le serveur refuse de toute façon) */
 function demoTier(bar, min, label) { if (tier(bar) < min) throw bizErr(`${label} est inclus à partir de la formule ${TIER_NAME[min]} (rubrique Abonnement).`); }
 function demoStaffLimit(bar, staff, role) { const t = tier(bar); if (t >= 3) return; const lim = { serveuse: t === 1 ? 5 : 10, caisse: t, cuisine: t === 1 ? 0 : 2, directeur: t === 1 ? 0 : 1 }[role];
@@ -4028,7 +4206,8 @@ function vAbo() {
         ${window.__abFile ? `<span class="mu">Capture prête : ${esc(window.__abFile.name)}</span>` : ""}
         <button class="btn" data-a="subGo">Activer mon abonnement</button>
         <p class="mu" style="margin:0">La formule s’active tout de suite pendant 72 h, le temps que BISMO Agency confirme la réception. Le paiement à l’année vous offre 2 mois.</p></div></div>`}</div>`}
-    <div class="card"><h3>Historique et reçus</h3><div class="list">${(S.subs || []).map(x => `<div class="li"><div class="grow"><b>${planName(x.plan)} · ${x.months} mois${x.is_test ? " · test" : ""}</b><div class="mu">${new Date(x.created_at).toLocaleDateString("fr-FR")} · ${x.method === "orange" ? "Orange Money" : "MTN MoMo"}${x.channel === "notchpay" ? " direct" : ""} · réf. ${esc(x.reference)}</div></div><b class="num">${F(x.amount)}</b><span class="pill ${SST[x.status][0]}">${SST[x.status][1]}</span>${x.status === "validee" ? `<button class="btn soft sm" data-a="subRecu" data-id="${x.id}">Reçu</button>` : ""}</div>`).join("") || '<div class="empty">Aucun paiement d’abonnement pour le moment.</div>'}</div></div></div>`;
+    <div class="card"><h3>Historique et reçus</h3><div class="list">${(S.subs || []).map(x => `<div class="li"><div class="grow"><b>${planName(x.plan)} · ${x.months} mois${x.is_test ? " · test" : ""}</b><div class="mu">${new Date(x.created_at).toLocaleDateString("fr-FR")} · ${x.method === "orange" ? "Orange Money" : "MTN MoMo"}${x.channel === "notchpay" ? " direct" : ""} · réf. ${esc(x.reference)}</div></div><b class="num">${F(x.amount)}</b><span class="pill ${SST[x.status][0]}">${SST[x.status][1]}</span>${(() => { const iv = (S.invoices || []).find(i => i.subscription_id === x.id);
+      return iv ? `<button class="btn soft sm" data-a="invPdf" data-id="${iv.id}">${/^reçu/i.test(iv.title) ? "Reçu" : "Facture"} PDF</button>` : x.status === "validee" ? `<button class="btn soft sm" data-a="subRecu" data-id="${x.id}">Reçu</button>` : ""; })()}</div>${invLine(x)}`).join("") || '<div class="empty">Aucun paiement d’abonnement pour le moment.</div>'}</div></div></div>`;
 }
 A.abOp = d => { V.f.ab_ph = (document.getElementById("ab_ph") || {}).value ?? V.f.ab_ph; V.f.ab_o = d.v; V.f.ab_o_pick = 1; render(); };
 A.subGo = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ? planState().k : planDef(S.bar)); let proof = null; const f = window.__abFile;
@@ -4052,6 +4231,13 @@ function subWatch(id) { V.subPay = { id, status: "en_attente", at: Date.now() };
     if (Date.now() - V.subPay.at > 16 * 60000) { clearInterval(window.__subw); return; }
     try { const s = await B.subStatus(id); if (s.status !== "en_attente") await subDone(s.status); } catch (e) {} }, 5000); }
 A.subRecu = d => { V.modal = { type: "subRecu", id: d.id }; render(); };
+const INV_ST = { envoye: ["ok", "Envoyé par e-mail"], en_attente: ["warn", "Envoi en cours"], envoi: ["warn", "Envoi en cours"], sans_cle: ["", "Disponible ici (envoi par e-mail bientôt activé)"], sans_adresse: ["", "Disponible ici (aucune adresse e-mail)"], echec: ["warn", "Envoi par e-mail à reprendre"] };
+function invLine(x) { const iv = (S.invoices || []).find(i => i.subscription_id === x.id); if (!iv) return "";
+  const st = INV_ST[iv.email_status] || ["", ""];
+  return `<div class="mu" style="font-size:13px;margin:-4px 0 6px">${esc(iv.title)} n° <b>${esc(iv.number)}</b> · <span class="pill ${st[0]}" style="font-size:11px">${st[1]}</span>${iv.email_status === "envoye" && (iv.email_to || []).length ? ` à ${esc(iv.email_to.join(", "))}` : ""}</div>`; }
+A.invPdf = d => run(async () => { const iv = (S.invoices || []).find(i => i.id === d.id); if (!iv) throw bizErr("Document introuvable.");
+  if (!iv.pdf_path) throw bizErr("Le document est en préparation : réessayez dans une minute.");
+  const blob = await B.invoicePdf(iv); await pdfSend({ output: () => blob }, `${iv.number}.pdf`, `${iv.title} ${iv.number} · abonnement GesCo Bar`, false); });
 
 /* Réglages : paiement marchand (PDG) */
 function payCfgCard() {
@@ -4135,8 +4321,14 @@ function docCard() {
     ${f ? `<span class="mu">Prêt : ${esc(f.name)}</span>` : ""}
     <div class="row"><button class="btn" data-a="logoSave" ${f ? "" : "disabled"}>Enregistrer le logo</button>${b.logo_path ? `<button class="btn ghost" data-a="logoDel">Retirer le logo</button>` : ""}</div>
     <label class="f" for="doc_tel">Téléphone affiché sur les documents<input id="doc_tel" type="tel" inputmode="tel" data-k="doc_tel" value="${esc(V.f.doc_tel ?? (o.phone || ""))}" placeholder="Ex. 6 90 00 00 00"></label>
-    <button class="btn soft" data-a="docTelSave">Enregistrer le téléphone</button></div>`;
+    <button class="btn soft" data-a="docTelSave">Enregistrer le téléphone</button>
+    <label class="f" for="bill_mail">E-mail de facturation (facultatif)<input id="bill_mail" type="email" inputmode="email" autocomplete="email" data-k="bill_mail" value="${esc(V.f.bill_mail ?? (o.billing_email || ""))}" placeholder="Ex. comptable@monsnack.cm"></label>
+    <p class="mu" style="margin:0">Après chaque paiement d’abonnement, le reçu part au mail du PDG. Ajoutez ici l’adresse de votre comptable pour qu’il en reçoive une copie.</p>
+    <button class="btn soft" data-a="billMailSave">Enregistrer l’e-mail de facturation</button></div>`;
 }
+A.billMailSave = () => run(async () => { const m = String(V.f.bill_mail ?? "").trim().toLowerCase();
+  if (m && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)) throw bizErr("Adresse e-mail invalide.");
+  S.bar.opts = await B.rpc("gb_bar_opts", { p_patch: { billing_email: m } }); delete V.f.bill_mail; toast(m ? "E-mail de facturation enregistré." : "E-mail de facturation retiré."); render(); });
 // Logo : réduit à 320 px de côté maximum, en PNG (transparence gardée)
 async function logoPng(file) {
   if (!/^image\/(png|jpeg|webp)$/.test(file.type)) throw bizErr("Format non accepté : PNG, JPG ou WebP.");
