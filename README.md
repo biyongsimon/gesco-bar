@@ -53,7 +53,7 @@ Modifier l'application : éditez `app/src/app.html`, puis `python3 app/build.py`
 | **Directeur** | Supervision des commandes (prises et servies, retards de service), présences, retards, absences, permissions, planning (téléchargeable en image et partageable sur WhatsApp), ajout des caissières et serveuses. Ne valide aucun paiement |
 | **Caisse** | Commandes en direct, versements, Mobile Money, reliquats, bons, stock, inventaire, approvisionnement, vente au comptoir, clôture de journée |
 | **Serveuse** | Ses tickets, « commande servie », son planning, pointage, demandes de permission, ses fiches de paie |
-| **Cuisine** (module Cuisine, Snack Gold et plus) | Écran des bons de cuisine : à préparer, en préparation, prêts ; son planning, pointage |
+| **Cuisine** (module Cuisine, Snack-Restaurant et plus) | Écran des bons de cuisine : à préparer, en préparation, prêts ; son planning, pointage |
 
 Chaque espace a une barre de navigation en bas, un menu complet et une recherche (clients, tickets, boissons, employés, bons). Le planning est visible par tout le monde.
 
@@ -93,14 +93,14 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 - **QR de paiement (serveuse)** : le PDG saisit ses codes marchands Orange Money / MTN MoMo (Réglages → Paiements). Le QR, animé, contient le code USSD avec le montant du ticket (`tel:` + USSD). Les modèles USSD sont modifiables : vérifiez-les auprès de l'opérateur.
 - **Paiement par numéro** : via un compte marchand Notch Pay (clé publique saisie par le PDG, gardée côté serveur dans `gb_private.pay_keys`). La fonction `gesco-admin` (actions `momo_push`, `momo_status`) envoie la demande ; le client valide sur son téléphone ; le ticket passe « payé » automatiquement.
 - **Permissions** : serveuses et caisse → directeur ; directeur → PDG ; personne ne valide sa propre demande.
-- **Abonnement** (directeur et PDG) : Snack Simple 10 000, Snack Premium 15 000, Snack Gold 20 000, Lounge 30 000 FCFA/mois ; 12 mois = 10 payés. Le codes marchands de BISMO Agency se règlent dans `public.platform_config`. Validation d'un paiement : `select public.gb_admin_sub_validate('<id>', true);` (service role).
+- **Abonnement** (directeur et PDG) : Snack-Bar 10 000, Snack-Restaurant 20 000, Lounge 35 000 FCFA/mois (voir v4.28) ; 12 mois = 10 payés. Le codes marchands de BISMO Agency se règlent dans `public.platform_config`. Validation d'un paiement : `select public.gb_admin_sub_validate('<id>', true);` (service role).
 
 ## v4 · Console éditeur (BISMO Agency)
 
 - Adresse : `/console.html` sur le site. Première connexion : e-mail, mot de passe choisi et code d'installation à usage unique (table `gb_private.platform_setup`).
 - Vue d'ensemble (revenu mensuel récurrent, encaissements, bars actifs, inscriptions), validation des paiements avec la capture du SMS, fiche de chaque bar (formule, date de fin, mois offerts, suspension, identité légale), réglages des numéros de réception, journal.
 - Blocage automatique 3 jours après la fin de l'abonnement (sauf activation provisoire de 72 h) ; le PDG et le directeur gardent l'accès à « Abonnement » pour renouveler. Suspension manuelle possible.
-- Limites des formules appliquées par le serveur : Simple (1 caisse, 3 serveuses, pas de directeur), Premium (2 caisses, 6 serveuses, pas de directeur), Gold (12 employés), Lounge et bêta illimités.
+- Limites des formules appliquées par le serveur : voir v4.28.
 
 ## v4.2 · Assistant IA d'assistance
 - Bouton « Aide » (en-tête, menu, écran de connexion, écran bloqué) : fenêtre de discussion avec suggestions selon le rôle.
@@ -258,3 +258,11 @@ Chaque bar construit sa propre carte (onglet Stock) : bières, vins rouges, blan
 ## v4.27 — Impression des tickets et options de cuisine
 - Option « Imprimante de tickets » : addition (avant paiement) et reçu (après) sur imprimante thermique 58 mm. Trois modes par appareil (Mon espace / Réglages) : Bluetooth direct (Web Bluetooth, imprimantes BLE, Chrome Android ou ordinateur), appli RawBT (Android, toutes imprimantes Bluetooth, via `intent:` ESC/POS), impression du système. Texte sans accents (compatibilité des imprimantes bon marché), 32 colonnes.
 - Écran mural de la cuisine et recettes au gramme deviennent des options (cachées par défaut, activables par le PDG). Une recette déjà saisie reste visible et appliquée.
+
+## v4.28 — Formules par type d'établissement
+- Trois formules : **Snack-Bar** 10 000 (boissons : 1 caisse, 5 serveuses), **Snack-Restaurant** 20 000 (+ module Cuisine, 2 caisses, 10 serveuses, 2 cuisiniers, 1 directeur, paie, compta, paiement par numéro et QR automatique, imprimante, recettes au gramme), **Lounge** 35 000 (+ équipe illimitée, prix de nuit, réservations VIP, porte, bouteilles gardées, écran mural). Bêta et essai : tout est ouvert.
+- Appliqué par le serveur (migrations 035 et 035b) : `gb_private.plan_tier`, `need_tier`, `opt_tier` ; `need_opt` vérifie aussi la formule ; `gb_bar_opts` refuse d'activer une option hors formule ; `check_staff_limit` réécrit ; contrôle ajouté dans la paie, la compta, `gb_admin_momo_start`, `gb_admin_momo_link_start`, `gb_kitchen_toggle` ; le déclencheur `bars_tier_guard` coupe la cuisine en passant à Snack-Bar. Prix centralisés dans `gb_private.plan_price`.
+- Anciennes formules (simple, premium = niveau Snack-Bar ; gold = Snack-Restaurant) gardées jusqu'à leur date de fin.
+- Écran : `tier()`, `gateS()` (la cuisine et le paiement par numéro sont coupés à l'affichage hors formule), carte « incluse à partir de… » pour Paie et Compta, options verrouillées avec « Voir la formule », trois cartes dans Abonnement.
+- Pages légales mises à jour le 28 novembre 2026 : remboursement (paiement débité mais non activé, garantie de 7 jours sans essai gratuit préalable, formule de l'arrêt annuel avec exemple), conditions (nouvelles formules), confidentialité (données des clients du bar : ardoise, réservations, bouteilles gardées ; logo).
+

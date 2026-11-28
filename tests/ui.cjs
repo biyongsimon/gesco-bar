@@ -328,11 +328,37 @@ async function tousLesOnglets(page) {
 
   await test("Abonnement : mode test caché (petit montant, 1 mois)", async page => {
     await login(page, "Marcel");
-    await page.evaluate(() => { S.bar.sub_test_price = 200; V.f.ab_p = "gold"; A.go({ v: "abo" }); }); await page.waitForTimeout(150);
+    await page.evaluate(() => { S.bar.sub_test_price = 200; V.f.ab_p = "resto"; A.go({ v: "abo" }); }); await page.waitForTimeout(150);
     ok(await page.evaluate(() => /Mode test/.test(document.body.innerText)), "bandeau « Mode test » absent");
     ok(await page.evaluate(() => document.querySelectorAll('[data-k2="ab_m"]').length) === 0, "les durées sont proposées en mode test");
     await page.evaluate(() => { S.bar.sub_test_price = null; render(); }); await page.waitForTimeout(100);
     ok(await page.evaluate(() => document.querySelectorAll('[data-k2="ab_m"]').length) === 4, "les 4 durées ne reviennent pas");
+  });
+
+  await test("Formules : Snack-Bar sans cuisine ni paie, options Lounge verrouillées", async page => {
+    await login(page, "Marcel");
+    const setPlan = pl => page.evaluate(async pl => { const k = "gesco-demo-v19", d = JSON.parse(localStorage.getItem(k)); Object.assign(d.bar, { plan: pl, plan_until: "2099-01-01", plan_trial_until: null, trial_plan: null });
+      localStorage.setItem(k, JSON.stringify(d)); await B.rpc("gb_bar_opts", { p_patch: {} }); await refresh(); }, pl);
+    await setPlan("bar");
+    ok(await page.evaluate(() => tier() === 1 && !S.bar.kitchen_on && !navFor().includes("kitchen")), "Snack-Bar : le module Cuisine reste visible");
+    await page.evaluate(() => A.go({ v: "paie" })); await page.waitForTimeout(100);
+    ok(/incluse à partir de la formule Snack-Restaurant/.test(await page.textContent("#app")), "Snack-Bar : la paie n'est pas verrouillée");
+    await page.evaluate(() => A.go({ v: "acc" })); await page.waitForTimeout(100);
+    ok(/Snack-Restaurant/.test(await page.textContent("#app")) && !!(await page.$(".lockc")), "Snack-Bar : la compta n'est pas verrouillée");
+    const r = await rpc(page, "gb_kitchen_toggle", { p_on: true }); ok(!r.ok && /Snack-Restaurant/.test(r.e), "Snack-Bar : la cuisine s'active quand même");
+    const r2 = await rpc(page, "gb_bar_opts", { p_patch: { f_vip: true } }); ok(!r2.ok && /Lounge/.test(r2.e), "Snack-Bar : les réservations VIP s'activent quand même");
+    const r3 = await rpc(page, "gb_bar_opts", { p_patch: { f_ardoise: true } }); ok(r3.ok, "Snack-Bar : l'ardoise est refusée");
+    ok(await page.evaluate(() => !opt("f_nuit") && !opt("f_mural") && opt("f_ardoise")), "options mal filtrées par la formule");
+    await page.evaluate(() => A.go({ v: "settings" })); await page.waitForTimeout(100);
+    ok(await page.evaluate(() => document.querySelectorAll(".li.locked").length) === 7, "les 7 options hors formule ne sont pas verrouillées");
+    await page.click('.li.locked [data-a="aboPick"]'); await page.waitForTimeout(150);
+    const ab = await page.textContent("#app");
+    ok(/Snack-Bar/.test(ab) && /Snack-Restaurant/.test(ab) && /35\s?000/.test(ab), "les 3 formules et leurs prix ne s'affichent pas");
+    ok(await page.evaluate(() => V.tab === "abo" && document.querySelector('.plan.on') && document.querySelector('.plan.on').classList.contains("pl-lounge")), "« Voir la formule » ne présélectionne pas la bonne formule");
+    await setPlan("resto");
+    ok(await page.evaluate(() => tier() === 2 && opt("f_print") === !!S.bar.opts.f_print && !opt("f_vip")), "Snack-Restaurant : options mal filtrées");
+    const r4 = await rpc(page, "gb_kitchen_toggle", { p_on: true }); ok(r4.ok, "Snack-Restaurant : la cuisine est refusée");
+    await setPlan("beta");
   });
 
   await test("Notifications bloquées : la fenêtre d'aide s'ouvre", async page => {

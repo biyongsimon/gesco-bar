@@ -24,7 +24,7 @@ begin
   perform public.gb_admin_create_bar(u_pdg, 'Bar des tests', 'Yaoundé', 'PDG Test', '1234');
   select s.bar_id into bar from public.staff s where s.user_id = u_pdg;
   perform pg_temp.ok(bar is not null, 'création d''un bar avec son PDG');
-  update public.bars set plan = 'gold', plan_until = current_date + 30, kitchen_on = true, suspended = false where id = bar;
+  update public.bars set plan = 'lounge', plan_until = current_date + 30, kitchen_on = true, suspended = false where id = bar;
   s_srv := public.gb_admin_add_staff(u_pdg, u_srv, 'Serveuse Test', 'serveuse', '1111');
   s_cai := public.gb_admin_add_staff(u_pdg, u_cai, 'Caisse Test', 'caisse', '2222');
   s_cui := public.gb_admin_add_staff(u_pdg, u_cui, 'Cuisine Test', 'cuisine', '3333');
@@ -163,13 +163,44 @@ begin
   e := pg_temp.err(format('select public.gb_door_sell(''Entrée'', 0, 50, ''cash'')'));
   perform pg_temp.ok(e <> 'OK', 'une serveuse ne vend pas d''entrées');
 
+  -- Formules : chaque type d'établissement n'a que ses fonctions, et le serveur l'applique
+  update public.bars set plan = 'bar' where id = bar;
+  perform pg_temp.ok((select not kitchen_on from public.bars where id = bar), 'en passant à Snack-Bar, le module Cuisine se coupe');
+  perform pg_temp.as_user(u_pdg);
+  e := pg_temp.err('select public.gb_kitchen_toggle(true)');
+  perform pg_temp.ok(e like '%Snack-Restaurant%', 'Snack-Bar : pas de module Cuisine');
+  e := pg_temp.err('select public.gb_accounting(null)');
+  perform pg_temp.ok(e like '%Snack-Restaurant%', 'Snack-Bar : pas de compta du mois');
+  e := pg_temp.err(format('select public.gb_salary_set(%L, 50000)', s_srv));
+  perform pg_temp.ok(e like '%Snack-Restaurant%', 'Snack-Bar : pas de paie');
+  e := pg_temp.err('select public.gb_bar_opts(''{"f_print": true}'')');
+  perform pg_temp.ok(e like '%Snack-Restaurant%', 'Snack-Bar : l''imprimante ne s''active pas');
+  e := pg_temp.err('select public.gb_bar_opts(''{"f_ardoise": true}'')');
+  perform pg_temp.ok(e = 'OK', 'Snack-Bar : l''ardoise reste disponible');
+  e := pg_temp.err(format('select public.gb_admin_add_staff(%L, %L, ''Caisse 2'', ''caisse'', ''5555'')', u_pdg, gen_random_uuid()));
+  perform pg_temp.ok(e like '%Snack-Bar comprend 1 caisse%', 'Snack-Bar : une seule caisse');
+  e := pg_temp.err(format('select public.gb_admin_add_staff(%L, %L, ''Dir'', ''directeur'', ''5555'')', u_pdg, gen_random_uuid()));
+  perform pg_temp.ok(e like '%directeur%', 'Snack-Bar : pas de directeur');
+  update public.bars set plan = 'resto' where id = bar;
+  perform public.gb_kitchen_toggle(true);
+  perform pg_temp.ok((select kitchen_on from public.bars where id = bar), 'Snack-Restaurant : le module Cuisine s''active');
+  e := pg_temp.err('select public.gb_bar_opts(''{"f_print": true}'')');
+  perform pg_temp.ok(e = 'OK', 'Snack-Restaurant : l''imprimante s''active');
+  e := pg_temp.err('select public.gb_bar_opts(''{"f_vip": true}'')');
+  perform pg_temp.ok(e like '%Lounge%', 'Snack-Restaurant : pas de réservations VIP');
+  e := pg_temp.err('select gb_private.need_opt(' || quote_literal(bar) || '::uuid, ''f_porte'', ''La porte'')');
+  perform pg_temp.ok(e like '%Lounge%', 'une option de Lounge déjà cochée reste fermée avec Snack-Restaurant');
+  update public.bars set plan = 'lounge' where id = bar;
+  e := pg_temp.err('select gb_private.need_opt(' || quote_literal(bar) || '::uuid, ''f_porte'', ''La porte'')');
+  perform pg_temp.ok(e = 'OK', 'Lounge : toutes les options');
+
   -- Abonnement : prix de test caché (1 mois, petit montant) puis effacé après paiement
   update public.bars set sub_test_price = 200 where id = bar;
-  r := public.gb_admin_sub_push_start(u_pdg, 'gold', 12, 'mtn', '670000000');
+  r := public.gb_admin_sub_push_start(u_pdg, 'resto', 12, 'mtn', '670000000');
   perform pg_temp.ok((r->>'amount')::int = 200, 'le prix de test remplace le prix normal (200 FCFA)');
   perform pg_temp.ok((select months from public.subscriptions where id = (r->>'id')::uuid) = 1, 'le prix de test donne 1 mois seulement');
   perform public.gb_admin_sub_push_done((r->>'id')::uuid, true, 'REF-TEST', null);
-  perform pg_temp.ok((select sub_test_price is null and plan = 'gold' from public.bars where id = bar), 'après paiement réussi, le prix de test disparaît');
+  perform pg_temp.ok((select sub_test_price is null and plan = 'resto' from public.bars where id = bar), 'après paiement réussi, le prix de test disparaît');
 
   -- Suspension : tout est bloqué, sauf la demande de réactivation du PDG
   update public.bars set suspended = true, suspend_reason = 'Test de suspension' where id = bar;

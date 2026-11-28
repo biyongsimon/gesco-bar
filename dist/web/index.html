@@ -513,9 +513,9 @@ textarea{resize:vertical;min-height:84px;line-height:1.4}
 .plan{position:relative;display:flex;flex-direction:column;gap:6px;text-align:left;padding:16px;border-radius:18px;border:2px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font:inherit}
 .plan b{font:800 18px var(--display)}.plan .pp{font:800 26px/1.1 var(--display);color:var(--brand)}.plan .pp small{font:600 13px var(--body);color:var(--muted)}
 .plan ul{margin:4px 0 0;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.5}
-.plan .pill{position:absolute;top:12px;right:12px}
+.plan .pill{align-self:flex-start;order:-1}
 .plan.on{border-color:var(--brand);box-shadow:0 10px 28px color-mix(in srgb,var(--brand) 25%,transparent);transform:translateY(-2px)}
-.plan.lounge{background:linear-gradient(160deg,var(--night-soft),var(--surface) 70%)}.plan.gold{background:linear-gradient(160deg,var(--amber-soft),var(--surface) 70%)}
+.plan.pl-lounge{background:linear-gradient(160deg,var(--night-soft),var(--surface) 70%)}.plan.pl-resto{background:linear-gradient(160deg,var(--amber-soft),var(--surface) 70%)}.li.locked{opacity:.78}
 details summary{cursor:pointer}
 
 .hb .bnav{padding-bottom:calc(58px + env(safe-area-inset-bottom,0px))}
@@ -609,7 +609,7 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
     var C = window.GESCO_CONFIG; if (!C || C.mode !== "live" || !window.fetch) return;
     var tok = C.key; try { var a = JSON.parse(localStorage.getItem("gesco-auth") || "null"); if (a && a.access_token && a.expires_at * 1000 > Date.now()) tok = a.access_token; } catch (x) {}
     var body = JSON.stringify({ p_message: "DÉMARRAGE : GesCo ne s'est pas affiché" + (errs[0] ? " — " + errs[0].split("\n")[0] : " (délai dépassé)"), p_stack: errs.join("\n---\n") || null,
-      p_source: "app", p_url: location.pathname, p_tab: "démarrage", p_version: "74e970bd", p_ua: navigator.userAgent.slice(0, 200) });
+      p_source: "app", p_url: location.pathname, p_tab: "démarrage", p_version: "9da806d1", p_ua: navigator.userAgent.slice(0, 200) });
     var go = function (t) { return fetch(C.url + "/rest/v1/rpc/gb_log_error", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", apikey: C.key, Authorization: "Bearer " + t }, body: body }); };
     go(tok).then(function (r) { if (!r.ok && tok !== C.key) go(C.key); }).catch(function () {
       try { var q = JSON.parse(localStorage.getItem("gesco-errq") || "[]"); q.push(JSON.parse(body)); localStorage.setItem("gesco-errq", JSON.stringify(q.slice(-20))); } catch (x) {} });
@@ -645,7 +645,7 @@ body.kds-on #app{max-width:none!important;padding:calc(12px + env(safe-area-inse
 "use strict";
 /* ═══════════════ Outils ═══════════════ */
 const CFG = window.GESCO_CONFIG;
-const APP_BUILD = "74e970bd";
+const APP_BUILD = "9da806d1";
 /* Remontée des erreurs inattendues vers la console éditeur (jamais les messages métier, réseau ou de session) */
 const ERR_SEEN = {};
 function reportErr(e, kind) {
@@ -981,7 +981,7 @@ function DemoBackend() {
       db.expenses = db.expenses.filter(x => x !== e); log(c, "courses_retirees", { article: e.label, montant: e.amount }); },
     gb_bar_opts({ p_patch }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG modifie ces réglages."); const o = { ...(db.bar.opts || {}) };
       Object.entries(p_patch || {}).forEach(([k, v]) => { if (k === "phone") { if (typeof v !== "string" || v.length > 40) E("Téléphone invalide."); o[k] = v; return; }
-        if (/^f_(ardoise|vides|vip|porte|nuit|garde|print|mural|recettes)$/.test(k)) { if (typeof v !== "boolean") E("Option invalide."); o[k] = v; return; }
+        if (/^f_(ardoise|vides|vip|porte|nuit|garde|print|mural|recettes)$/.test(k)) { if (typeof v !== "boolean") E("Option invalide."); if (v) demoTier(db.bar, OPT_TIER[k] || 1, "Cette fonction"); o[k] = v; return; }
         if (k === "nuit_debut") { if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) E("Heure invalide (ex. 22:00)."); o[k] = v; return; }
         if (k === "porte_tarifs") { if (!Array.isArray(v) || v.length > 8 || v.some(x => !x.l || !(x.p >= 0))) E("Tarifs invalides."); o[k] = v; return; }
         if (!["remit_r1", "remit_r2", "remit_r3"].includes(k)) E("Réglage inconnu : " + k); if (!(Number.isInteger(v) && v >= 0 && v <= 600)) E("Délai invalide (0 à 600 minutes)."); o[k] = v; });
@@ -1055,7 +1055,7 @@ function DemoBackend() {
       db.kept = db.kept || []; const k = { id: uuid(), client: String(p_client).trim(), phone: p_phone || null, product_id: p_product, level: p_level || "1/2", tag: p_tag || null, status: "gardee", created_by: c.id, created_at: now() }; db.kept.unshift(k); log(c, "bouteille_gardee", { client: k.client }); return k.id; },
     gb_keep_close({ p_id, p_status }) { const c = ctx(); caisse(c); const k = (db.kept || []).find(x => x.id === p_id && x.status === "gardee") || E("Bouteille introuvable ou déjà rendue."); Object.assign(k, { status: p_status, closed_at: now(), closed_by: c.id }); log(c, "bouteille_" + p_status, { client: k.client }); },
     gb_bar_logo({ p_path }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG change le logo."); if (p_path && !/^data:image\/png;base64,/.test(p_path)) E("Fichier non valide."); db.bar.logo_path = p_path || null; log(c, "reglages_modifies", { logo: !!p_path }); },
-    gb_kitchen_toggle({ p_on }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG active le module Cuisine."); db.bar.kitchen_on = !!p_on; log(c, "module_cuisine", { actif: !!p_on }); },
+    gb_kitchen_toggle({ p_on }) { const c = ctx(); if (c.role !== "pdg") E("Seul le PDG active le module Cuisine."); if (p_on) demoTier(db.bar, 2, "Le module Cuisine"); db.bar.kitchen_on = !!p_on; log(c, "module_cuisine", { actif: !!p_on }); },
     gb_recipe_set({ p_dish, p_items }) { const c = ctx(); caisse(c); const d = prod(p_dish); db.recipes = (db.recipes || []).filter(r => r.dish_id !== p_dish);
       (p_items || []).forEach(i => { const q = +i.q; if (!(q > 0)) return; if (i.i === p_dish) E("Un plat ne peut pas être son propre ingrédient."); prod(i.i); db.recipes.push({ dish_id: p_dish, ingredient_id: i.i, qty: q }); });
       const tot = Math.round(db.recipes.filter(r => r.dish_id === p_dish).reduce((x, r) => x + r.qty * (prod(r.ingredient_id).cost || 0), 0)); if (tot > 0) d.cost = tot;
@@ -1081,14 +1081,14 @@ function DemoBackend() {
     },
     gb_product_set_cost({ p_product, p_cost }) { const c = ctx(); caisse(c); if (p_cost == null || p_cost < 0) E("Indiquez un prix d’achat valide."); prod(p_product).cost = +p_cost; },
     gb_expense_add({ p_day, p_category, p_label, p_amount, p_method }) {
-      const c = ctx(); pdg(c); if (!(+p_amount > 0)) E("Indiquez un montant."); if (!(p_category || "").trim()) E("Choisissez une catégorie de dépense.");
+      const c = ctx(); pdg(c); demoTier(db.bar, 2, "La comptabilité"); if (!(+p_amount > 0)) E("Indiquez un montant."); if (!(p_category || "").trim()) E("Choisissez une catégorie de dépense.");
       const e = { id: uuid(), day: p_day || bizDate(), category: p_category.trim(), label: (p_label || "").trim() || null, amount: +p_amount, method: p_method || "cash" };
       (db.expenses = db.expenses || []).push(e); log(c, "depense_ajoutee", { categorie: e.category, montant: e.amount }); return e.id;
     },
-    gb_expense_delete({ p_id }) { const c = ctx(); pdg(c); const e = (db.expenses || []).find(x => x.id === p_id); if (!e) return;
+    gb_expense_delete({ p_id }) { const c = ctx(); pdg(c); demoTier(db.bar, 2, "La comptabilité"); const e = (db.expenses || []).find(x => x.id === p_id); if (!e) return;
       db.expenses = db.expenses.filter(x => x !== e); log(c, "depense_supprimee", { categorie: e.category, montant: e.amount }); },
     gb_accounting({ p_month }) {
-      const c = ctx(); pdg(c); const m = p_month || bizDate().slice(0, 7), y = m.slice(0, 4), dayOf = id => (db.days.find(d => d.id === id) || {}).business_date || bizDate();
+      const c = ctx(); pdg(c); demoTier(db.bar, 2, "La comptabilité"); const m = p_month || bizDate().slice(0, 7), y = m.slice(0, 4), dayOf = id => (db.days.find(d => d.id === id) || {}).business_date || bizDate();
       const sold = db.tickets.filter(t => ["cashed", "paid"].includes(t.status) && dayOf(t.day_id).startsWith(m)), P = id => db.products.find(p => p.id === id) || {};
       const hist = db.history.filter(h => h.date.startsWith(m)), sum = (a, f) => a.reduce((x, v) => x + (f(v) || 0), 0);
       const D = {}; const addD = (day, tot, cash, momo, n) => { const x = D[day] = D[day] || { day, total: 0, tickets: 0, cash: 0, momo: 0 }; x.total += tot; x.cash += cash; x.momo += momo; x.tickets += n; };
@@ -1139,6 +1139,7 @@ function DemoBackend() {
         if (s.id === c.id) E("Vous ne pouvez pas changer votre propre rôle.");
         if (!["directeur", "caisse", "serveuse"].includes(p_role)) E("Il n’y a qu’un seul PDG par bar.");
         if (p_role === "directeur" && c.role !== "pdg") E("Seul le PDG nomme un directeur.");
+        demoStaffLimit(db.bar, db.staff.filter(x => x.id !== s.id), p_role);
       }
       if (s.id === c.id && p_active === false) E("Vous ne pouvez pas désactiver votre propre compte.");
       if (p_active === false && s.active) {
@@ -1271,11 +1272,11 @@ function DemoBackend() {
       log(c, p_accept ? "permission_acceptee" : "permission_refusee", { membre: member(l.staff_id).name, du: l.day_from, au: l.day_to });
     },
     gb_salary_set({ p_staff, p_salary }) {
-      const c = ctx(); pdg(c); if (p_salary == null || p_salary < 0) E("Indiquez un salaire valide."); member(p_staff);
+      const c = ctx(); pdg(c); demoTier(db.bar, 2, "La paie"); if (p_salary == null || p_salary < 0) E("Indiquez un salaire valide."); member(p_staff);
       const x = db.salaries.find(y => y.staff_id === p_staff); if (x) x.salary = +p_salary; else db.salaries.push({ staff_id: p_staff, salary: +p_salary });
     },
     gb_pay({ p_staff, p_month, p_bonus, p_deduction, p_method, p_note }) {
-      const c = ctx(); pdg(c); const s = member(p_staff);
+      const c = ctx(); pdg(c); demoTier(db.bar, 2, "La paie"); const s = member(p_staff);
       if (db.payroll.some(p => p.staff_id === p_staff && p.month === p_month)) E(`${s.name} a déjà été payé(e) pour ce mois.`);
       const base = (db.salaries.find(x => x.staff_id === p_staff) || {}).salary || 0, b = Math.max(+p_bonus || 0, 0), dd = Math.max(+p_deduction || 0, 0), net = base + b - dd;
       if (net < 0) E("La retenue dépasse le salaire."); if (!net) E("Le montant à payer est nul : indiquez d’abord le salaire.");
@@ -1284,7 +1285,7 @@ function DemoBackend() {
       log(c, "salaire_paye", { membre: s.name, mois: p_month, montant: net }); return { id, net };
     },
     gb_pay_cancel({ p_id }) {
-      const c = ctx(); pdg(c); const p = db.payroll.find(x => x.id === p_id) || E("Paiement introuvable.");
+      const c = ctx(); pdg(c); demoTier(db.bar, 2, "La paie"); const p = db.payroll.find(x => x.id === p_id) || E("Paiement introuvable.");
       db.payroll = db.payroll.filter(x => x !== p); db.expenses = db.expenses.filter(x => x.id !== p.expense_id); log(c, "salaire_annule", { mois: p.month, montant: p.net });
     },
     gb_pay_config({ p_om_code, p_mtn_code, p_om_ussd, p_mtn_ussd, p_key }) {
@@ -1306,7 +1307,7 @@ function DemoBackend() {
       setTimeout(() => { if (db.react && db.react.messages.length === 1) { db.react.messages.push({ sender: "bismo", body: "Bien reçu, nous vérifions vos preuves. (Démo : BISMO Agency répond ici depuis sa console.)", files: null, at: now() }); save(); } }, 4000);
       return db.react.id; },
     gb_sub_request({ p_plan, p_months, p_method, p_reference, p_proof }) {
-      const c = ctx(); mgr(c); const price = { simple: 10000, premium: 15000, gold: 20000, lounge: 30000 }[p_plan]; if (!price) E("Formule inconnue.");
+      const c = ctx(); mgr(c); const price = { bar: 10000, resto: 20000, lounge: 35000 }[p_plan]; if (!price) E("Formule inconnue.");
       if (![1, 3, 6, 12].includes(+p_months)) E("Durée invalide."); if (!["orange", "mtn"].includes(p_method)) E("Mode de paiement inconnu.");
       if ((p_reference || "").trim().length < 4 && !p_proof) E("Collez la référence du SMS ou ajoutez la capture du SMS.");
       if (db.subs.some(x => x.status === "en_attente")) E("Un paiement est déjà en cours de vérification.");
@@ -1454,12 +1455,12 @@ function DemoBackend() {
     async rpc(name, args) { const f = R[name]; if (!f) throw bizErr("Action inconnue."); db = LS.get(KEY) || db; const r = f(args || {}); save(); return r; },
     async momoPush(ticket, phone, operator) { // démo : le client « valide » sur son téléphone au bout de 6 secondes
       const c = ctx(), t = tk(ticket); if (t.waitress_id !== c.id) E("Ce ticket appartient à une autre serveuse."); if (t.status !== "sent") E("Envoyez d’abord la commande à la caisse.");
-      if (!db.bar.push_enabled) E("Le paiement par numéro n’est pas encore activé par le PDG."); let ph = String(phone || "").replace(/\D/g, ""); if (ph.length === 12 && ph.startsWith("237")) ph = ph.slice(3);
+      demoTier(db.bar, 2, "Le paiement par numéro"); if (!db.bar.push_enabled) E("Le paiement par numéro n’est pas encore activé par le PDG."); let ph = String(phone || "").replace(/\D/g, ""); if (ph.length === 12 && ph.startsWith("237")) ph = ph.slice(3);
       if (!/^6\d{8}$/.test(ph)) E("Numéro camerounais invalide (9 chiffres commençant par 6).");
       const id = uuid(); db.momo.push({ id, ticket_id: t.id, status: "en_cours", at: Date.now() }); save(); return { ok: true, id, message: "Demande envoyée au téléphone du client (démo)." };
     },
     async subPush(plan, months, operator, phone) { // démo : le PDG « valide » sur son téléphone au bout de 6 secondes
-      const c = ctx(); mgr(c); const price = { simple: 10000, premium: 15000, gold: 20000, lounge: 30000 }[plan]; if (!price) E("Formule inconnue.");
+      const c = ctx(); mgr(c); const price = { bar: 10000, resto: 20000, lounge: 35000 }[plan]; if (!price) E("Formule inconnue.");
       let ph = String(phone || "").replace(/\D/g, ""); if (ph.length === 12 && ph.startsWith("237")) ph = ph.slice(3); if (!/^6\d{8}$/.test(ph)) E("Numéro camerounais invalide (9 chiffres commençant par 6).");
       if (db.subs.some(x => x.status === "en_attente")) E("Un paiement est déjà en cours.");
       const id = uuid(), amount = price * (+months === 12 ? 10 : +months);
@@ -1472,7 +1473,7 @@ function DemoBackend() {
       return { status: x.status }; },
     async momoLink(ticket) { // démo : le client « scanne et valide » au bout de 9 secondes
       const c = ctx(), t = tk(ticket); if (t.waitress_id !== c.id) E("Ce ticket appartient à une autre serveuse."); if (t.status !== "sent") E("Ce ticket n’est plus à encaisser.");
-      if (!db.bar.push_enabled) E("Le paiement automatique n’est pas activé par le PDG.");
+      demoTier(db.bar, 2, "Le paiement Mobile Money automatique"); if (!db.bar.push_enabled) E("Le paiement automatique n’est pas activé par le PDG.");
       const ex = db.momo.find(x => x.ticket_id === t.id && x.kind === "lien" && x.status === "en_cours"); if (ex) return { id: ex.id, url: ex.url };
       const id = uuid(), url = "https://pay.notchpay.co/demo-" + id.slice(0, 8); db.momo.push({ id, ticket_id: t.id, status: "en_cours", at: Date.now() + 3000, kind: "lien", url }); save(); return { id, url }; },
     async momoStatus(id) { db = LS.get(KEY) || db; const m = db.momo.find(x => x.id === id); if (!m) E("Demande introuvable.");
@@ -1504,7 +1505,7 @@ function DemoBackend() {
       const c = ctx(); mgr(c); name = (name || "").trim(); if (!name) throw bizErr("Indiquez un nom."); pinOk(pin);
       if (!["directeur", "caisse", "serveuse", "cuisine"].includes(role)) throw bizErr("Rôle inconnu."); if (role === "directeur" && c.role !== "pdg") throw bizErr("Seul le PDG peut ajouter un directeur.");
       if (db.staff.some(s => s.name.toLowerCase() === name.toLowerCase())) throw bizErr("Ce nom est déjà utilisé dans l’équipe.");
-      db.staff.push({ id: uuid(), name, role, pin, active: true, fails: 0, lock: 0 }); log(c, "membre_ajoute", { membre: name, role }); save();
+      demoStaffLimit(db.bar, db.staff, role); db.staff.push({ id: uuid(), name, role, pin, active: true, fails: 0, lock: 0 }); log(c, "membre_ajoute", { membre: name, role }); save();
     },
     onChange(f) { listeners.push(f); },
     reset() { LS.del(KEY); db = null; seed(); }
@@ -1628,6 +1629,25 @@ function LiveBackend() {
 
 /* ═══════════════ État de l'application ═══════════════ */
 const B = CFG.mode === "live" ? LiveBackend() : DemoBackend();
+/* Formules : ce que la formule ne comprend pas est coupé côté écran (le serveur refuse de toute façon) */
+function demoTier(bar, min, label) { if (tier(bar) < min) throw bizErr(`${label} est inclus à partir de la formule ${TIER_NAME[min]} (rubrique Abonnement).`); }
+function demoStaffLimit(bar, staff, role) { const t = tier(bar); if (t >= 3) return; const lim = { serveuse: t === 1 ? 5 : 10, caisse: t, cuisine: t === 1 ? 0 : 2, directeur: t === 1 ? 0 : 1 }[role];
+  if (lim == null || staff.filter(s => s.active && s.role === role).length < lim) return;
+  if (!lim) throw bizErr(role === "cuisine" ? "Le module Cuisine est inclus à partir de la formule Snack-Restaurant (rubrique Abonnement)." : "La formule Snack-Bar ne comprend pas de directeur : passez à Snack-Restaurant.");
+  throw bizErr(`La formule ${t === 1 ? "Snack-Bar" : "Snack-Restaurant"} comprend ${lim} ${{ serveuse: "serveuse", caisse: "caisse", cuisine: "cuisinier", directeur: "directeur" }[role]}${lim > 1 ? "s" : ""} : passez à la formule supérieure pour en ajouter.`); }
+const TIER_OF = { bar: 1, simple: 1, premium: 1, resto: 2, gold: 2, lounge: 3 };
+const tierOf = p => TIER_OF[p] || 9;
+function tier(b0) { const b = b0 || (S && S.bar); if (!b) return 9; const tr = b.plan_trial_until && new Date(b.plan_trial_until) > Date.now() && b.trial_plan;
+  return tierOf(tr ? b.trial_plan : b.plan); }
+const OPT_TIER = { f_print: 2, f_recettes: 2, f_nuit: 3, f_vip: 3, f_porte: 3, f_garde: 3, f_mural: 3 };
+const TIER_NAME = { 2: "Snack-Restaurant", 3: "Lounge" };
+function gateS(x) { if (x && x.bar) { const b = x.bar, t = tier(b);
+    if (b.kitchen_raw === undefined) b.kitchen_raw = !!b.kitchen_on; if (b.push_raw === undefined) b.push_raw = !!b.push_enabled;
+    b.kitchen_on = b.kitchen_raw && t >= 2; b.push_enabled = b.push_raw && t >= 2; } return x; }
+{ const _ld = B.load.bind(B); B.load = async (...a) => gateS(await _ld(...a)); }
+const lockCard = (min, what, why) => `<div class="card stack lockc"><div class="between"><h3>${what}</h3><span class="pill warn">${TIER_NAME[min]}</span></div>
+  <p class="mu" style="margin:0">${why}</p><p style="margin:0">Cette fonction est incluse à partir de la formule <b>${TIER_NAME[min]}</b>.</p>
+  ${isMgr() ? `<button class="btn" data-a="aboPick" data-v="${min === 2 ? "resto" : "lounge"}">Voir la formule ${TIER_NAME[min]}</button>` : `<p class="mu" style="margin:0">Parlez-en au PDG ou au directeur.</p>`}</div>`;
 const OBX = "gesco-outbox", SNAP = "gesco-snapshot";
 let S = null;
 const V = { screen: "boot", ltab: "staff", code: LS.get("gesco-code", CFG.mode === "demo" ? "DEMO" : ""), list: null, pick: null, pin: "",
@@ -2482,7 +2502,7 @@ function kCard(o) {
 const KDS_OK = () => ["cuisine", "pdg", "directeur"].includes(ROLE());
 const kdsActive = () => !!(V.kds && V.screen === "app" && S && V.tab === "kitchen" && KDS_OK());
 function vKitchen() {
-  if (!S.bar.kitchen_on) return `<div class="card stack"><h3>Module Cuisine</h3><p class="mu" style="margin:0">Le module Cuisine n’est pas activé. ${isPdg() ? "Activez-le dans Réglages." : "Le PDG l’active dans Réglages (formule Snack Gold et plus)."}</p></div>`;
+  if (!S.bar.kitchen_on) return `<div class="card stack"><h3>Module Cuisine</h3><p class="mu" style="margin:0">Le module Cuisine n’est pas activé. ${isPdg() ? "Activez-le dans Réglages." : "Le PDG l’active dans Réglages (formule Snack-Restaurant et plus)."}</p></div>`;
   if (V.kds) return kdsView();
   const ks = (S.kitchen || []).filter(o => o.status !== "annule"), by = st => ks.filter(o => o.status === st).sort((a, b) => a.created_at < b.created_at ? -1 : 1);
   const L = { attente: by("attente"), prep: by("prep"), pret: by("pret") }, T = [["attente", "À préparer"], ["prep", "En cours"], ["pret", "Prêts"]];
@@ -2851,7 +2871,7 @@ A.kpAdd = () => run(async () => { if (!V.f.kpp) throw bizErr("Choisissez la bout
 A.kpClose = d => run(async () => { await B.rpc("gb_keep_close", { p_id: d.id, p_status: d.v }); await refresh(); toast("Bouteille rendue au client."); });
 
 /* ═══════════════ Ardoise (crédit client) : la serveuse demande, la caisse valide, la direction ouvre les ardoises ═══════════════ */
-const opt = k => !!(S && S.bar && S.bar.opts && S.bar.opts[k]);
+const opt = k => !!(S && S.bar && S.bar.opts && S.bar.opts[k]) && tier() >= (OPT_TIER[k] || 1);
 const credName = id => ((S.credit || []).find(c => c.id === id) || (V.cr || []).find(c => c.id === id) || { name: "Client" }).name;
 const crLoad = force => { if (force || V.cr === undefined) { V.cr = V.cr || null; B.rpc("gb_credit_list", {}).then(r => { V.cr = r || []; render(); }).catch(e => { V.cr = []; toast(e.message, "err"); }); } };
 function credBox(t) {
@@ -3344,7 +3364,7 @@ function vApp() {
   const VIEW = {
     service: () => wService(), direct: () => (ROLE() === "caisse" ? shiftBanner() : "") + hovBanner() + headLine() + cOps(), sup: () => headLine() + dSup(), home: pHome,
     stock: () => cStock(), vouch: () => keepCard() + cVouch(S.vouchers.filter(v => v.status === "active")), sales: () => cSales(dayT()),
-    rev: cRev, acc: cAcc, paie: pPaie, qr: vQr, abo: vAbo, pres: mPres, planning: vPlanning, team: cTeam, day: () => cDay(dayT()), log: cLog, settings: cSettings, moi: vMoi, kitchen: () => vKitchen() + (S.bar.kitchen_on && !V.kds ? marketCard() : ""), plats: vPlats, ardoise: vArdoise, resa: vResa, porte: vPorte };
+    rev: cRev, acc: () => tier() >= 2 ? cAcc() : lockCard(2, "Compta du mois", "Recettes, dépenses, achats de stock et salaires réunis automatiquement chaque mois, avec le bénéfice net."), paie: () => tier() >= 2 ? pPaie() : lockCard(2, "Paie", "Salaires, primes, avances, retenues et fiches de paie de toute l’équipe."), qr: vQr, abo: vAbo, pres: mPres, planning: vPlanning, team: cTeam, day: () => cDay(dayT()), log: cLog, settings: cSettings, moi: vMoi, kitchen: () => vKitchen() + (S.bar.kitchen_on && !V.kds ? marketCard() : ""), plats: vPlats, ardoise: vArdoise, resa: vResa, porte: vPorte };
   const ask = "Notification" in window && Notification.permission === "default" && !LS.get("gesco-ntf-ask", 0) ? `<div class="note info between" style="flex-wrap:wrap;margin-bottom:12px"><span>${ico("alert")} Activez les notifications pour être prévenu(e) même quand le téléphone est en veille.</span><span class="row"><button class="btn sm" data-a="notifOn">Activer</button><button class="btn ghost sm" data-a="notifLater">Plus tard</button></span></div>` : "";
   return header(b) + `<main class="sec" style="--el:${elapsed(V.secT)}ms"><div class="ptitle"><h1>${l}</h1><p class="mu">${d}</p></div>${ask}${VIEW[V.tab]()}</main>`
     + bnav(nav, b) + (V.menu ? drawer(nav, b) : "");
@@ -3896,7 +3916,7 @@ function vQr() {
         : `<div class="empty">Choisissez un ticket ou saisissez un montant.</div>`}</div>
     ${t ? `<div class="card stack"><h3>Le client ne peut pas scanner ?</h3>
       <p class="mu" style="margin:0">Saisissez son numéro : il reçoit sur son téléphone une demande de paiement de ${F(t.total)} et la valide avec son code secret Orange Money ou MTN MoMo. La serveuse ne voit jamais ce code.</p>
-      ${!b.push_enabled ? `<div class="note warn">Le paiement par numéro doit d’abord être activé par le PDG (Réglages → Paiements).</div>` : p && p.status === "en_cours" ? `<div class="note info row" style="gap:10px"><span class="spin"></span><span><b>En attente du client…</b><br>Demande envoyée au ${esc(p.phone)}. Le client doit valider avec son code secret.</span></div><button class="btn ghost sm" data-a="pushStop">Arrêter d’attendre</button>`
+      ${tier() < 2 ? `<div class="note info">Le paiement par numéro est inclus à partir de la formule Snack-Restaurant.</div>` : !b.push_enabled ? `<div class="note warn">Le paiement par numéro doit d’abord être activé par le PDG (Réglages → Paiements).</div>` : p && p.status === "en_cours" ? `<div class="note info row" style="gap:10px"><span class="spin"></span><span><b>En attente du client…</b><br>Demande envoyée au ${esc(p.phone)}. Le client doit valider avec son code secret.</span></div><button class="btn ghost sm" data-a="pushStop">Arrêter d’attendre</button>`
         : `<div class="row"><label class="f grow" for="qr_ph">Numéro du client<input id="qr_ph" type="tel" inputmode="numeric" maxlength="13" data-k="qr_ph" value="${val("qr_ph")}" placeholder="6XX XX XX XX"></label></div>
         ${p && p.status === "echoue" ? `<div class="note bad">Le paiement n’a pas abouti (refusé, solde insuffisant ou délai dépassé). Vous pouvez réessayer.</div>` : ""}
         <button class="btn" data-a="pushGo" data-t="${t.id}">Envoyer la demande de paiement au client</button>`}</div>` : ""}</div>`;
@@ -3955,21 +3975,25 @@ A.pushGo = d => run(async () => {
 
 /* ═══════════════ Abonnement (directeur, PDG) ═══════════════ */
 const PLANS = {
-  simple: ["Snack Simple", 10000, ["1 caisse et jusqu’à 3 serveuses", "Tickets, caisse, bons de reliquat", "Stock, inventaire, clôture de journée"]],
-  premium: ["Snack Premium", 15000, ["Jusqu’à 6 serveuses", "Tout Snack Simple", "Planning, présences, permissions", "QR code de paiement marchand"]],
-  gold: ["Snack Gold", 20000, ["Jusqu’à 12 employés et un directeur", "Tout Snack Premium", "Paie, fiches de paie, compta du mois", "Paiement par numéro du client"]],
-  lounge: ["Lounge", 30000, ["Employés illimités", "Tout Snack Gold", "Assistance prioritaire", "Accompagnement à l’installation"]]
+  bar: ["Snack-Bar", 10000, ["Pour un snack-bar qui sert des boissons", "1 caisse et jusqu’à 5 serveuses", "Tickets, caisse, bons de reliquat, QR de paiement", "Stock, inventaire, bon de commande PDF", "Clôture de journée et rapport PDF", "Ardoise, emballages consignés, planning, présences"], "Boissons"],
+  resto: ["Snack-Restaurant", 20000, ["Pour un snack qui sert aussi à manger", "Tout Snack-Bar, plus :", "Module Cuisine : écran des bons, 2 cuisiniers, plats du jour", "2 caisses, 10 serveuses et 1 directeur", "Paie, fiches de paie, compta du mois", "Paiement par numéro du client, imprimante de tickets, recettes au gramme"], "Boissons + cuisine"],
+  lounge: ["Lounge", 35000, ["Pour un lounge ou une boîte de nuit", "Tout Snack-Restaurant, plus :", "Équipe illimitée", "Prix de nuit, réservations VIP avec minimum", "Entrées payantes à la porte, bouteilles gardées", "Écran mural cuisine, assistance prioritaire"], "Boissons + cuisine + nuit"]
 };
+const PLAN_NAMES = { simple: "Snack Simple (ancienne formule)", premium: "Snack Premium (ancienne formule)", gold: "Snack Gold (ancienne formule)" };
+const planName = k => (PLANS[k] || [PLAN_NAMES[k] || "Formule"])[0];
+const planDef = b => b.kitchen_raw || b.kitchen_on ? "resto" : "bar";
+A.aboPick = d => { V.f.ab_p = d.v; A.go({ v: "abo" }); };
 const fmtTel = n => String(n || "").replace(/^(\d{3})(\d{2})(\d{2})(\d{2})$/, "$1 $2 $3 $4");
 function planState() { const b = S.bar, now = Date.now(), until = b.plan_until ? new Date(b.plan_until + "T23:59:59") : null, trial = b.plan_trial_until ? new Date(b.plan_trial_until) : null;
   const days = until ? Math.ceil((until - now) / 864e5) : null;
   if (b.plan === "essai" && until && !(trial && trial > now)) return until > now ? { k: "essai", name: "Essai gratuit", days, until, ok: true, essai: true } : { k: "essai", name: "Essai gratuit", days, until, expired: true, essai: true };
-  if (PLANS[b.plan] && until && until > now) return { k: b.plan, name: PLANS[b.plan][0], days, until, ok: true, trial: trial && trial > now ? trial : null };
-  if (trial && trial > now) return { k: b.trial_plan, name: (PLANS[b.trial_plan] || ["Formule"])[0], trial, ok: true, provisional: true };
-  if (PLANS[b.plan] && until) return { k: b.plan, name: PLANS[b.plan][0], days, until, expired: true };
+  const known = k => !!(PLANS[k] || PLAN_NAMES[k]);
+  if (known(b.plan) && until && until > now) return { k: b.plan, name: planName(b.plan), days, until, ok: true, trial: trial && trial > now ? trial : null };
+  if (trial && trial > now) return { k: b.trial_plan, name: planName(b.trial_plan), trial, ok: true, provisional: true };
+  if (known(b.plan) && until) return { k: b.plan, name: planName(b.plan), days, until, expired: true };
   return { k: "beta", name: "Version bêta gratuite", ok: true, beta: true }; }
 function vAbo() {
-  const b = S.bar, ps = planState(), pl = V.f.ab_p || (PLANS[ps.k] ? ps.k : "gold"), tp = b.sub_test_price || 0, mo = tp ? 1 : +(V.f.ab_m || 1), price = PLANS[pl][1], total = tp || price * (mo === 12 ? 10 : mo), meth = V.f.ab_o || "orange";
+  const b = S.bar, ps = planState(), pl = V.f.ab_p || (PLANS[ps.k] ? ps.k : planDef(b)), tp = b.sub_test_price || 0, mo = tp ? 1 : +(V.f.ab_m || 1), price = PLANS[pl][1], total = tp || price * (mo === 12 ? 10 : mo), meth = V.f.ab_o || "orange";
   const P = S.platform || {}, num0 = meth === "orange" ? P.om_number : P.mtn_number, tpl = meth === "orange" ? P.om_tpl : P.mtn_tpl, ref = "GB-" + b.code;
   const dial = tpl ? tpl.replace("{numero}", num0).replace("{montant}", total) : meth === "orange" ? "#150#" : "*126#";
   const pend = (S.subs || []).find(x => x.status === "en_attente"), SST = { en_attente: ["warn", "En vérification"], validee: ["ok", "Validé"], refusee: ["bad", "Refusé"], echouee: ["", "Non abouti"] };
@@ -3982,12 +4006,14 @@ function vAbo() {
     ${ps.essai && !ps.expired ? `<div class="note ${ps.days <= 7 ? "warn" : "info"}"><b>${ps.days <= 7 ? `Votre essai gratuit se termine dans ${ps.days} jour(s).` : "Vous profitez de l’essai gratuit."}</b> Choisissez dès maintenant la formule qui vous convient : vos jours d’essai restants sont conservés, l’abonnement commence à la fin de l’essai.</div>` : ""}
     ${ps.essai && ps.expired ? `<div class="note bad"><b>Votre essai gratuit est terminé.</b> Merci d’avoir testé GesCo Bar ! Choisissez votre formule ci-dessous pour continuer : toutes vos données sont conservées.</div>` : ps.essai ? "" : ps.expired ? `<div class="note bad"><b>Abonnement expiré.</b> Renouvelez-le ci-dessous pour continuer sans interruption.</div>` : ps.days != null && ps.days <= 7 ? `<div class="note warn"><b>Votre abonnement se termine dans ${ps.days} jour(s).</b> Renouvelez-le en un geste ci-dessous.</div>` : ""}
     ${pend && pend.channel === "notchpay" ? `<div class="card stack paywait"><div class="pw-ic"><span class="spin"></span></div><b style="font-size:18px">Validez le paiement sur votre téléphone</b>
-        <p style="margin:0">Une demande de <b>${F(pend.amount)}</b> (${PLANS[pend.plan][0]}, ${pend.months} mois) a été envoyée au <b>${fmtTel(pend.payer_phone || "")}</b>. Tapez votre <b>code secret ${pend.method === "orange" ? "Orange Money" : "MTN MoMo"}</b> pour confirmer.</p>
+        <p style="margin:0">Une demande de <b>${F(pend.amount)}</b> (${planName(pend.plan)}, ${pend.months} mois) a été envoyée au <b>${fmtTel(pend.payer_phone || "")}</b>. Tapez votre <b>code secret ${pend.method === "orange" ? "Orange Money" : "MTN MoMo"}</b> pour confirmer.</p>
         <p class="mu" style="margin:0">Rien ne s’affiche ? Gardez le téléphone déverrouillé, vérifiez votre solde, puis ouvrez le menu ${pend.method === "orange" ? "Orange Money" : "MTN MoMo"} : les paiements en attente de validation y apparaissent. Votre formule s’active toute seule dès la confirmation.</p>
         <button class="btn soft" data-a="subCheck" data-id="${pend.id}">J’ai validé : vérifier maintenant</button></div>`
-      : pend ? `<div class="note info"><b>Paiement en cours de vérification</b> · ${PLANS[pend.plan][0]}, ${pend.months} mois, ${F(pend.amount)}. Votre formule est déjà active : BISMO Agency confirme sous 72 h.</div>` : ""}
-    <div class="plans">${Object.entries(PLANS).map(([k, [n, p, feats]], i) => `<button class="plan rise ${pl === k ? "on" : ""} ${k}" style="--i:${i}" data-a="setF" data-k2="ab_p" data-v="${k}" aria-pressed="${pl === k}">
-      ${k === "gold" ? '<span class="pill brand">Le plus choisi</span>' : ""}<b>${n}</b><span class="pp num">${Fs(p)}<small> FCFA / mois</small></span><ul>${feats.map(f => `<li>${f}</li>`).join("")}</ul></button>`).join("")}</div>
+      : pend ? `<div class="note info"><b>Paiement en cours de vérification</b> · ${planName(pend.plan)}, ${pend.months} mois, ${F(pend.amount)}. Votre formule est déjà active : BISMO Agency confirme sous 72 h.</div>` : ""}
+    ${PLAN_NAMES[ps.k] && !ps.expired ? `<div class="note info"><b>Vous gardez votre formule actuelle jusqu’à sa date de fin.</b> Au renouvellement, choisissez la formule qui correspond à votre établissement : les prix ci-dessous s’appliquent.</div>` : ""}
+    <div class="plans">${Object.entries(PLANS).map(([k, [n, p, feats, tag]], i) => `<button class="plan rise ${pl === k ? "on" : ""} pl-${k}" style="--i:${i}" data-a="setF" data-k2="ab_p" data-v="${k}" aria-pressed="${pl === k}">
+      ${k === "resto" ? '<span class="pill brand">Le plus choisi</span>' : ""}<span class="mu" style="font-size:12px;text-transform:uppercase;letter-spacing:.06em">${tag}</span><b>${n}</b><span class="pp num">${Fs(p)}<small> FCFA / mois</small></span><ul>${feats.map(f => `<li>${f}</li>`).join("")}</ul></button>`).join("")}</div>
+    ${tier() < 9 && tierOf(pl) < tier() ? `<div class="note warn"><b>Formule plus petite que l’actuelle.</b> Les fonctions qu’elle ne comprend pas (${tierOf(pl) < 2 ? "cuisine, paie, compta, paiement par numéro" : "prix de nuit, réservations, porte, bouteilles gardées"}) seront coupées ; vos données restent conservées.</div>` : ""}
     ${pend ? "" : `<div class="card stack paysteps"><h3>${mode === "direct" ? "Payer en un geste" : "Payer en 3 étapes"}</h3>
       ${tp ? `<div class="note warn"><b>Mode test (visible uniquement pour ce bar).</b> Le paiement sur téléphone coûte ${F(tp)} au lieu du prix normal et active 1 mois de la formule choisie. Ce mode disparaît tout seul après un paiement réussi.</div>` : `<div class="segs">${[[1, "1 mois"], [3, "3 mois"], [6, "6 mois"], [12, "12 mois · 2 offerts"]].map(([m, l]) => `<button class="${mo === m ? "on ok" : ""}" data-a="setF" data-k2="ab_m" data-v="${m}">${l}</button>`).join("")}</div>`}
       <div class="between"><span class="mu">${PLANS[pl][0]} · ${mo} mois</span><b class="num" style="font:800 26px var(--display)">${F(total)}</b></div>
@@ -4015,15 +4041,15 @@ function vAbo() {
         ${window.__abFile ? `<span class="mu">Capture prête : ${esc(window.__abFile.name)}</span>` : ""}
         <button class="btn" data-a="subGo">Activer mon abonnement</button>
         <p class="mu" style="margin:0">La formule s’active tout de suite pendant 72 h, le temps que BISMO Agency confirme la réception. Le paiement à l’année vous offre 2 mois.</p></div></div>`}</div>`}
-    <div class="card"><h3>Historique et reçus</h3><div class="list">${(S.subs || []).map(x => `<div class="li"><div class="grow"><b>${PLANS[x.plan][0]} · ${x.months} mois${x.is_test ? " · test" : ""}</b><div class="mu">${new Date(x.created_at).toLocaleDateString("fr-FR")} · ${x.method === "orange" ? "Orange Money" : "MTN MoMo"}${x.channel === "notchpay" ? " direct" : ""} · réf. ${esc(x.reference)}</div></div><b class="num">${F(x.amount)}</b><span class="pill ${SST[x.status][0]}">${SST[x.status][1]}</span>${x.status === "validee" ? `<button class="btn soft sm" data-a="subRecu" data-id="${x.id}">Reçu</button>` : ""}</div>`).join("") || '<div class="empty">Aucun paiement d’abonnement pour le moment.</div>'}</div></div></div>`;
+    <div class="card"><h3>Historique et reçus</h3><div class="list">${(S.subs || []).map(x => `<div class="li"><div class="grow"><b>${planName(x.plan)} · ${x.months} mois${x.is_test ? " · test" : ""}</b><div class="mu">${new Date(x.created_at).toLocaleDateString("fr-FR")} · ${x.method === "orange" ? "Orange Money" : "MTN MoMo"}${x.channel === "notchpay" ? " direct" : ""} · réf. ${esc(x.reference)}</div></div><b class="num">${F(x.amount)}</b><span class="pill ${SST[x.status][0]}">${SST[x.status][1]}</span>${x.status === "validee" ? `<button class="btn soft sm" data-a="subRecu" data-id="${x.id}">Reçu</button>` : ""}</div>`).join("") || '<div class="empty">Aucun paiement d’abonnement pour le moment.</div>'}</div></div></div>`;
 }
 A.abOp = d => { V.f.ab_ph = (document.getElementById("ab_ph") || {}).value ?? V.f.ab_ph; V.f.ab_o = d.v; V.f.ab_o_pick = 1; render(); };
-A.subGo = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ? planState().k : "gold"); let proof = null; const f = window.__abFile;
+A.subGo = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ? planState().k : planDef(S.bar)); let proof = null; const f = window.__abFile;
   if (!f && (V.f.ab_ref || "").trim().length < 4) throw bizErr("Collez la référence du SMS ou ajoutez la capture du SMS.");
   if (f) { if (f.size > 5242880) throw bizErr("Capture trop lourde (5 Mo maximum)."); proof = await B.uploadProof(f); }
   const r = await call("gb_sub_request", { p_plan: pl, p_months: +(V.f.ab_m || 1), p_method: V.f.ab_o || "orange", p_reference: V.f.ab_ref || "", p_proof: proof });
-  V.f.ab_ref = ""; window.__abFile = null; await refresh(); notify("ok", "Abonnement activé", `${PLANS[pl][0]} actif jusqu’à la confirmation de BISMO Agency (72 h).`); });
-A.subPush = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ? planState().k : "gold"), mo = S.bar.sub_test_price ? 1 : +(V.f.ab_m || 1);
+  V.f.ab_ref = ""; window.__abFile = null; await refresh(); notify("ok", "Abonnement activé", `${planName(pl)} actif jusqu’à la confirmation de BISMO Agency (72 h).`); });
+A.subPush = () => run(async () => { const pl = V.f.ab_p || (PLANS[planState().k] ? planState().k : planDef(S.bar)), mo = S.bar.sub_test_price ? 1 : +(V.f.ab_m || 1);
   const ph = String(V.f.ab_ph ?? LS.get("gesco-abph-" + S.me.id, "")).replace(/\D/g, ""), op = (V.f.ab_o_pick && V.f.ab_o) || opOf(ph) || V.f.ab_o || "orange";
   if (!/^(237)?6\d{8}$/.test(ph)) throw bizErr("Saisissez votre numéro Mobile Money : 9 chiffres commençant par 6.");
   const r = await B.subPush(pl, mo, op, ph); LS.set("gesco-abph-" + S.me.id, ph.slice(-9));
@@ -4052,9 +4078,10 @@ function payCfgCard() {
       <label class="f" for="pc_mtnu">Modèle MTN MoMo<input id="pc_mtnu" data-k="pc_mtnu" value="${esc(V.f.pc_mtnu ?? b.mtn_ussd ?? "")}"></label>
       <span class="mu">{code} est remplacé par votre code marchand et {montant} par le total du ticket.</span></div></details>
     <h3 style="margin-top:6px">Paiement par numéro du client</h3>
+    ${tier() < 2 ? `<div class="note info">Le paiement par numéro et le QR qui se valide tout seul sont inclus à partir de la formule <b>Snack-Restaurant</b>. Avec Snack-Bar, le QR code marchand ci-dessus fonctionne normalement.</div>` : ""}
     <p class="mu" style="margin:0">Pour envoyer la demande directement sur le téléphone du client, ouvrez un compte marchand Notch Pay (notchpay.co), faites-le valider, puis collez ici votre clé publique. Elle reste sur le serveur, les employés ne la voient jamais.</p>
-    <label class="f" for="pc_key">Clé publique Notch Pay<input id="pc_key" type="password" autocomplete="off" data-k="pc_key" value="${val("pc_key")}" placeholder="${b.push_enabled ? "Clé enregistrée · laisser vide pour la garder" : "pk.xxxxxxxx"}"></label>
-    <div class="row"><button class="btn grow" data-a="payCfg">Enregistrer les paiements</button>${b.push_enabled ? `<button class="btn ghost sm" data-a="payKeyDel">Retirer la clé</button>` : ""}</div></div>`;
+    <label class="f" for="pc_key">Clé publique Notch Pay<input id="pc_key" type="password" autocomplete="off" data-k="pc_key" value="${val("pc_key")}" placeholder="${b.push_raw ? "Clé enregistrée · laisser vide pour la garder" : "pk.xxxxxxxx"}"></label>
+    <div class="row"><button class="btn grow" data-a="payCfg">Enregistrer les paiements</button>${b.push_raw ? `<button class="btn ghost sm" data-a="payKeyDel">Retirer la clé</button>` : ""}</div></div>`;
 }
 const payCfgSave = key => run(async () => { const b = S.bar;
   await call("gb_pay_config", { p_om_code: V.f.pc_om ?? b.om_code ?? "", p_mtn_code: V.f.pc_mtn ?? b.mtn_code ?? "", p_om_ussd: V.f.pc_omu ?? b.om_ussd ?? "", p_mtn_ussd: V.f.pc_mtnu ?? b.mtn_ussd ?? "", p_key: key });
@@ -4065,9 +4092,9 @@ A.payKeyDel = () => payCfgSave("");
 function cSettings() {
   const b = S.bar, kyc = { non_renseigne: ["", "Non renseignée"], a_verifier: ["warn", "En attente de vérification"], verifie: ["ok", "Vérifiée"], refuse: ["bad", "Refusée"] }[b.kyc_status || "non_renseigne"];
   return `<div class="stack"><div class="card stack"><div class="between"><h3>Module Cuisine</h3><span class="pill ${b.kitchen_on ? "ok" : ""}">${b.kitchen_on ? "Activé" : "Désactivé"}</span></div>
-      <p class="mu" style="margin:0">Pour les bars qui servent à manger. Chaque plat commandé part sur l’écran cuisine avec la table, la serveuse et un numéro de bon. Le cuisinier le marque « Prêt » : seule la bonne serveuse est prévenue et confirme le retrait. Les ingrédients des recettes sortent du stock tout seuls. Inclus à partir de Snack Gold.</p>
+      <p class="mu" style="margin:0">Pour les bars qui servent à manger. Chaque plat commandé part sur l’écran cuisine avec la table, la serveuse et un numéro de bon. Le cuisinier le marque « Prêt » : seule la bonne serveuse est prévenue et confirme le retrait. Les ingrédients des recettes sortent du stock tout seuls. Inclus à partir de la formule Snack-Restaurant.</p>
       <p class="mu" style="margin:0">Les plats sont les produits de catégorie « Cuisine » (ou vendus au plat / à la portion). Ajoutez ensuite votre cuisinier dans Équipe avec le rôle « Cuisine ».</p>
-      <button class="btn ${b.kitchen_on ? "soft" : ""}" data-a="kitchenToggle">${b.kitchen_on ? "Désactiver le module Cuisine" : "Activer le module Cuisine"}</button></div>
+      ${tier() < 2 ? `<button class="btn ghost" data-a="aboPick" data-v="resto">Voir la formule Snack-Restaurant</button>` : `<button class="btn ${b.kitchen_on ? "soft" : ""}" data-a="kitchenToggle">${b.kitchen_on ? "Désactiver le module Cuisine" : "Activer le module Cuisine"}</button>`}</div>
     <div class="card stack"><div class="between"><h3>Identité légale du bar</h3><span class="pill ${kyc[0]}">${kyc[1]}</span></div>
       <p class="mu" style="margin:0">Facultatif. Sert à établir vos factures d’abonnement et à vérifier que le compte appartient bien à l’entreprise. La pièce d’identité est stockée dans un espace privé, visible uniquement par le PDG de ce bar et l’éditeur du logiciel.</p>
       <div class="row"><label class="f grow" for="id_legal">Raison sociale<input id="id_legal" data-k="id_legal" value="${esc(V.f.id_legal ?? (b.legal_name || ""))}" placeholder="Ex. SNACK LE MANGUIER SARL"></label>
@@ -4094,7 +4121,7 @@ const F_OPTS = [["f_ardoise", "Ardoise (crédit client)", "Des clients de confia
   ["f_recettes", "Recettes au gramme", "Module Cuisine : ingrédients pesés par plat, sortis du stock à chaque commande. Inutile pour la plupart des snacks (les courses du marché suffisent)."]];
 function optCard() {
   return `<div class="card stack"><h3>Options du bar</h3><p class="mu" style="margin:0">Activez seulement ce qui sert dans votre établissement : les écrans restent simples pour l’équipe.</p>
-    <div class="list">${F_OPTS.map(([k, l, d]) => `<div class="li" style="flex-wrap:wrap"><div class="grow"><b>${l}</b><div class="mu">${d}</div></div><button class="btn sm ${opt(k) ? "soft" : ""}" data-a="optTog" data-k="${k}" aria-pressed="${opt(k)}">${opt(k) ? "Désactiver" : "Activer"}</button>${optExtra(k)}</div>`).join("")}</div></div>`;
+    <div class="list">${F_OPTS.map(([k, l, d]) => { const mt = OPT_TIER[k] || 1, lk = tier() < mt; return `<div class="li${lk ? " locked" : ""}" style="flex-wrap:wrap"><div class="grow"><b>${l}</b>${lk ? ` <span class="pill warn">${TIER_NAME[mt]}</span>` : ""}<div class="mu">${d}</div></div>${lk ? `<button class="btn ghost sm" data-a="aboPick" data-v="${mt === 2 ? "resto" : "lounge"}">Voir la formule</button>` : `<button class="btn sm ${opt(k) ? "soft" : ""}" data-a="optTog" data-k="${k}" aria-pressed="${opt(k)}">${opt(k) ? "Désactiver" : "Activer"}</button>${optExtra(k)}`}</div>`; }).join("")}</div></div>`;
 }
 function optExtra(k) {
   const o = S.bar.opts || {};
@@ -4407,10 +4434,10 @@ function vModal() {
   if (m.type === "avis") return `<div class="scrim" data-a="close" data-self="1"><div class="sheet" role="dialog" aria-modal="true" aria-label="Donner mon avis">${vAvis()}</div></div>`;
   if (m.type === "help") return `<div class="scrim help-scrim" data-a="close" data-self="1"><div class="sheet helpsheet" role="dialog" aria-modal="true" aria-label="Aide">${vHelp()}</div></div>`;
   if (m.type === "subRecu") { const x = (S.subs || []).find(y => y.id === m.id) || {}, P = S.platform || {};
-    const txt = `REÇU D’ABONNEMENT GESCO BAR\n${S.bar.legal_name || S.bar.name}\nFormule : ${(PLANS[x.plan] || [""])[0]} · ${x.months} mois\nMontant : ${F(x.amount)}\nPayé le ${new Date(x.created_at).toLocaleDateString("fr-FR")} par ${x.method === "orange" ? "Orange Money" : "MTN MoMo"}\nRéférence : ${x.reference}\nBISMO Agency`;
+    const txt = `REÇU D’ABONNEMENT GESCO BAR\n${S.bar.legal_name || S.bar.name}\nFormule : ${planName(x.plan)} · ${x.months} mois\nMontant : ${F(x.amount)}\nPayé le ${new Date(x.created_at).toLocaleDateString("fr-FR")} par ${x.method === "orange" ? "Orange Money" : "MTN MoMo"}\nRéférence : ${x.reference}\nBISMO Agency`;
     c = `<div class="slip printable"><div class="between" style="align-items:flex-start"><div><b style="font-size:16px">BISMO Agency</b><div>Ngousso, Yaoundé</div><div>${esc(P.holder_name || "")}</div></div><img src="${LOGO}" alt="BISMO Agency" style="width:84px"></div>
       <h2 style="margin:14px 0 2px">Reçu d’abonnement GesCo Bar</h2><div>${esc(S.bar.legal_name || S.bar.name)}${S.bar.niu ? " · NIU " + esc(S.bar.niu) : ""}</div><hr>
-      <div class="kv"><span>Formule</span><span>${(PLANS[x.plan] || [""])[0]} · ${x.months} mois</span></div><div class="kv"><span>Mode</span><span>${x.method === "orange" ? "Orange Money" : "MTN MoMo"}</span></div>
+      <div class="kv"><span>Formule</span><span>${planName(x.plan)} · ${x.months} mois</span></div><div class="kv"><span>Mode</span><span>${x.method === "orange" ? "Orange Money" : "MTN MoMo"}</span></div>
       <div class="kv"><span>Référence</span><span>${esc(x.reference || "")}</span></div><div class="kv"><span>Date</span><span>${new Date(x.created_at).toLocaleDateString("fr-FR")}</span></div><hr>
       <div class="kv"><b>Montant payé</b><b>${F(x.amount)}</b></div></div>
       <div class="row">${CFG.mode === "live" ? `<button class="btn grow" data-a="print">Imprimer</button>` : ""}<a class="btn soft grow" href="https://wa.me/?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">Envoyer par WhatsApp</a></div><button class="btn ghost" data-a="close">Fermer</button>`; }

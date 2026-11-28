@@ -250,7 +250,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 const F = n => (Math.round(+n || 0)).toLocaleString("fr-FR").replace(/ | /g, " ") + " FCFA";
 const D = d => d ? new Date(d.length === 10 ? d + "T12:00:00" : d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "—";
 const ago = d => { if (!d) return "jamais"; const m = Math.round((Date.now() - new Date(d)) / 60000); return m < 60 ? `il y a ${m} min` : m < 1440 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
-const PLANS = { beta: ["Bêta gratuite", 0, ""], essai: ["Essai gratuit", 0, "warn"], simple: ["Snack Simple", 10000, "sky"], premium: ["Snack Premium", 15000, "sky"], gold: ["Snack Gold", 20000, "warn"], lounge: ["Lounge", 30000, "night"] };
+const PLANS = { beta: ["Bêta gratuite", 0, ""], essai: ["Essai gratuit", 0, "warn"], bar: ["Snack-Bar", 10000, "sky"], resto: ["Snack-Restaurant", 20000, "warn"], lounge: ["Lounge", 35000, "night"], simple: ["Snack Simple (ancienne)", 10000, "sky"], premium: ["Snack Premium (ancienne)", 15000, "sky"], gold: ["Snack Gold (ancienne)", 20000, "warn"] };
 const MONTH = m => new Date(m + "-15").toLocaleDateString("fr-FR", { month: "short" });
 const V = { view: "login", tab: (location.hash || "#apercu").slice(1), f: {}, data: {}, filter: "tous", q: "", panel: null, busy: false, toast: null, setup: false };
 const SECT = [["apercu", "Vue d’ensemble", "home", "Accueil"], ["paiements", "Paiements", "card"], ["assistance", "Assistance", "chat"], ["avis", "Avis", "star"], ["bars", "Bars", "store"], ["erreurs", "Erreurs", "alert"], ["reglages", "Réglages", "sliders"], ["journal", "Journal", "list"]];
@@ -261,7 +261,7 @@ async function rpc(n, a) { const { data, error } = await sb.rpc(n, a || {}); if 
 async function fn(action, body) { const r = await fetch(CFG.url + "/functions/v1/gesco-admin", { method: "POST", headers: { "Content-Type": "application/json", apikey: CFG.key, Authorization: "Bearer " + CFG.key }, body: JSON.stringify({ action, ...body }) });
   const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || "Erreur réseau."); return j; }
 // Les champs sont relus AVANT le re-rendu (sinon le bouton « en cours » efface ce qui vient d'être tapé).
-const APP_BUILD = "73036097";
+const APP_BUILD = "173eae07";
 const ERR_SEEN = {};
 function reportErr(e) { try { const msg = String((e && e.message) || e || "").slice(0, 500);
   if (!msg || /^Script error\.?$|ResizeObserver loop|Failed to fetch|NetworkError|Load failed|network/i.test(msg)) return;
@@ -474,7 +474,7 @@ const kpi = (l, v, s, t, i, icon) => `<div class="kpi" style="--i:${i || 0}"><sp
 function planPill(b) { const t = b.plan_trial_until && new Date(b.plan_trial_until) > Date.now();
   if (b.suspended) return `<span class="pill bad">Suspendu</span>`;
   if (b.blocage) return `<span class="pill bad">Expiré · bloqué</span>`;
-  if (t) return `<span class="pill warn">${PLANS[b.trial_plan][0]} · provisoire</span>`;
+  if (t) return `<span class="pill warn">${(PLANS[b.trial_plan] || ["Formule"])[0]} · provisoire</span>`;
   if (b.plan === "beta") return `<span class="pill">Bêta</span>`;
   const d = Math.ceil((new Date(b.plan_until + "T23:59:59") - Date.now()) / 864e5);
   return `<span class="pill ${d < 0 ? "bad" : d <= 7 ? "warn" : PLANS[b.plan][2]}">${PLANS[b.plan][0]} · ${d < 0 ? "expiré" : d + " j"}</span>`; }
@@ -540,7 +540,7 @@ function vPanel() {
       <div class="kv"><span class="mu">Équipe active</span><span>${b.employes} dont ${b.serveuses} serveuse(s)</span></div><div class="kv"><span class="mu">Ventes 30 j</span><b class="num">${F(b.ventes_30j)} · ${b.tickets_30j} tickets</b></div>
       <div class="kv"><span class="mu">Dernière activité</span><span>${ago(b.derniere_activite)}</span></div><div class="kv"><span class="mu">Raison sociale / NIU</span><span>${esc(b.legal_name || "—")} · ${esc(b.niu || "—")}</span></div></div>
     <div class="card stack"><h3>Abonnement</h3>
-      <div class="row"><label class="f grow">Formule<select id="p_plan">${Object.entries(PLANS).map(([k, [n]]) => `<option value="${k}" ${plan === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+      <div class="row"><label class="f grow">Formule<select id="p_plan">${Object.entries(PLANS).filter(([k]) => !["simple", "premium", "gold"].includes(k) || plan === k).map(([k, [n]]) => `<option value="${k}" ${plan === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>
       <label class="f grow">Valable jusqu’au<input id="p_until" type="date" value="${esc(until)}" ${plan === "beta" ? "disabled" : ""}></label></div>
       <div class="row"><span class="mu">Essai gratuit :</span>${[14, 30].map(n => `<button class="btn soft sm" data-a="trialB" data-v="${n}">${n} jours dès aujourd’hui</button>`).join("")}</div>
       <div class="row"><span class="mu">Offrir :</span>${[1, 3, 12].map(n => `<button class="btn soft sm" data-a="addM" data-v="${addM(n)}">+${n} mois</button>`).join("")}</div>
@@ -726,7 +726,7 @@ const A = {
   trialB: d => { const t = new Date(); t.setDate(t.getDate() + +d.v); V.f.p_plan = "essai"; V.f.p_until = t.toLocaleDateString("sv-SE"); render(); },
   trialDays: () => run(async () => { const on = V.snap ? !!V.snap.s_trial_on : !!document.getElementById("s_trial_on")?.checked, n = parseInt(val("s_trial"), 10);
     await rpc("gb_pf_trial_days", { p_days: on ? (n || 30) : null }); await loadAll(); toast(on ? `Les nouveaux bars démarreront avec ${n || 30} jours d’essai gratuit.` : "Les nouveaux bars démarreront en bêta gratuite illimitée."); }),
-  addM: d => { V.f.p_until = d.v; if ((V.f.p_plan ?? (V.data.bars.find(b => b.id === V.panel) || {}).plan) === "beta") V.f.p_plan = "gold"; render(); },
+  addM: d => { V.f.p_until = d.v; if ((V.f.p_plan ?? (V.data.bars.find(b => b.id === V.panel) || {}).plan) === "beta") V.f.p_plan = "resto"; render(); },
   saveBar: d => run(async () => { const plan = val("p_plan"), until = val("p_until") || null; if (plan !== "beta" && !until) throw new Error("Indiquez la date de fin.");
     await rpc("gb_pf_bar_set", { p_bar: d.id, p_plan: plan, p_until: until, p_suspended: null, p_note: val("p_note") }); V.f = {}; await loadAll(); toast("Bar mis à jour."); }),
   suspend: d => run(async () => { const b = V.data.bars.find(x => x.id === d.id);
